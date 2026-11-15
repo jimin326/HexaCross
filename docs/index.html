@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HexaCross</title>
+<meta name="description" content="HexaCross: Learning to Drive Through a Six-Way Signalized Intersection — 부산 연산교차로 SUMO 강화학습 자율주행">
+<style>
+  :root {
+    --bg: #ffffff; --bg-soft: #f6f7f9; --text: #1b1d21; --muted: #5f6670;
+    --line: #e3e6ea; --accent: #c2410c; --accent-soft: #fff1e8;
+    --ph: #eef0f3; --ph-text: #8a919b;
+    --maxw: 920px; --radius: 12px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #121417; --bg-soft: #1a1d21; --text: #e8eaed; --muted: #9aa1ab;
+      --line: #2a2e34; --accent: #fb923c; --accent-soft: #2a1d14;
+      --ph: #1f2328; --ph-text: #6b737d;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 64px; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", "Noto Sans KR", "Segoe UI", sans-serif;
+    line-height: 1.7; font-size: 16px; -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 20px; }
+
+  /* Hero */
+  header.hero { padding: 72px 0 40px; text-align: center; }
+  .hero h1 { font-size: clamp(2.2rem, 6vw, 3.4rem); margin: 0; letter-spacing: -0.02em; }
+  .hero .sub { font-size: clamp(1.05rem, 2.6vw, 1.35rem); margin: 8px 0 0; font-weight: 500; }
+  .hero .ko { color: var(--muted); margin: 6px 0 0; }
+  .authors { margin: 24px 0 4px; font-size: 1.05rem; }
+  .authors span { margin: 0 10px; white-space: nowrap; }
+  .affil { color: var(--muted); font-size: 0.95rem; }
+  .btns { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 26px; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px; padding: 9px 18px;
+    border-radius: 999px; background: var(--text); color: var(--bg); font-weight: 600; font-size: 0.95rem;
+  }
+  .btn:hover { text-decoration: none; opacity: 0.85; }
+  .btn.disabled { background: var(--ph); color: var(--ph-text); pointer-events: none; }
+
+  /* Nav */
+  nav.toc {
+    position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(8px); border-bottom: 1px solid var(--line);
+  }
+  nav.toc ul { list-style: none; margin: 0 auto; padding: 0 12px; display: flex; gap: 4px;
+    max-width: var(--maxw); overflow-x: auto; scrollbar-width: none; }
+  nav.toc a { display: block; padding: 14px 10px; color: var(--muted); font-size: 0.9rem; white-space: nowrap;
+    border-bottom: 2px solid transparent; }
+  nav.toc a:hover { color: var(--text); text-decoration: none; }
+  nav.toc a.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* Sections */
+  section { padding: 56px 0 8px; }
+  section h2 { font-size: 1.6rem; margin: 0 0 6px; letter-spacing: -0.01em; }
+  section h3 { font-size: 1.15rem; margin: 28px 0 8px; }
+  .kicker { color: var(--accent); font-weight: 700; font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; }
+  p { margin: 10px 0; }
+  .muted { color: var(--muted); }
+
+  .ph {
+    background: var(--ph); color: var(--ph-text); border: 1px dashed var(--line); border-radius: var(--radius);
+    display: flex; align-items: center; justify-content: center; text-align: center; padding: 16px;
+    font-size: 0.9rem; min-height: 180px; margin: 16px 0;
+  }
+  .ph.video { aspect-ratio: 16 / 9; min-height: 0; }
+  figure { margin: 16px 0; }
+  figure img, figure video { width: 100%; border-radius: var(--radius); display: block; cursor: zoom-in; }
+  figcaption { color: var(--muted); font-size: 0.9rem; margin-top: 8px; text-align: center; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 640px) { .grid2 { grid-template-columns: 1fr; } }
+
+  .tbd { background: var(--accent-soft); color: var(--accent); border-radius: 6px; padding: 1px 7px; font-size: 0.85em; font-weight: 600; }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 0.94rem; }
+  th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: 0.85rem; }
+  .tablewrap { overflow-x: auto; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.88em;
+    background: var(--bg-soft); padding: 1px 5px; border-radius: 4px; }
+
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 18px 0; }
+  @media (max-width: 640px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+  .stat { background: var(--bg-soft); border-radius: var(--radius); padding: 16px; }
+  .stat b { display: block; font-size: 1.6rem; letter-spacing: -0.02em; }
+  .stat span { color: var(--muted); font-size: 0.85rem; }
+
+  .team { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-top: 16px; }
+  @media (max-width: 720px) { .team { grid-template-columns: repeat(2, 1fr); } }
+  .member { background: var(--bg-soft); border-radius: var(--radius); padding: 16px; }
+  .member b { display: block; }
+  .member span { color: var(--muted); font-size: 0.88rem; }
+
+  details { background: var(--bg-soft); border-radius: var(--radius); padding: 12px 16px; margin: 14px 0; }
+  summary { cursor: pointer; font-weight: 600; }
+  pre { background: var(--bg-soft); border-radius: var(--radius); padding: 14px 16px; overflow-x: auto; font-size: 0.85rem; }
+
+  footer { margin-top: 72px; padding: 32px 0 48px; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.88rem; text-align: center; }
+
+  .reveal { opacity: 0; transform: translateY(14px); transition: opacity .6s ease, transform .6s ease; }
+  .reveal.on { opacity: 1; transform: none; }
+  @media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; transition: none; } html { scroll-behavior: auto; } }
+
+  .modal { position: fixed; inset: 0; background: rgba(0,0,0,.85); display: none; align-items: center; justify-content: center; z-index: 50; padding: 20px; cursor: zoom-out; }
+  .modal.open { display: flex; }
+  .modal img { max-width: 100%; max-height: 100%; border-radius: 8px; }
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+  편집 안내 (지민)
+  - 이미지/영상은 docs/figures/ 에 넣고 <div class="ph">...</div> 를 <figure> 로 바꾼다.
+      <figure><img src="figures/파일명.png" alt="설명"><figcaption>설명</figcaption></figure>
+  - <span class="tbd">TBD</span> 는 아직 채울 값이다. 최종 제출 전 전부 지운다.
+  - 버튼 링크가 준비되면 class="btn disabled" 에서 disabled 를 지우고 href 를 넣는다.
+============================================================= -->
+
+<header class="hero wrap">
+  <h1>HexaCross</h1>
+  <p class="sub">Learning to Drive Through a Six-Way Signalized Intersection</p>
+  <p class="ko">부산 연산교차로 실도로 기반 SUMO 강화학습 자율주행</p>
+  <div class="authors">
+    <span>승준</span><span>지원</span><span>서영</span><span>호섭</span><span>지민</span>
+  </div>
+  <div class="affil">Team 와플 해적단 · Sungkyunkwan University · 자율주행인공지능및제어 2026</div>
+  <div class="btns">
+    <a class="btn disabled" href="#">Slides (PDF)</a>
+    <a class="btn" href="https://github.com/jimin326/HexaCross">Code</a>
+    <a class="btn disabled" href="#">Dataset</a>
+    <a class="btn disabled" href="#">Model</a>
+  </div>
+</header>
+
+<nav class="toc" aria-label="목차">
+  <ul>
+    <li><a href="#overview">Overview</a></li>
+    <li><a href="#site">Site</a></li>
+    <li><a href="#env">Environment</a></li>
+    <li><a href="#traffic">Traffic</a></li>
+    <li><a href="#mdp">MDP</a></li>
+    <li><a href="#training">Training</a></li>
+    <li><a href="#results">Results</a></li>
+    <li><a href="#dataset">Dataset</a></li>
+    <li><a href="#team">Team</a></li>
+  </ul>
+</nav>
+
+<main class="wrap">
+
+  <section id="overview" class="reveal">
+    <div class="kicker">Overview</div>
+    <h2>30초 주행 영상</h2>
+    <div class="ph video">주행 영상 (30초 이상) · figures/demo.mp4<br>&lt;video src="figures/demo.mp4" controls muted playsinline&gt;</div>
+    <h3>Abstract</h3>
+    <p>
+      부산 연산교차로는 6개 도로가 한 점에서 만나는 방사형 신호교차로입니다.
+      저희는 이 교차로를 OpenStreetMap 기반으로 SUMO에 구현하고, 6현시 신호와 실제 진입 방향별 교통 흐름을 반영한 환경에서
+      자율주행 차량(AV)이 신호 · 대기열 · 합류 상황을 판단하며 통과하도록 PPO와 Behavior Cloning으로 정책을 학습했습니다.
+      <span class="tbd">TBD: 결과 한 문장 (충돌률, 완주율)</span>
+    </p>
+  </section>
+
+  <section id="site" class="reveal">
+    <div class="kicker">1 · Site</div>
+    <h2>왜 연산교차로인가</h2>
+    <p>6개 방향(중앙대로 동래·서면, 월드컵대로 사직·남쪽, 반송로, 고분로)이 지름 약 80m 안에서 만나며, 방향마다 우회전 슬립 차로가 있습니다.</p>
+    <div class="grid2">
+      <div class="ph">실제 지도 / 위성 · figures/site_map.png</div>
+      <div class="ph">로드뷰 · figures/site_roadview.png</div>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>접근로</th><th>진입 / 진출 차로</th><th>비고</th></tr></thead>
+        <tbody>
+          <tr><td>중앙대로 (동래 방향)</td><td>2 / 2</td><td></td></tr>
+          <tr><td>월드컵대로 (사직 방향)</td><td>4 / 3</td><td></td></tr>
+          <tr><td>반송로</td><td>2 / 2</td><td><span class="tbd">로드뷰 확인</span></td></tr>
+          <tr><td>고분로</td><td>2 / 2</td><td><span class="tbd">로드뷰 확인</span></td></tr>
+          <tr><td>월드컵대로 (남쪽)</td><td>3 / 3</td><td></td></tr>
+          <tr><td>중앙대로 (서면 방향)</td><td>2 / 2</td><td></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="env" class="reveal">
+    <div class="kicker">2 · Environment</div>
+    <h2>SUMO 구현</h2>
+    <p>OSM → netconvert로 도로를 만들고, 6현시 · 160초 주기의 신호를 적용했습니다. AV 경로는 서면 → 연산교차로 → 동래입니다.</p>
+    <div class="ph">SUMO 전체 화면 · figures/sumo_overview.png</div>
+    <div class="grid2">
+      <div class="ph">신호 현시 다이어그램 · figures/signal_phases.png</div>
+      <div class="ph">우회전 슬립 차로 · figures/slip_lane.png</div>
+    </div>
+  </section>
+
+  <section id="traffic" class="reveal">
+    <div class="kicker">3 · Traffic</div>
+    <h2>일반 차량 구성</h2>
+    <div class="stats">
+      <div class="stat"><b>35</b><span>진입 지점</span></div>
+      <div class="stat"><b>390</b><span>경로</span></div>
+      <div class="stat"><b>157–398</b><span>동시 차량 수</span></div>
+      <div class="stat"><b>4종</b><span>운전 모델 (Krauss · IDM · EIDM · ACC)</span></div>
+    </div>
+    <p><span class="tbd">TBD: 방향별 교통량 근거, 차량 모델 비율</span></p>
+  </section>
+
+  <section id="mdp" class="reveal">
+    <div class="kicker">4 · MDP</div>
+    <h2>Observation · Action · Reward</h2>
+    <h3>Observation (34차원)</h3>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>인덱스</th><th>내용</th></tr></thead>
+        <tbody>
+          <tr><td><code>0</code></td><td>내 속도</td></tr>
+          <tr><td><code>1–20</code></td><td>5개 차로 × (앞차 거리, 앞차 속도차, 뒤차 거리, 뒤차 속도차)</td></tr>
+          <tr><td><code>21–25</code></td><td>차로 연결성 (끊김 예고)</td></tr>
+          <tr><td><code>26–30</code></td><td>차로별 전방 밀도</td></tr>
+          <tr><td><code>31–33</code></td><td>신호 상태 · 정지선까지 거리 · 현시 남은 시간</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <h3>Action</h3>
+    <p>[가감속 ∈ [-1, 1], 차로변경 ∈ {-1, 0, +1}]</p>
+    <h3>Reward</h3>
+    <p><span class="tbd">TBD: 서영 — 속도 보상, 충돌, 완주, 신호 위반, 차로 선택 실패 항목과 가중치</span></p>
+  </section>
+
+  <section id="training" class="reveal">
+    <div class="kicker">5 · Training</div>
+    <h2>학습</h2>
+    <p><span class="tbd">TBD: 호섭 — PPO 스텝 수, 하이퍼파라미터, BC 데이터</span></p>
+    <div class="ph">학습 곡선 (reward / collision) · figures/training_curve.png</div>
+  </section>
+
+  <section id="results" class="reveal">
+    <div class="kicker">6 · Results</div>
+    <h2>평가 (100 에피소드)</h2>
+    <div class="stats">
+      <div class="stat"><b><span class="tbd">TBD</span></b><span>충돌률 (목표 &lt; 5%)</span></div>
+      <div class="stat"><b><span class="tbd">TBD</span></b><span>경로 완주율</span></div>
+      <div class="stat"><b><span class="tbd">TBD</span></b><span>신호 위반률</span></div>
+      <div class="stat"><b><span class="tbd">TBD</span></b><span>평균 통과 시간</span></div>
+    </div>
+    <div class="ph">상황별 주행 예시 (대기열 · 황색 · 슬립 합류) · figures/cases.png</div>
+  </section>
+
+  <section id="dataset" class="reveal">
+    <div class="kicker">7 · Dataset</div>
+    <h2>POMDP 주행 데이터</h2>
+    <p>0.5초마다 1 transition을 저장합니다. 목표는 10<sup>7</sup>개 이상이며 Hugging Face에 공개합니다. 전체 컬럼 정의는 <a href="https://github.com/jimin326/HexaCross/blob/main/DATA_FORMAT.md">DATA_FORMAT.md</a>에 있습니다.</p>
+    <div class="stats">
+      <div class="stat"><b><span class="tbd">TBD</span></b><span>transitions</span></div>
+      <div class="stat"><b><span class="tbd">TBD</span></b><span>episodes</span></div>
+      <div class="stat"><b>0.5 s</b><span>step</span></div>
+      <div class="stat"><b><span class="tbd">TBD</span></b><span>용량</span></div>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>컬럼</th><th>내용</th></tr></thead>
+        <tbody>
+          <tr><td><code>observation</code></td><td>AV 부분관측 34차원</td></tr>
+          <tr><td><code>action</code></td><td>가감속, 차로변경 (raw · 적용값)</td></tr>
+          <tr><td><code>reward</code> · <code>terminated</code> · <code>truncated</code></td><td>보상, 종료 여부</td></tr>
+          <tr><td><code>state</code></td><td>AV · 주변 차량 절대 좌표 · 속도 · 차로, 신호 상태</td></tr>
+          <tr><td><code>event</code></td><td>충돌, 도착, 신호 위반(<code>red_light</code>), 차로 선택 실패(<code>wrong_lane</code>)</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <details>
+      <summary>불러오기 예시</summary>
+<pre>from datasets import load_dataset
+ds = load_dataset("TBD/HexaCross-dataset")</pre>
+    </details>
+  </section>
+
+  <section id="team" class="reveal">
+    <div class="kicker">Team</div>
+    <h2>와플 해적단</h2>
+    <div class="team">
+      <div class="member"><b>승준</b><span>SUMO 도로 · 신호 · 경로</span></div>
+      <div class="member"><b>지원</b><span>일반 차량 · 교통</span></div>
+      <div class="member"><b>서영</b><span>AV 환경 · MDP</span></div>
+      <div class="member"><b>호섭</b><span>학습 · 평가</span></div>
+      <div class="member"><b>지민</b><span>데이터 · 페이지 · 레포</span></div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="wrap">
+  HexaCross · Team 와플 해적단 · Sungkyunkwan University<br>
+  Based on <a href="https://github.com/bmil-ssu/Artificial-Intelligence-and-Control-for-Autonomous-Driving">bmil-ssu course code</a> · Built with SUMO
+</footer>
+
+<div class="modal" id="modal" aria-hidden="true"><img alt=""></div>
+
+<script>
+  // 스크롤하면 섹션이 나타나는 효과
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('on'); io.unobserve(e.target); } });
+  }, { threshold: 0.08 });
+  document.querySelectorAll('.reveal').forEach((el) => io.observe(el));
+
+  // 목차에서 현재 섹션 표시
+  const links = [...document.querySelectorAll('nav.toc a')];
+  const spy = new IntersectionObserver((entries) => {
+    entries.forEach((e) => {
+      if (!e.isIntersecting) return;
+      links.forEach((a) => a.classList.toggle('active', a.getAttribute('href') === '#' + e.target.id));
+    });
+  }, { rootMargin: '-45% 0px -50% 0px' });
+  document.querySelectorAll('main section').forEach((s) => spy.observe(s));
+
+  // 이미지 클릭 시 크게 보기
+  const modal = document.getElementById('modal');
+  const modalImg = modal.querySelector('img');
+  document.addEventListener('click', (e) => {
+    const img = e.target.closest('figure img');
+    if (img) { modalImg.src = img.src; modalImg.alt = img.alt; modal.classList.add('open'); return; }
+    if (e.target.closest('#modal')) modal.classList.remove('open');
+  });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') modal.classList.remove('open'); });
+</script>
+</body>
+</html>
