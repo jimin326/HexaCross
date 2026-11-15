@@ -123,14 +123,21 @@ def build(road: dict, ego: dict, traffic: dict, out_dir: str) -> str:
                         f'vClass="passenger" guiShape="passenger/sedan"/>')
         flow_type = "car"
 
-    with open(os.path.join(out_dir, "highway.rou.xml"), "w") as f:
+    # 실측 OD 수요(TRAFFIC["demand"])의 방면→edge 매핑이 채워져 있으면
+    # 방향별 flow를 쓰고, 아니면 기존 단일 flow(직선도로)로 동작한다.
+    od_flows = build_od_flows(traffic.get("demand"), flow_type)
+    if od_flows is None:
+        od_flows = (
+            f'    <flow id="traffic" type="{flow_type}" route="r0" begin="0" end="100000"\n'
+            f'          period="{3600.0 / traffic["vehs_per_hour"]:.2f}"\n'
+            f'          departLane="{traffic["depart_lane"]}" departSpeed="{traffic["depart_speed"]}"/>')
+
+    with open(os.path.join(out_dir, "highway.rou.xml"), "w", encoding="utf-8") as f:
         f.write(f"""<routes>
     <vType id="ego_type" accel="{ego['accel']}" decel="{ego['decel']}" maxSpeed="{ego['max_speed']}" color="1,0,0" vClass="passenger" guiShape="passenger/sedan"/>
 {vtypes_block}
     <route id="r0" edges="e0"/>
-    <flow id="traffic" type="{flow_type}" route="r0" begin="0" end="100000"
-          period="{3600.0 / traffic['vehs_per_hour']:.2f}"
-          departLane="{traffic['depart_lane']}" departSpeed="{traffic['depart_speed']}"/>
+{od_flows}
 </routes>
 """)
 
@@ -204,6 +211,71 @@ def build(road: dict, ego: dict, traffic: dict, out_dir: str) -> str:
         capture_output=True,  # 출력은 조용히 삼킴
     )
     return cfg_path
+
+
+def load_od_demand(demand: dict) -> dict:
+    """실측 교통량 CSV에서 선택된 시나리오(시간대)의 OD 교통량을 읽는다.
+
+    Returns: {(출발 방면, 도착 방면): 대/시}  — scale과 이륜차 제외가 반영된 값.
+    """
+    import csv
+    scenario = demand["scenario"]
+    if scenario not in demand["scenarios"]:
+        raise ValueError(f"demand.scenario '{scenario}'가 scenarios에 없습니다: "
+                         f"{list(demand['scenarios'])}")
+    hour = str(demand["scenarios"][scenario]["hour"]).zfill(2)
+    scale = float(demand.get("scale", 1.0))
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), demand["csv"])
+
+    od = {}
+    with open(path, encoding="utf-8-sig", newline="") as f:
+        for row in csv.DictReader(f):
+            if row["hour"] != hour:
+                continue
+            vph = float(row["합계"])
+            if not demand.get("include_motorcycle", False):
+                vph -= float(row["이륜차"])
+            od[(row["from"], row["to"])] = vph * scale
+    if not od:
+        raise ValueError(f"{path}에 hour='{hour}' 데이터가 없습니다.")
+    return od
+
+
+def build_od_flows(demand, flow_type: str):
+    """OD별 <flow> XML 블록을 만든다. 수요 설정이 꺼져 있으면 None.
+
+    - demand가 없거나 legs의 edge가 전부 None → None (호출부가 기존 flow 사용)
+    - 일부만 채워져 있으면 조용히 틀린 교통량이 되므로 에러를 낸다.
+    - from/to edge만 지정하고 경로는 SUMO가 차량 투입 시 최단경로로 찾는다.
+    - period="exp(λ)": 초당 λ대의 포아송 도착 (등간격보다 실제 도착 패턴에 가깝다)
+    - departLane="best": 자기 경로(회전 방향)에 맞는 차로로 진입
+    """
+    if not demand:
+        return None
+    legs = demand.get("legs") or {}
+    mapped = {name: e for name, e in legs.items() if e}
+    if not mapped:
+        return None
+    missing = [name for name in legs if name not in mapped]
+    if missing:
+        raise ValueError(f"demand.legs에 edge가 비어 있는 방면이 있습니다: {missing}")
+
+    od = load_od_demand(demand)
+    unknown = sorted({n for pair in od for n in pair} - set(legs))
+    if unknown:
+        raise ValueError(f"CSV의 방면이 demand.legs에 없습니다: {unknown}")
+
+    order = list(legs)   # flow id는 방면 순번으로 (edge/차량 id를 ASCII로 유지)
+    lines = []
+    for (o, d), vph in od.items():
+        if vph <= 0:
+            continue
+        lines.append(
+            f'    <flow id="hv_{order.index(o)}_{order.index(d)}" type="{flow_type}" '
+            f'from="{legs[o][0]}" to="{legs[d][1]}" begin="0" end="100000" '
+            f'period="exp({vph / 3600.0:.5f})" departLane="best" departSpeed="max"/>'
+            f'  <!-- {o} → {d}: {vph:.0f}대/시 -->')
+    return "\n".join(lines)
 
 
 def _blob(cx: float, cy: float, r: float, rng, n: int = 14,
