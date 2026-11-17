@@ -122,8 +122,8 @@ def apply_lane_rules(net_path: str, road: dict, center_id: str, rules: dict) -> 
         table = rules.get(lg) if lg else None
         n_lanes = net.getEdge(eid).getLaneNumber()
         for ln in net.getEdge(eid).getLanes():
-            if table is None:
-                allowed[ln.getID()] = None
+            if table is None or not ln.allows("passenger"):
+                allowed[ln.getID()] = None      # 표 없음 / 버스전용차로(BRT)는 netconvert 연결 그대로
             else:
                 # 차로 번호: 0 = 맨 오른쪽(양수, 오른쪽부터) / -1 = 맨 왼쪽(음수, 왼쪽부터)
                 # 연결로가 갈라진 뒤 차로 수가 줄어드는 도로는 왼쪽부터 세는 쪽이 안정적이다.
@@ -180,6 +180,8 @@ def apply_lane_rules(net_path: str, road: dict, center_id: str, rules: dict) -> 
         if lg is None or lg not in rules:
             continue
         for ln in net.getEdge(eid).getLanes():
+            if not ln.allows("passenger"):
+                continue
             got = sorted(reach(ln, keep))
             want = sorted(allowed[ln.getID()] or [])
             result.setdefault(lg, {})[ln.getIndex()] = got

@@ -168,6 +168,313 @@ def apply_way_splits(root, ways, splits):
     return done
 
 
+def apply_carriageway_merges(root, proj, nodes, ways, merges):
+    """분리된 일방 차도 2개(상행·하행)를 중앙선 하나의 양방향 도로로 합친다 (merge_carriageways 설정).
+
+    OSM은 중앙대로처럼 가운데 BRT 버스전용차로가 있는 도로를 '상행 차도 + 하행 차도 + busway'
+    3개 선으로 그린다. busway를 빼면 SUMO에서 두 차도 사이가 비어 따로 떨어진 도로처럼 보이므로,
+    두 차도의 가운데 선으로 양방향 도로 하나를 만들고 안쪽 차로를 버스 전용으로 둔다.
+
+    설정 항목: start_node(합치기 시작 노드, 보통 교차로 중심), name(도로 이름), bearing(방향),
+              max_m(시작 노드에서 이 거리까지), tags(새 도로 태그), new_id(새 way id)
+    - 두 차도에 붙어 있던 다른 도로(연결로·교차 도로)와 신호 노드는 가운데 선 위로 옮기고,
+      양쪽 차도의 붙는 점이 group_m 안에 있으면 하나의 교차로로 합친다.
+    - 회전 제한(relation)의 from/to/via도 새 도로·새 노드로 바꾼다.
+    """
+    done = []
+    way_el = {w.get("id"): w for w in root.iter("way")}
+    node_el = {n.get("id"): n for n in root.iter("node")}
+
+    def to_ll(p):
+        return (proj.lat0 + p[1] / proj.ky, proj.lon0 + p[0] / proj.kx)
+
+    def chain(start, name, bearing, outward, max_m):
+        """start에서 bearing 방향으로 이어지는 같은 이름의 일방 차도 way들 (outward=True: 바깥으로 가는 차도)."""
+        out, cur, seen = [], start, set()
+        c = nodes[start]
+        for _ in range(50):
+            cands = []
+            for wid, (t, nds) in ways.items():
+                if wid in seen or t.get("name") != name or t.get("oneway") not in ("yes", "1", "true"):
+                    continue
+                if (nds[0] if outward else nds[-1]) != cur:
+                    continue
+                far = nds[-1] if outward else nds[0]
+                b = math.degrees(math.atan2(nodes[far][0] - c[0], nodes[far][1] - c[1])) % 360
+                if abs((b - bearing + 180) % 360 - 180) > 35 or math.dist(nodes[far], c) <= math.dist(nodes[cur], c):
+                    continue
+                cands.append((abs((b - bearing + 180) % 360 - 180), wid, far))
+            if not cands:
+                break
+            _, wid, far = min(cands)
+            out.append(wid)
+            seen.add(wid)
+            cur = far
+            if math.dist(nodes[cur], c) > max_m:
+                break
+        return out
+
+    def polyline(wids, outward):
+        pts = []
+        for wid in wids:
+            nds = ways[wid][1] if outward else ways[wid][1][::-1]
+            pts += nds if not pts else nds[1:]
+        return pts
+
+    def project(p, pl):
+        """p를 폴리라인 pl에 투영: (거리, 호 길이 s, 투영점)"""
+        best, acc = None, 0.0
+        for a, b in zip(pl, pl[1:]):
+            dx, dy = b[0] - a[0], b[1] - a[1]
+            L2 = dx * dx + dy * dy
+            t = 0 if L2 == 0 else max(0.0, min(1.0, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / L2))
+            q = (a[0] + t * dx, a[1] + t * dy)
+            d = math.dist(p, q)
+            if best is None or d < best[0]:
+                best = (d, acc + math.sqrt(L2) * t, q)
+            acc += math.sqrt(L2)
+        return best
+
+    for k, m in enumerate(merges or []):
+        start, name, bearing = str(m["start_node"]), m["name"], float(m["bearing"])
+        orig_pos = dict(nodes)                       # 옮기기 전 위치 (없어진 도로의 방향 계산용)
+        max_m = float(m.get("max_m", 900))
+        fw = chain(start, name, bearing, True, max_m)
+        bw = chain(start, name, bearing, False, max_m)
+        if not fw or not bw:
+            raise RuntimeError(f"merge_carriageways '{m.get('label', name)}': 차도를 찾지 못함 (정방향 {fw}, 역방향 {bw})")
+        F = [nodes[n] for n in polyline(fw, True)]
+        Bk = [nodes[n] for n in polyline(bw, False)]
+        # 가운데 선: 정방향 차도를 10m 간격으로 찍고 역방향 차도에 투영한 점과의 중점 (두 차도가 겹치는 구간만)
+        center = [nodes[start]]
+        dens = densify(F, 10.0)
+        for p in dens[1:]:
+            d, _, q = project(p, Bk)
+            if d > 45 or math.dist(p, nodes[start]) > max_m:
+                break
+            center.append(((p[0] + q[0]) / 2, (p[1] + q[1]) / 2))
+        L = sum(math.dist(a, b) for a, b in zip(center, center[1:]))
+        # 두 차도의 붙는 점(다른 도로가 닿는 노드, 신호 노드)
+        merged_ids = set(fw) | set(bw)
+        att = []
+        for wid in merged_ids:
+            for n in ways[wid][1]:
+                if n == start:
+                    continue
+                others = [w for w, (t, nds) in ways.items() if w not in merged_ids and n in nds]
+                nt = ntags_of(node_el.get(n))
+                sig = nt.get("highway") == "traffic_signals" or nt.get("crossing") == "traffic_signals"   # 신호 횡단보도 포함
+                if not others and not sig:
+                    continue
+                d, s, q = project(nodes[n], center)
+                if s >= L - 1 or d > 45:
+                    continue                       # 합치는 구간 밖
+                att.append((s, n, q, bool(others), sig))
+        att.sort()
+        groups = []
+        group_m = float(m.get("group_m", 20))
+        for a in att:
+            if groups and a[0] - groups[-1][-1][0] <= group_m:
+                groups[-1].append(a)
+            else:
+                groups.append([a])
+        # 두 차도 사이(중앙분리대) 위에 있던 교차 도로의 노드도 교차점 하나로 흡수 (예: 거제천로가 BRT 선과 만나던 점)
+        absorb_m = float(m.get("absorb_m", 12))
+        in_att = {a[1] for a in att} | {start}
+        for wid, (t, nds) in ways.items():
+            if wid in merged_ids:
+                continue
+            for n in nds:
+                if n in in_att:
+                    continue
+                d, s_, q = project(nodes[n], center)
+                if d > absorb_m or s_ >= L - 1:
+                    continue
+                for g in groups:
+                    if g[0][0] - 8 <= s_ <= g[-1][0] + 8:
+                        g.append((s_, n, q, False, ntags_of(node_el.get(n)).get("highway") == "traffic_signals"))
+                        in_att.add(n)
+                        break
+        rename = {}
+        reps = set()
+        new_nodes = []                              # (s, id)
+        for g in groups:
+            rep = next((a for a in g if a[3]), g[0])   # 다른 도로가 붙는 노드를 대표로
+            s = sum(a[0] for a in g) / len(g)
+            _, _, q = project(nodes[rep[1]], center)
+            nid = rep[1]
+            nodes[nid] = q
+            lat, lon = to_ll(q)
+            node_el[nid].set("lat", f"{lat:.7f}")
+            node_el[nid].set("lon", f"{lon:.7f}")
+            if any(a[4] for a in g) and ntags_of(node_el[nid]).get("highway") != "traffic_signals":
+                ET.SubElement(node_el[nid], "tag", {"k": "highway", "v": "traffic_signals"})
+            for a in g:
+                if a[1] != nid:
+                    rename[a[1]] = nid
+            reps.add(nid)
+            new_nodes.append((s, nid))
+        # 모양 점 (붙는 점 사이 20m 간격)
+        acc, last_s = 0.0, -1e9
+        for a, b in zip(center, center[1:]):
+            acc += math.dist(a, b)
+            if acc - last_s >= 20 and all(abs(acc - s) > 8 for s, _ in new_nodes) and acc < L - 1:
+                nid = str(990000000000 + 10000 * k + len(node_el))
+                lat, lon = to_ll(b)
+                el = ET.SubElement(root, "node", {"id": nid, "lat": f"{lat:.7f}", "lon": f"{lon:.7f}", "version": "1"})
+                node_el[nid] = el
+                nodes[nid] = b
+                new_nodes.append((acc, nid))
+                last_s = acc
+        end_id = str(990000000000 + 10000 * k + 9999)
+        lat, lon = to_ll(center[-1])
+        node_el[end_id] = ET.SubElement(root, "node", {"id": end_id, "lat": f"{lat:.7f}", "lon": f"{lon:.7f}", "version": "1"})
+        nodes[end_id] = center[-1]
+        seq = [start] + [n for s, n in sorted(new_nodes)] + [end_id]
+        s_of = {start: 0.0, end_id: L, **{n: s for s, n in new_nodes}}
+        # 끊는 곳: 합친 차도를 from/to로 쓰는 회전 제한의 via 교차점만 (나머지는 netconvert가 알아서 나눈다;
+        # 다 끊으면 순환 도로 밖으로 나가는 첫 조각이 짧아져 진입/진출 토막이 짧아진다)
+        need = set()
+        for rel in root.iter("relation"):
+            mems = list(rel.iter("member"))
+            if any(x.get("type") == "way" and x.get("ref") in merged_ids for x in mems):
+                need |= {rename.get(x.get("ref"), x.get("ref")) for x in mems
+                         if x.get("type") == "node" and x.get("role") == "via"}
+        junc = {start, end_id} | (reps & need)
+        new_id = str(m.get("new_id", 880000000 + k))
+        tags = {"name": name, "highway": ways[fw[0]][0].get("highway", "secondary"), "oneway": "no"}
+        tags.update({kk: str(v) for kk, v in (m.get("tags") or {}).items()})
+        # 교차점마다 끊어 여러 way로 (회전 제한의 from/to가 어느 쪽에서 오는지 정확히 가리키도록)
+        segs, cur = [], [seq[0]]
+        for n in seq[1:]:
+            cur.append(n)
+            if n in junc:
+                segs.append(cur)
+                cur = [n]
+        seg_ids = []
+        for i, nds in enumerate(segs):
+            sid = f"{new_id}{i:02d}"
+            nw = ET.SubElement(root, "way", {"id": sid, "version": "1"})
+            for n in nds:
+                ET.SubElement(nw, "nd", {"ref": n})
+            for kk, v in tags.items():
+                ET.SubElement(nw, "tag", {"k": kk, "v": v})
+            seg_ids.append((sid, nds))
+        merged_nds = {wid: ways[wid][1] for wid in merged_ids}
+
+        def seg_at(via, toward_s):
+            """via 교차점에 붙은 합친 도로 조각 중 toward_s 쪽 조각"""
+            for sid, nds in seg_ids:
+                if via in (nds[0], nds[-1]):
+                    other = nds[-1] if nds[0] == via else nds[0]
+                    if (s_of[other] < s_of[via]) == (toward_s < s_of[via]):
+                        return sid
+            return None
+        # 원래 차도 제거, 다른 도로의 노드 참조 바꾸기
+        for wid in merged_ids:
+            if wid in way_el:
+                root.remove(way_el[wid])
+            ways.pop(wid, None)
+        old_ends = {wid: (nds[0], nds[-1]) for wid, (t, nds) in ways.items()}
+        ways_tags_dropped = {wid: t for wid, (t, nds) in ways.items()}
+        old_pos = orig_pos
+        dropped = {}                                # 길이가 0이 된 도로 → (원래 시작, 원래 끝)
+        for w in list(root.iter("way")):
+            refs = []
+            for nd in list(w.iter("nd")):
+                r_ = rename.get(nd.get("ref"), nd.get("ref"))
+                if refs and refs[-1] == r_:
+                    w.remove(nd)
+                    continue
+                nd.set("ref", r_)
+                refs.append(r_)
+            if len(refs) < 2 and w.get("id") in ways:
+                dropped[w.get("id")] = old_ends[w.get("id")]
+                root.remove(w)
+        for wid, (t, nds) in list(ways.items()):
+            if wid in dropped:
+                ways.pop(wid)
+            elif any(n in rename for n in nds):
+                nn = []
+                for n in nds:
+                    n = rename.get(n, n)
+                    if not nn or nn[-1] != n:
+                        nn.append(n)
+                ways[wid] = (t, nn)
+        for sid, nds in seg_ids:
+            ways[sid] = (tags, nds)
+
+        def heading(a, b):
+            return math.degrees(math.atan2(b[0] - a[0], b[1] - a[1])) % 360
+
+        def successor(wid, role, via):
+            """길이 0이 되어 없어진 도로 대신, 같은 방향으로 이어지는 같은 이름의 도로"""
+            a, b = dropped[wid]
+            want = heading(old_pos[a], old_pos[b])          # to: via에서 멀어지는 방향, from: via로 오는 방향
+            name = ways_tags_dropped.get(wid, {}).get("name")
+            best = None
+            for w2, (t2, nds2) in ways.items():
+                if w2.startswith(new_id) or via not in nds2 or (name and t2.get("name") != name):
+                    continue
+                i = nds2.index(via)
+                for j in (i - 1, i + 1):
+                    if 0 <= j < len(nds2):
+                        h = heading(nodes[via], nodes[nds2[j]]) if role == "to" else heading(nodes[nds2[j]], nodes[via])
+                        diff = abs((h - want + 180) % 360 - 180)
+                        if best is None or diff < best[0]:
+                            best = (diff, w2)
+            return best[1] if best and best[0] < 60 else None
+
+        # 회전 제한: from/to가 합친 차도면 새 도로로, via 노드 이름 바꾸기, 없어진 도로는 이어지는 도로로
+        removed_rels = []
+        for rel in list(root.iter("relation")):
+            mems = list(rel.iter("member"))
+            wmem = [x for x in mems if x.get("type") == "way"]
+            if not any(x.get("ref") in merged_ids or x.get("ref") in dropped for x in wmem):
+                for mem in mems:
+                    if mem.get("type") == "node" and mem.get("ref") in rename:
+                        mem.set("ref", rename[mem.get("ref")])
+                continue
+            via = next((rename.get(x.get("ref"), x.get("ref")) for x in mems if x.get("role") == "via" and x.get("type") == "node"), None)
+            fr = next((x.get("ref") for x in wmem if x.get("role") == "from"), None)
+            to = next((x.get("ref") for x in wmem if x.get("role") == "to"), None)
+            # 유턴 제한(같은 도로, 또는 합친 두 차도 사이) → 도로망은 유턴이 없으므로 의미 없음: 뺀다
+            if fr == to or (fr in merged_ids and to in merged_ids) or via is None or via not in s_of and any(
+                    x.get("ref") in merged_ids for x in wmem):
+                root.remove(rel)
+                removed_rels.append(rel.get("id"))
+                continue
+            ok = True
+            for mem in wmem:
+                ref = mem.get("ref")
+                if ref in merged_ids:
+                    # 원래 차도의 via 반대쪽 끝이 가운데 선의 어느 쪽인지 → 그쪽 조각
+                    nds = merged_nds[ref]
+                    far = nds[-1] if rename.get(nds[0], nds[0]) == via else nds[0]
+                    sid = seg_at(via, project(orig_pos[far], center)[1])
+                    ok &= sid is not None
+                    mem.set("ref", sid or ref)
+                elif ref in dropped:
+                    rep_w = successor(ref, mem.get("role"), via)
+                    ok &= rep_w is not None
+                    mem.set("ref", rep_w or ref)
+            for mem in mems:
+                if mem.get("type") == "node" and mem.get("ref") in rename:
+                    mem.set("ref", rename[mem.get("ref")])
+            if not ok:
+                root.remove(rel)
+                removed_rels.append(rel.get("id"))
+        done.append({"label": m.get("label", name), "new_id": new_id, "merged": sorted(merged_ids),
+                     "absorbed_nodes": sorted(rename), "dropped_ways": sorted(dropped),
+                     "segments": [sid for sid, _ in seg_ids], "removed_restrictions": removed_rels,
+                     "length_m": round(L), "junctions": len(groups)})
+    return done
+
+
+def ntags_of(el):
+    return {} if el is None else {t.get("k"): t.get("v") for t in el.iter("tag")}
+
+
 def trace_ring(cfg, proj, nodes, ways, directed=False, reverse=False):
     """경유점을 차례로 최단경로로 이어 순환 도로를 찾는다 (순환 도로 이름엔 가중치 1, 그 외 큰 벌점).
 
@@ -408,6 +715,12 @@ def build(cfg_path):
 
     root, nodes, ntags, ways, rels = load_osm(os.path.join(BASE, cfg["osm_file"]), proj)
     splits_done = apply_way_splits(root, ways, cfg.get("way_splits"))
+    merges_done = apply_carriageway_merges(root, proj, nodes, ways, cfg.get("merge_carriageways"))
+    for md in merges_done:
+        print(f"[merge] {md['label']}: 차도 {len(md['merged'])}개 → 양방향 도로 {md['new_id']} ({md['length_m']}m, "
+              f"교차점 {md['junctions']}곳, 조각 {len(md['segments'])}개, 뺀 유턴 제한 {len(md['removed_restrictions'])}건)")
+    gone = {rid for md in merges_done for rid in md["removed_restrictions"]}
+    rels = [(r, t) for r, t in rels if r.get("id") not in gone]
     ring_nodes, ring_ways = trace_ring(cfg, proj, nodes, ways)
     ring_line = [nodes[n] for n in ring_nodes]
     ring_poly = ring_line[:-1]
@@ -448,13 +761,16 @@ def build(cfg_path):
                         f'toLane="{c["toLane"]}"/>\n')
             f.write("</connections>\n")
         con_args = ["--connection-files", con_f]
+    # 신호 위상 배치: "incoming" = 진입 도로마다 차례로 녹색(직진+좌회전 동시, 보호 좌회전) — 한국 교차로에 흔한 방식.
+    # netconvert 기본 "opposites"는 마주 보는 두 도로를 함께 녹색으로 두어 좌회전이 비보호(교차로 안에서 대기)가 된다.
+    tls_layout = cfg.get("tls_layout", "opposites")
     # 1) OSM → 도로망 (신호는 OSM 신호 노드만: --tls.guess-signals)
     res = subprocess.run(
         [sumolib.checkBinary("netconvert"), "--osm-files", osm_f, "--type-files", types_f, *con_args,
          "--geometry.remove", "--ramps.guess", "--junctions.join",
-         "--tls.guess-signals", "--tls.join", "--tls.default-type", "static",
+         "--tls.guess-signals", "--tls.join", "--tls.default-type", "static", "--tls.layout", tls_layout,
          "--remove-edges.isolated", "--keep-edges.by-vclass", "passenger",
-         "--no-turnarounds", "true", "--output.street-names",     # 유턴 없음 (경계 토막 끝 포함)
+         "--no-turnarounds", "true", "--osm.lane-access", "true", "--output.street-names",     # 유턴 없음 (경계 토막 끝 포함)
          "--osm.turn-lanes", "true", "-o", raw0_f], capture_output=True, text=True)
     if res.returncode != 0:
         raise RuntimeError(res.stderr[-3000:])
@@ -486,7 +802,8 @@ def build(cfg_path):
     if tls_set:
         # --tls.join: 가까운 신호들(예: 연산교차로를 이루는 노드 4개)을 하나의 신호로 묶는다
         subprocess.run([sumolib.checkBinary("netconvert"), "-s", raw0_f, "--tls.set", ",".join(tls_set),
-                        "--tls.join", "--tls.default-type", "static", "--output.street-names", "-o", raw_f],
+                        "--tls.join", "--tls.default-type", "static", "--tls.layout", tls_layout,
+                        "--output.street-names", "-o", raw_f],
                        check=True, capture_output=True)
     else:
         raw_f = raw0_f
@@ -522,9 +839,31 @@ def build(cfg_path):
             continue
         a, b = e.getFromNode().getID(), e.getToNode().getID()
         if a in core_nodes and b not in core_nodes:
-            stubs[e.getID()] = b            # 바깥 끝 노드
+            stubs[e.getID()] = (b, stub_m)            # 바깥 끝 노드, 이 도로에서 남길 길이
         elif b in core_nodes and a not in core_nodes:
-            stubs[e.getID()] = a
+            stubs[e.getID()] = (a, stub_m)
+    # 첫 바깥 도로가 stub_m보다 짧으면(곁길이 붙어 끊긴 경우) 같은 이름으로 이어지는 도로까지 붙여 stub_m를 채운다
+    for eid in list(stubs):
+        if eid not in stubs:
+            continue
+        outer, _ = stubs[eid]
+        e = net.getEdge(eid)
+        outward = e.getToNode().getID() == outer
+        acc, cur = e.getLength(), e
+        while acc < stub_m:
+            o = net.getNode(outer)
+            back = cur.getFromNode().getID() if outward else cur.getToNode().getID()
+            cands = [x for x in (o.getOutgoing() if outward else o.getIncoming())
+                     if x.getName() == e.getName() and x.getID() not in keep
+                     and (x.getToNode() if outward else x.getFromNode()).getID() != back]
+            if len(cands) != 1:
+                break
+            keep.add(cur.getID())
+            del stubs[cur.getID()]
+            cur = cands[0]
+            outer = (cur.getToNode() if outward else cur.getFromNode()).getID()
+            stubs[cur.getID()] = (outer, stub_m - acc)
+            acc += cur.getLength()
     keep |= set(stubs)
     keep_f = os.path.join(tmp, "keep.txt")
     open(keep_f, "w").write("\n".join(sorted(keep)))
@@ -541,7 +880,7 @@ def build(cfg_path):
     nod_by_id = {n.get("id"): n for n in nod_t.getroot().iter("node")}
     edg_t = ET.parse(f"{plain}.edg.xml")
     moved = {}
-    for eid, outer in stubs.items():
+    for eid, (outer, want) in stubs.items():
         if not cnet.hasEdge(eid) or outer in moved:
             continue
         e = cnet.getEdge(eid)
@@ -549,8 +888,8 @@ def build(cfg_path):
         acc, cut = 0.0, None
         for p, q in zip(sh, sh[1:]):
             seg = math.dist(p, q)
-            if acc + seg >= stub_m:
-                f = (stub_m - acc) / seg
+            if acc + seg >= want:
+                f = (want - acc) / seg
                 cut = (p[0] + (q[0] - p[0]) * f, p[1] + (q[1] - p[1]) * f)
                 break
             acc += seg
@@ -588,7 +927,7 @@ def build(cfg_path):
 
     write_lane_table(lane_csv, net_f, ways, sel, why, overrides)
     meta = {"name": name, "ring_ways": ring_ways, "selected_ways": {w: why[w] for w in sorted(sel)},
-            "lane_overrides": len(overrides),
+            "lane_overrides": len(overrides), "carriageway_merges": merges_done,
             "restrictions_kept": len(rels_keep), "tls_assumed": tls_set, "lat0": lat0, "lon0": lon0}
     json.dump(meta, open(os.path.join(out_dir, f"{name}.meta.json"), "w", encoding="utf-8"),
               ensure_ascii=False, indent=1)

@@ -172,6 +172,7 @@ class SumoHighwayEnv(gym.Env):
         self.tl_columns = int(tl.get("approach_columns", 6))
         self.tl_remaining = bool(tl.get("remaining_time", False))
         self._tls_groups = {}          # 신호 id -> 진입 도로 묶음 (캐시)
+        self._lane_ok = {}             # 차로 id -> 승용차가 달릴 수 있는가 (버스전용차로 = False, 캐시)
         # ---- 목표(경로 끝 도로) 진행 관련 ----
         self.goal_obs = bool(mdp_obs.get("goal_distance", True))
         # ---- 교차로 상충 차량 (내 경로와 교차로 안에서 엇갈리는 차) ----
@@ -465,6 +466,19 @@ class SumoHighwayEnv(gym.Env):
                 best = (float(ego_d), float(dt))
         return best
 
+    def _ego_lane_ok(self, edge, li):
+        """edge의 li번 차로가 있고 ego(승용차)가 달릴 수 있는가.
+        중앙대로 BRT 버스전용차로처럼 승용차가 못 쓰는 차로는 "없는 차로"로 본다."""
+        if li < 0 or li >= traci.edge.getLaneNumber(edge):
+            return False
+        lid = f"{edge}_{li}"
+        ok = self._lane_ok.get(lid)
+        if ok is None:
+            allowed = traci.lane.getAllowed(lid)
+            ok = ("passenger" in allowed) if allowed else ("passenger" not in traci.lane.getDisallowed(lid))
+            self._lane_ok[lid] = ok
+        return ok
+
     def _approach_groups(self, tls):
         """신호 tls가 제어하는 교차로의 "진입 도로" 묶음.
 
@@ -486,6 +500,8 @@ class SumoHighwayEnv(gym.Env):
         groups, inner = [], set()
         for i, lane in in_lanes.items():
             edge = traci.lane.getEdgeID(lane)
+            if not self._ego_lane_ok(edge, int(lane.rsplit("_", 1)[1])):
+                continue                           # 버스전용차로 신호는 승용차와 무관
             if traci.edge.getFromJunction(edge) in juncs:
                 inner.add(i)                       # 교차로 내부 도로
                 continue
@@ -763,8 +779,8 @@ class SumoHighwayEnv(gym.Env):
             if edge.startswith(":"):          # 교차로(junction) 내부 통과 중
                 return 1.0
             lane_index = traci.vehicle.getLaneIndex(self.ego_id) + offset
-            if lane_index < 0 or lane_index >= traci.edge.getLaneNumber(edge):
-                return -1.0                   # 그런 차선이 없음
+            if not self._ego_lane_ok(edge, lane_index):
+                return -1.0                   # 그런 차선이 없음 (버스전용차로 포함)
             remaining = self._route_remaining(f"{edge}_{lane_index}")
             if remaining is None:
                 return 1.0
@@ -953,8 +969,7 @@ class SumoHighwayEnv(gym.Env):
             # 존재하지 않는 차선이면 조회하지 않는다.
             # (없는 lane id를 traci.lane.*로 조회하면 SUMO가 매번
             #  에러 로그를 찍으므로, 범위 검사를 먼저 해서 조용히 건너뛴다)
-            if edge.startswith(":") or li < 0 \
-                    or li >= traci.edge.getLaneNumber(edge):
+            if edge.startswith(":") or not self._ego_lane_ok(edge, li):
                 return None, None
             lane_id = f"{edge}_{li}"
             my_pos = traci.vehicle.getLanePosition(self.ego_id)
@@ -1039,10 +1054,9 @@ class SumoHighwayEnv(gym.Env):
             if edge.startswith(":"):
                 return False
             current = traci.vehicle.getLaneIndex(self.ego_id)
-            n_lanes = traci.edge.getLaneNumber(edge)
             target = current + lane_change
-            if target < 0 or target >= n_lanes:
-                return False
+            if not self._ego_lane_ok(edge, target):
+                return False                  # 없는 차로 / 버스전용차로
             # ★ 측면충돌 방지: 실제 이동 명령(0이 아닌 변경)에만 안전 검사
             if (lane_change != 0 and self.lc_safety_enabled
                     and not self._lane_change_is_safe(lane_change)):

@@ -261,5 +261,44 @@
    "note": "월드컵대로 사직 방면"
   }
  ],
- "radial_roads_note": "빨간 선 안의 큰 6개 대로 = 연산교차로 6개 방향 도로. 반드시 포함 (검증 V11)"
+ "radial_roads_note": "빨간 선 안의 큰 6개 대로 = 연산교차로 6개 방향 도로. 반드시 포함 (검증 V11)",
+ "merge_carriageways": [
+  {
+   "label": "① 중앙대로 동래 방면",
+   "start_node": "414663644",
+   "name": "중앙대로",
+   "bearing": 348,
+   "max_m": 760,
+   "new_id": "880000001",
+   "tags": {
+    "lanes": "6",
+    "lanes:forward": "3",
+    "lanes:backward": "3",
+    "access:lanes:forward": "no|yes|yes",
+    "access:lanes:backward": "no|yes|yes",
+    "bus:lanes:forward": "designated|yes|yes",
+    "bus:lanes:backward": "designated|yes|yes"
+   }
+  },
+  {
+   "label": "⑤ 중앙대로 서면 방면",
+   "start_node": "414663644",
+   "name": "중앙대로",
+   "bearing": 215,
+   "max_m": 820,
+   "new_id": "880000002",
+   "tags": {
+    "lanes": "6",
+    "lanes:forward": "3",
+    "lanes:backward": "3",
+    "access:lanes:forward": "no|yes|yes",
+    "access:lanes:backward": "no|yes|yes",
+    "bus:lanes:forward": "designated|yes|yes",
+    "bus:lanes:backward": "designated|yes|yes"
+   }
+  }
+ ],
+ "merge_carriageways_note": "OSM은 중앙대로를 상행 차도·하행 차도·BRT busway 3개 선으로 그린다. 실제로는 가운데 BRT 버스전용차로가 있는 하나의 도로라서, 두 차도의 가운데 선으로 양방향 도로 하나를 만들고 방향마다 일반 2차로 + 안쪽 버스전용 1차로로 둔다.",
+ "tls_layout": "incoming",
+ "tls_layout_note": "가정 신호의 위상: 진입 도로마다 차례로 녹색(보호 좌회전). 비보호 좌회전(opposites)은 좌회전 차가 교차로 안에서 대기해 같은 차로의 직진 차와 겹친다. 실제 신호 시간표를 알면 env/road_config.py SIGNAL 형식으로 덮어쓴다."
 }
