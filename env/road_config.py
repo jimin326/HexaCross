@@ -80,9 +80,11 @@ ROAD = {
         },
         # OSM 원본과 실제 도로가 다른 부분을 바로잡는 netconvert 보정 파일.
         # 근거는 docs/research/연산교차로_도로조사.md. None이면 OSM 그대로.
-        #   fix_edges      : 차로 수 (6개 진입부 정지선 앞)
+        #   fix_nodes      : 정지선 앞 OSM 신호 지점 해제 (진입부마다 정지선 한 줄)
+        #   fix_edges      : 차로 수 (정지선 앞, 진출, 중앙대로 BRT)
         #   fix_connections: 금지 회전 삭제 + 정지선 앞 차로별 방향
         # 고친 뒤에는 python docs/research/check_lanes.py --build 로 확인.
+        "fix_nodes": "env/osm/yeonsan_fix.nod.xml",
         "fix_edges": "env/osm/yeonsan_fix.edg.xml",
         "fix_connections": "env/osm/yeonsan_fix.con.xml",
         # 연산교차로 금지 이동 (진입 leg, 진출 leg). 국가교통정보센터 표준노드링크
