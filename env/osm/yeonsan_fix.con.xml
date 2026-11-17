@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    연산교차로 연결 보정 파일 (netconvert connection 파일)
+
+    OSM 원본(yeonsan_cityhall.osm)은 고치지 않고, 실제 도로와 다른 연결만 여기서 바로잡는다.
+    osm_builder.build_osm()이 netconvert의 connection-files 옵션으로 넘긴다
+    (road_config.ROAD["osm"]["fix_connections"]).
+
+    근거: docs/research/연산교차로_도로조사.md
+    edge id는 netconvert가 OSM을 읽을 때 붙이는 이름 (OSM way id, 나뉜 조각은 #번호,
+    반대 방향은 앞에 -)이다. OSM 파일을 다시 받으면 id가 바뀔 수 있으니
+    docs/research/check_lanes.py로 결과를 꼭 확인할 것.
+-->
+<connections>
+    <!-- ─────────────────────────────────────────────────────────────
+         1) 금지 회전 (국가교통정보센터 표준노드링크 TURNINFO + 로드뷰 표지판.
+            PR #1 실측 OD에서도 이 방향은 0대)
+         ───────────────────────────────────────────────────────────── -->
+    <!-- SW 중앙대로(서면) → W 월드컵대로(사직) 좌회전 금지 -->
+    <delete from="512187678#16" to="506007334"/>
+    <!-- N 중앙대로(동래) → NE 반송로 좌회전 금지 -->
+    <delete from="1494563723#1" to="37400617#0"/>
+    <!-- N 중앙대로(동래) → E 고분로 좌회전 금지 -->
+    <delete from="1494563723#1" to="-794688378"/>
+    <!-- N 중앙대로(동래) 유턴 (실제 진입부에 유턴 차로 없음) -->
+    <delete from="1494563723#1" to="1381093796"/>
+    <!-- NE 반송로 → S 월드컵대로(남) 좌회전 금지 -->
+    <delete from="-37400617#0" to="-795083570"/>
+    <!-- NE 반송로 → E 고분로 좌회전 금지 -->
+    <delete from="-37400617#0" to="-794688378"/>
+    <!-- NE 반송로 유턴은 netconvert의 no-turnarounds 옵션으로 이미 안 생김 -->
+</connections>

@@ -84,6 +84,11 @@ def build_osm(road: dict, ego: dict, traffic: dict, signal: dict,
     extra_ids = [("cluster_" + "_".join(sorted(map(str, s)))) if isinstance(s, (list, tuple))
                  else str(s) for s in cfg.get("extra_signals", [])]
     tls_nodes = ",".join([center_id] + extra_ids)
+    # 보정 파일: OSM 원본은 그대로 두고 실제 도로와 다른 연결만 바로잡는다
+    # (금지 회전 삭제 등). OSM과 같은 netconvert 실행에 넣어야 연결이 다시 계산된다.
+    fix_args = []
+    if cfg.get("fix_connections"):
+        fix_args += ["--connection-files", os.path.join(BASE, cfg["fix_connections"])]
     subprocess.run(
         [checkBinary("netconvert"),
          "--osm-files", osm_file, "--type-files", types_path,
@@ -94,6 +99,7 @@ def build_osm(road: dict, ego: dict, traffic: dict, signal: dict,
          "--remove-edges.isolated", "--keep-edges.by-vclass", "passenger",
          "--no-turnarounds.except-deadend", "--output.street-names",
          "--keep-edges.in-geo-boundary", f"{minlon},{minlat},{maxlon},{maxlat}",
+         *fix_args,
          "-o", net_path],
         check=True, capture_output=True)
 
@@ -190,10 +196,24 @@ def build_osm(road: dict, ego: dict, traffic: dict, signal: dict,
     side_in = [c[0] for c in entries if c[0].getID() not in used]
     side_out = [c[0] for c in exits if c[0].getID() not in used]
 
+    # 금지 이동이 정말 지워졌는지 확인. 없는 edge id는 netconvert가 에러로
+    # 멈추지만, OSM을 다시 받아 조각이 바뀌면 id는 있어도 엉뚱한 연결을 지울 수
+    # 있으므로 결과를 직접 확인한다.
+    banned = {tuple(t) for t in cfg.get("banned_turns", [])}
+    for a, b in sorted(banned):
+        left = [f"{ln.getID()}→{c.getToLane().getID()}"
+                for ln in near_in[a].getLanes() for c in ln.getOutgoing()
+                if c.getTo().getID() == near_out[b].getID()]
+        if left:
+            raise RuntimeError(f"금지 이동 {a}→{b} 연결이 남아 있습니다: {left}. "
+                               f"fix_connections 파일의 edge id를 확인하세요.")
+
     # ──────────────────────────────────────────────────────
     # 3) 교통 수요
     #    · 간선 → 간선: 도로별 inflow를 다른 간선으로 배분 (진출 차로 수 비율)
     #      + 그중 side_share만큼은 골목길로 빠짐
+    #      금지 이동(banned_turns)은 빼고 나머지 방향에 다시 나눈다
+    #      (도로별 inflow 합은 그대로)
     #    · 골목길 → 간선: 입구마다 side_inflow 대/시간
     #    경로는 sumolib 최단경로 (실제 연결/회전 금지를 따름)
     # ──────────────────────────────────────────────────────
@@ -233,7 +253,7 @@ def build_osm(road: dict, ego: dict, traffic: dict, signal: dict,
 
     by_id = {lg["id"]: lg for lg in legs}
     for a in by_id:
-        dests = [b for b in by_id if b != a]
+        dests = [b for b in by_id if b != a and (a, b) not in banned]
         wsum = sum(by_id[b]["lanes_out"] for b in dests)
         main = float(by_id[a]["inflow"]) * (1.0 - side_share)
         for b in dests:
