@@ -251,8 +251,12 @@ def build_osm(road: dict, ego: dict, traffic: dict, signal: dict,
             f'end="100000" vehsPerHour="{rate:.1f}" departLane="best" '
             f'departSpeed="{traffic.get("depart_speed", "max")}"/>')
         meta["bg_routes"][rid] = {"first_edge": src.getID(), "rate": rate}
+        # lanes: 일반 차량이 다닐 수 있는 차로 수 (BRT 버스 전용 차로 제외).
+        # 버스 차로는 맨 왼쪽(가장 큰 번호)이라 0 ~ lanes-1이 일반 차로다.
+        # sumo_env의 prefill이 이 범위에만 배경차를 놓는다.
         meta["in_edges"].setdefault(src.getID(), {
-            "lanes": src.getLaneNumber(), "length": src.getLength(), "inflow": 0.0})
+            "lanes": sum(1 for ln in src.getLanes() if ln.allows("passenger")),
+            "length": src.getLength(), "inflow": 0.0})
         meta["in_edges"][src.getID()]["inflow"] += rate
 
     by_id = {lg["id"]: lg for lg in legs}

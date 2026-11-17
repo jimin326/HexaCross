@@ -6,8 +6,8 @@
     osm_builder.build_osm()이 netconvert의 edge-files 옵션으로 넘긴다
     (road_config.ROAD["osm"]["fix_edges"]). 차로별 방향은 yeonsan_fix.con.xml.
 
-    근거: docs/research/연산교차로_도로조사.md 각 진입부 "정지선 앞" (일반 차로만.
-    BRT 버스 전용 차로는 아직 안 넣음)
+    근거: docs/research/연산교차로_도로조사.md 각 진입부 "정지선 앞"·"진출부".
+    중앙대로 BRT 버스 전용 차로는 맨 아래 항목 (정지선 앞 SW·N은 각 항목에 같이 적음)
 
     edge id는 netconvert가 OSM을 읽을 때의 조각 이름이다. 도로를 만들 때
     geometry.remove 옵션이 이웃 조각을 하나로 합치므로, 최종 edge 하나가 여기서는
@@ -18,17 +18,26 @@
 <edges>
     <!-- SW 중앙대로 서면 진입 (AV 출발): 들어오는 구간 일반 2차로 →
          정지선 약 80m 전부터 일반 5차로 (조사). #14 시작이 정지선 79m 전 -->
-    <edge id="512187678#14" numLanes="5"/>
-    <edge id="512187678#15" numLanes="5"/>
-    <edge id="512187678#16" numLanes="5"/>
+    <edge id="512187678#14" numLanes="7">   <!-- 일반 5 + BRT 2 (5: BRT2 안락, 6: BRT1 교대) -->
+        <lane index="5" allow="bus"/>
+        <lane index="6" allow="bus"/>
+    </edge>
+    <edge id="512187678#15" numLanes="7">   <!-- 일반 5 + BRT 2 (5: BRT2 안락, 6: BRT1 교대) -->
+        <lane index="5" allow="bus"/>
+        <lane index="6" allow="bus"/>
+    </edge>
+    <edge id="512187678#16" numLanes="7">   <!-- 일반 5 + BRT 2 (5: BRT2 안락, 6: BRT1 교대) -->
+        <lane index="5" allow="bus"/>
+        <lane index="6" allow="bus"/>
+    </edge>
 
     <!-- N 중앙대로 동래 진입: 정지선 앞 일반 4차로 (조사).
          가정: 들어오는 구간 차로 수와 늘어나는 위치는 미확인이라 SW와 같은
          중앙대로로 보고 정지선 약 87m 전(1381093802#0 시작)부터 4차로로 둠 -->
-    <edge id="1381093802#0" numLanes="4"/>
-    <edge id="1381093802#1" numLanes="4"/>
-    <edge id="1494563723#0" numLanes="4"/>
-    <edge id="1494563723#1" numLanes="4"/>
+    <edge id="1381093802#0" numLanes="5"><lane index="4" allow="bus"/></edge>   <!-- 일반 4 + BRT 1 -->
+    <edge id="1381093802#1" numLanes="5"><lane index="4" allow="bus"/></edge>   <!-- 일반 4 + BRT 1 -->
+    <edge id="1494563723#0" numLanes="5"><lane index="4" allow="bus"/></edge>   <!-- 일반 4 + BRT 1 -->
+    <edge id="1494563723#1" numLanes="5"><lane index="4" allow="bus"/></edge>   <!-- 일반 4 + BRT 1 -->
 
     <!-- W 월드컵대로 사직 진입: 정지선 앞 4차로 (조사). 상류 517488002는 OSM에서
          이미 4차로라 정지선 앞 조각 3개만 2 → 4 (지금은 상류 차로 2개가 막다른 차로) -->
@@ -60,4 +69,60 @@
     <!-- NE 반송로 진출: 일반 3차로 (조사). 가정: 표준노드링크 구간 대표값은 2차로라
          교차로부터 E→NE 우회전 연결로가 합류하는 지점(약 30m)까지만 3차로 -->
     <edge id="37400617#0" numLanes="3"/>
+
+    <!-- ─────────────────────────────────────────────────────────────
+         BRT 중앙버스전용차로 (중앙대로, 조사 md + HANDOFF 5번)
+         같은 edge 맨 왼쪽(가장 큰 차로 번호)에 버스만 다니는 차로를 붙인다.
+         버스 전용 edge를 따로 만들면 osm_builder의 keep-edges.by-vclass passenger
+         옵션 때문에 지워진다. 일반 차로 번호(0부터)는 그대로라 차로별 방향 설정과
+         AV 경로에 영향이 없고, 일반 차량(AV 포함)은 이 차로에 들어갈 수 없다.
+         실제 중앙대로 BRT는 서면~내성 구간에 끊김 없이 있어서 도로망 안의
+         중앙대로 전 구간 양방향에 넣는다. 정지선 앞은 위 SW·N 항목에 있음.
+           SW 진입: 들어오는 구간 1, 정지선 앞 2 (조사)
+           N 진입 1 / N 진출 1 (조사)
+           SW 진출 1 (가정: 조사 안 함, 반대 방향과 같다고 봄)
+           N 진입이 정지선 앞에서 2차로로 갈라진다는 관찰(조사 md)은 HANDOFF대로 1로 둠
+         지금 배경 교통에는 버스가 없어서 비어 있는 차로다.
+         ───────────────────────────────────────────────────────────── -->
+    <!-- SW 진입 (서면 → 연산, 시청 교차로 포함): 일반 2 + BRT 1 -->
+    <edge id="512187678#0" numLanes="3"><lane index="2" allow="bus"/></edge>
+    <edge id="512187678#1" numLanes="3"><lane index="2" allow="bus"/></edge>
+    <edge id="512187678#2" numLanes="3"><lane index="2" allow="bus"/></edge>
+    <edge id="512187678#3" numLanes="3"><lane index="2" allow="bus"/></edge>
+    <edge id="512187678#4" numLanes="3"><lane index="2" allow="bus"/></edge>
+    <edge id="512187678#5" numLanes="3"><lane index="2" allow="bus"/></edge>
+    <edge id="512187678#6" numLanes="3"><lane index="2" allow="bus"/></edge>
+    <edge id="512187678#7" numLanes="3"><lane index="2" allow="bus"/></edge>
+    <edge id="512187678#8" numLanes="3"><lane index="2" allow="bus"/></edge>
+    <edge id="512187678#9" numLanes="3"><lane index="2" allow="bus"/></edge>
+    <edge id="512187678#10" numLanes="3"><lane index="2" allow="bus"/></edge>
+    <edge id="512187678#11" numLanes="3"><lane index="2" allow="bus"/></edge>
+    <edge id="512187678#12" numLanes="3"><lane index="2" allow="bus"/></edge>
+    <edge id="512187678#13" numLanes="3"><lane index="2" allow="bus"/></edge>
+    <!-- SW 진출 (연산 → 서면): 일반 2 + BRT 1 (가정) -->
+    <edge id="1381093795#0" numLanes="3"><lane index="2" allow="bus"/></edge>
+    <edge id="1381093795#1" numLanes="3"><lane index="2" allow="bus"/></edge>
+    <edge id="1381093795#2" numLanes="3"><lane index="2" allow="bus"/></edge>
+    <edge id="1381590065" numLanes="3"><lane index="2" allow="bus"/></edge>
+    <edge id="1381590064#0" numLanes="3"><lane index="2" allow="bus"/></edge>
+    <edge id="1381590064#1" numLanes="3"><lane index="2" allow="bus"/></edge>
+    <edge id="1381590063" numLanes="3"><lane index="2" allow="bus"/></edge>
+    <edge id="1381590062#0" numLanes="3"><lane index="2" allow="bus"/></edge>
+    <edge id="1381590062#1" numLanes="3"><lane index="2" allow="bus"/></edge>
+    <edge id="1381590062#2" numLanes="3"><lane index="2" allow="bus"/></edge>
+    <edge id="1381590062#3" numLanes="3"><lane index="2" allow="bus"/></edge>
+    <edge id="1381590061" numLanes="3"><lane index="2" allow="bus"/></edge>
+    <!-- N 진입 (동래 → 연산), 정지선 앞 4조각 전까지: 일반 2 + BRT 1 -->
+    <edge id="1381093800" numLanes="3"><lane index="2" allow="bus"/></edge>
+    <edge id="1292830755#0" numLanes="3"><lane index="2" allow="bus"/></edge>
+    <edge id="1292830755#1" numLanes="3"><lane index="2" allow="bus"/></edge>
+    <edge id="1292830755#2" numLanes="3"><lane index="2" allow="bus"/></edge>
+    <!-- N 진출 (연산 → 동래): 일반 2 + BRT 1 -->
+    <edge id="1381093796" numLanes="3"><lane index="2" allow="bus"/></edge>
+    <edge id="1381093798" numLanes="3"><lane index="2" allow="bus"/></edge>
+    <edge id="1381093803" numLanes="3"><lane index="2" allow="bus"/></edge>
+    <edge id="1381093799#1" numLanes="3"><lane index="2" allow="bus"/></edge>
+    <edge id="1381093801#0" numLanes="3"><lane index="2" allow="bus"/></edge>
+    <edge id="1381093801#1" numLanes="3"><lane index="2" allow="bus"/></edge>
+    <edge id="1494615719" numLanes="3"><lane index="2" allow="bus"/></edge>
 </edges>
