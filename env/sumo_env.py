@@ -174,6 +174,11 @@ class SumoHighwayEnv(gym.Env):
         self._tls_groups = {}          # 신호 id -> 진입 도로 묶음 (캐시)
         # ---- 목표(경로 끝 도로) 진행 관련 ----
         self.goal_obs = bool(mdp_obs.get("goal_distance", True))
+        # ---- 교차로 상충 차량 (내 경로와 교차로 안에서 엇갈리는 차) ----
+        jf = (mdp_obs.get("junction_foes") or {})
+        self.foe_obs = bool(jf.get("enabled", False))
+        self.foe_range = float(jf.get("range", 60.0))
+        self.foe_time = float(jf.get("time_scale", 5.0))
         self._route_total = 1.0        # 출발 위치부터 경로 끝까지 거리 (m)
         self._prev_odo = 0.0           # 직전 스텝 주행거리 (m)
         self.randomize_signal = bool(mdp_sim.get("randomize_signal_phase", True))
@@ -221,6 +226,8 @@ class SumoHighwayEnv(gym.Env):
             self.obs_dim += self.tl_columns + 1 + (1 if self.tl_remaining else 0)
         if self.goal_obs:
             self.obs_dim += 1          # 목표(경로 끝)까지 남은 거리
+        if self.foe_obs:
+            self.obs_dim += 2          # 상충 지점까지 거리, 도착 시간차
         self.observation_space = spaces.Box(-1.0, 1.0, shape=(self.obs_dim,),
                                             dtype=np.float32)
 
@@ -427,6 +434,36 @@ class SumoHighwayEnv(gym.Env):
             else:
                 path = pool[np.random.randint(len(pool))]
             traci.simulation.saveState(path)
+
+    def _junction_foe(self):
+        """가장 위험한 교차로 상충 차량: (내 상충지점까지 거리 m, 도착 시간차 s) 또는 None.
+
+        SUMO getJunctionFoes: 앞으로 지날 교차로 안에서 내 진행 경로와 엇갈리거나
+        합쳐지는 경로를 가진 차량들과, 각자 상충 지점까지의 거리.
+        도착 시간차 = 상대 도착 시각 − 내 도착 시각 (작을수록 같은 순간에 만남).
+        상대가 이미 상충 구간 안에 있으면 상대 도착 시각 = 0.
+        여러 대면 |시간차|가 가장 작은 차를 고른다.
+        """
+        try:
+            foes = traci.vehicle.getJunctionFoes(self.ego_id, self.foe_range)
+        except traci.TraCIException:
+            return None
+        if not foes:
+            return None
+        v = max(traci.vehicle.getSpeed(self.ego_id), 1.0)
+        best = None
+        for f in foes:
+            foe_id, ego_d, foe_d, _ego_exit, foe_exit = f[0], f[1], f[2], f[3], f[4]
+            if ego_d < 0 or foe_exit <= 0:      # 내가 이미 지났거나 상대가 빠져나감
+                continue
+            try:
+                fv = max(traci.vehicle.getSpeed(foe_id), 1.0)
+            except traci.TraCIException:
+                continue
+            dt = max(foe_d, 0.0) / fv - ego_d / v
+            if best is None or abs(dt) < abs(best[1]):
+                best = (float(ego_d), float(dt))
+        return best
 
     def _approach_groups(self, tls):
         """신호 tls가 제어하는 교차로의 "진입 도로" 묶음.
@@ -876,6 +913,13 @@ class SumoHighwayEnv(gym.Env):
             obs += self._signal_obs()
         if self.goal_obs:
             obs.append(self._goal_remaining() / self._route_total)
+        if self.foe_obs:
+            foe = self._junction_foe()
+            if foe is None:
+                obs += [1.0, 1.0]                  # 상충 차량 없음 = 멀고 + 시간 여유
+            else:
+                obs += [min(foe[0] / self.foe_range, 1.0),
+                        float(np.clip(foe[1] / self.foe_time, -1.0, 1.0))]
 
         return np.clip(np.array(obs, dtype=np.float32), -1.0, 1.0)
 
@@ -1149,6 +1193,17 @@ class SumoHighwayEnv(gym.Env):
                     a_c = float(self.rw.get("comfort_decel", 3.0))
                     if a_req > a_c:
                         reward -= sbp * min((a_req - a_c) / a_c, 1.0)
+
+            # ---- 교차로 상충 감점: 상충 차량과 거의 같은 순간에 상충 지점 도착 ----
+            # 내가 상충 지점에 foe_conflict_dist(m) 안으로 다가왔는데 도착 시간차가
+            # foe_conflict_threshold(s)보다 작으면, 작을수록 크게 감점 (최대 foe_conflict_penalty)
+            fcp = float(self.rw.get("foe_conflict_penalty", 0.0))
+            if fcp > 0.0 and self.foe_obs and ego_speed > 0.5:
+                foe = self._junction_foe()
+                th = float(self.rw.get("foe_conflict_threshold", 2.0))
+                if (foe is not None and foe[0] < float(self.rw.get("foe_conflict_dist", 30.0))
+                        and abs(foe[1]) < th):
+                    reward -= fcp * (1.0 - abs(foe[1]) / th)
 
             # ---- 목표 진행 보상: 이번 스텝에 경로를 따라 목표 쪽으로 간 거리 ----
             # (vmax로 달렸을 때 스텝당 goal_progress_weight)

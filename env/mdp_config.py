@@ -52,7 +52,7 @@ SIMULATION = {
 }
 
 # ──────────────────────────────────────────────────────────────
-# 2) 관측 (Observation, 상태 S) — 31차원 (+ 신호 7 + 목표 1 = 39), 범위 [-1, 1]
+# 2) 관측 (Observation, 상태 S) — 31차원 (+ 신호 7 + 목표 1 + 상충 2 = 41), 범위 [-1, 1]
 #
 # "내 차선 + 양옆 2차선씩" 총 5개 차선의 국소 교통 상황을 본다.
 # (3차선 도로에서 맨 왼쪽에 있어도 오프셋 -2로 맨 오른쪽 차선까지 보임 —
@@ -101,6 +101,11 @@ SIMULATION = {
 #
 #   목표 (goal_distance=True일 때)
 #   [38]      목표(경로 끝 도로)까지 남은 경로 거리 / 출발 시 경로 거리 (1 → 0)
+#
+#   교차로 상충 차량 (junction_foes["enabled"]일 때)
+#   [39]      가장 위험한 상충 차량과의 상충 지점까지 내 거리 / range (없으면 1)
+#   [40]      도착 시간차 (상대 − 나) / time_scale, −1~1 (없으면 1).
+#             0에 가까울수록 같은 순간에 상충 지점에 도착 = 위험
 # ──────────────────────────────────────────────────────────────
 OBSERVATION = {
     "visibility": 50.0,          # 관측 가능 거리 W (m). 앞뒤 차량 감지와
@@ -120,6 +125,13 @@ OBSERVATION = {
         "remaining_time": False, # True면 내 신호 남은 시간 1차원 추가
     },
     "goal_distance": True,       # 목표(경로 끝)까지 남은 거리 1차원 추가
+    # 교차로 상충 차량: 앞으로 지날 교차로 안에서 내 경로와 엇갈리는 차량.
+    # 차로별 앞뒤 차 관측으로는 안 보이는 "옆에서 끼어들어 엇갈리는 차"를 본다.
+    "junction_foes": {
+        "enabled": True,
+        "range": 60.0,           # 상충 지점까지 이 거리(m) 안만 본다 (정규화 기준)
+        "time_scale": 5.0,       # 도착 시간차 정규화 (s)
+    },
 }
 
 # ──────────────────────────────────────────────────────────────
@@ -259,6 +271,12 @@ REWARD = {
     # 내 신호가 녹색이 아닐 때, 정지선에 서는 데 필요한 감속도 v²/(2·거리)가
     # comfort_decel을 넘으면 초과 비율만큼 스텝당 최대 signal_brake_penalty 감점.
     "signal_brake_penalty": 0.0,
+    # ---- 교차로 상충 감점 ----
+    # 상충 지점까지 foe_conflict_dist(m) 안이고 도착 시간차 < foe_conflict_threshold(s)면
+    # 스텝당 최대 foe_conflict_penalty 감점
+    "foe_conflict_penalty": 0.0,
+    "foe_conflict_threshold": 2.0,
+    "foe_conflict_dist": 30.0,
     "comfort_decel": 3.0,        # m/s². ego 최대 감속 5.0보다 여유 있게
     "goal_progress_weight": 0.0,
     "goal_lane_weight": 0.0,
