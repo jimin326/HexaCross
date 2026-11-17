@@ -832,6 +832,47 @@ def check(cfg, name, out_dir, net_f, proj, red, ring_line, ring_poly, nodes, nta
                                "lanes_without_exit": [i for i, n in enumerate(outs) if n == 0]})
     rep["V10_dead_lanes"] = dead_lanes
 
+    # V11 꼭 넣어야 하는 큰 대로 (radial_roads): 중심 교차로에서 순환 도로까지 양방향으로 끊김 없이
+    #     이어지는지. 예) 연산교차로 6개 방향 대로
+    v11 = []
+    rr = cfg.get("radial_roads") or []
+    if rr and net.hasNode(str(cfg.get("center_node", ""))):
+        cx, cy = net.getNode(str(cfg["center_node"])).getCoord()
+
+        def bear(x, y):
+            return math.degrees(math.atan2(x - cx, y - cy)) % 360
+
+        for road in rr:
+            sector = []
+            for e in edges:
+                if e.getName() != road["name"]:
+                    continue
+                sh = e.getShape()
+                mid = sh[len(sh) // 2]
+                if abs((bear(*mid) - road["bearing"] + 180) % 360 - 180) > float(road.get("tol", 25)):
+                    continue
+                d0, d1 = math.dist(sh[0], (cx, cy)), math.dist(sh[-1], (cx, cy))
+                sector.append((e, d0, d1))
+            res = {"id": road["id"], "name": road["name"], "bearing": road["bearing"]}
+            for label, out in (("나가는 방향", True), ("들어오는 방향", False)):
+                es = [(e, d0, d1) for e, d0, d1 in sector if (d1 > d0) == out]
+                if not es:
+                    res[label] = "없음"
+                    continue
+                near = min(es, key=lambda x: min(x[1], x[2]))[0]
+                far = max(es, key=lambda x: max(x[1], x[2]))[0]
+                a, b = (near, far) if out else (far, near)
+                path, c = net.getShortestPath(a, b, vClass="passenger")
+                straight = math.dist(a.getShape()[0], b.getShape()[-1])
+                lanes = sorted({e.getLaneNumber() for e in (path or [])})
+                ok = bool(path) and c <= straight * 1.3 + 100
+                res[label] = {"ok": ok, "길이_m": round(c) if path else None,
+                              "차로": f"{lanes[0]}~{lanes[-1]}" if lanes else None,
+                              "다른_도로_경유": sorted({e.getName() or "(연결로)" for e in (path or [])} - {road["name"]})}
+            res["ok"] = all(isinstance(res[k], dict) and res[k]["ok"] for k in ("나가는 방향", "들어오는 방향"))
+            v11.append(res)
+    rep["V11_radial_roads"] = v11
+
     # V6 보충: 입구/출구 (배경 교통이 드나드는 도로)
     rep["V6_connectivity"]["entries"] = [e.getID() for e in edges if not e.getIncoming()]
     rep["V6_connectivity"]["exits"] = [e.getID() for e in edges if not e.getOutgoing()]
@@ -894,6 +935,13 @@ def print_report(rep):
     print("== V7 일방통행 위반:", len(rep["V7_oneway_violations"]))
     print("== V8 신호:", rep["V8_signals"])
     print("== V10 막힌 차로:", len(rep.get("V10_dead_lanes", [])), rep.get("V10_dead_lanes", [])[:5])
+    v11 = rep.get("V11_radial_roads", [])
+    if v11:
+        print(f"== V11 반드시 포함할 큰 대로: {sum(r['ok'] for r in v11)}/{len(v11)} 통과")
+        for r in v11:
+            o, i = r["나가는 방향"], r["들어오는 방향"]
+            fmt = lambda x: x if isinstance(x, str) else f"{'OK' if x['ok'] else '문제'} {x['길이_m']}m {x['차로']}차로"
+            print(f"   {r['id']:2s} {r['name']:6s} ({r['bearing']}°) 나감: {fmt(o)} | 들어옴: {fmt(i)}")
 
 
 if __name__ == "__main__":
