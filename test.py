@@ -81,6 +81,8 @@ if __name__ == "__main__":
                         help="화면 없이 주행 지표만 측정 (빠름)")
     parser.add_argument("--algorithm", choices=["auto", "ppo", "bc"], default="auto",
                         help="기본은 모델 파일에서 PPO/BC 자동 판별")
+    parser.add_argument("--demo-route", action="store_true",
+                        help="시연용 긴 경로(EGO['demo_routes'], 연산교차로 2번 통과)로 주행")
     args = parser.parse_args()
     if args.episodes < 1:
         parser.error("--episodes는 1 이상이어야 합니다.")
@@ -96,15 +98,21 @@ if __name__ == "__main__":
     # 그 run의 설정 스냅샷은 model.pt와 같은 폴더의 *_config.py 에서 확인 가능.
     sumocfg = road_builder.build(ROAD, EGO, TRAFFIC,
                                  os.path.join(BASE, "env", "sumo"))
+    # 시연용 경로는 길어서(신호 대기 2번 이상) 에피소드 최대 길이를 넉넉히 늘린다.
+    sim = (dict(SIMULATION, max_steps=max(int(SIMULATION["max_steps"]), 2000))
+           if args.demo_route else SIMULATION)
     env = SumoHighwayEnv(
         cfg_path=sumocfg,
         road=ROAD, ego=EGO,
-        mdp_sim=SIMULATION, mdp_obs=OBSERVATION,
+        mdp_sim=sim, mdp_obs=OBSERVATION,
         action=ACTION, reward=REWARD,
         traffic=TRAFFIC,
         gui=not args.nogui,
         gui_autostart=False,   # ▶(플레이) 버튼을 눌러야 에피소드 시작
+        route_set="demo" if args.demo_route else "train",
     )
+    if args.demo_route:
+        print("시연용 경로로 주행합니다 (EGO['demo_routes']).")
 
     if not args.nogui:
         print("※ 창이 뜨면 ▶(플레이) 버튼을 눌러야 에피소드가 시작됩니다.")
@@ -121,6 +129,8 @@ if __name__ == "__main__":
     print(f"\n─── 주행 지표 ({args.episodes} 에피소드 평균) ───")
     print(f"  충돌률       : {metrics.collision_rate:.0%}")
     print(f"  완주율       : {metrics.success_rate:.0%}")
+    print(f"  신호위반율   : {metrics.red_light_rate:.0%}")
+    print(f"  경로이탈율   : {metrics.wrong_lane_rate:.0%}")
     print(f"  시간초과율   : {metrics.timeout_rate:.0%}")
     print(f"  평균 속도    : {metrics.mean_speed:.2f} m/s "
           f"({metrics.mean_speed * 3.6:.1f} km/h)")
