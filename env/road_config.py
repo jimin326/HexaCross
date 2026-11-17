@@ -74,6 +74,14 @@ ROAD = {
             "green_by_road": {"중앙대로": 30.0},   # 간선
             "green_default": 20.0,                # 그 외 (시청로 등)
         },
+        # ── 합친 맵 모드 (둘 중 하나를 쓰면 위 OSM 변환 대신 이 맵을 쓴다) ──
+        # 교차로 정밀맵과 주변부 맵을 따로 만들어 합칠 때. 만드는 법은
+        # tools/merge_nets.py 맨 위 설명 참고 (export / split / merge).
+        #   "merge_parts": ["env/maps/surround", "env/maps/x6"],  # plain XML 묶음들
+        #   "net_file": "env/maps/merged.net.xml",                 # 이미 합친 net.xml
+        #   "merge_strict": True,   # 좌표계/경계점/id 문제가 있으면 오류 (False면 경고만)
+        "merge_parts": None,
+        "net_file": None,
         "buildings": True,       # 건물 표시 (GUI 배경, 학습과 무관)
         "side_inflow": 30.0,     # 골목길 입구 1곳당 들어오는 교통량 (대/시간)
         "side_share": 0.1,       # 간선 교통량 중 골목길로 빠지는 비율

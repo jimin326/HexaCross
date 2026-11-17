@@ -301,18 +301,34 @@ def build_osm(road: dict, ego: dict, traffic: dict, signal: dict,
     extra_ids = [("cluster_" + "_".join(sorted(map(str, s)))) if isinstance(s, (list, tuple))
                  else str(s) for s in cfg.get("extra_signals", [])]
     tls_nodes = ",".join([center_id] + extra_ids)
-    subprocess.run(
-        [checkBinary("netconvert"),
-         "--osm-files", osm_file, "--type-files", types_path,
-         "--geometry.remove", "--ramps.guess", "--junctions.join",
-         "--tls.guess-signals", "--tls.join", "--tls.default-type", "static",
-         "--tls.set", tls_nodes,
-         "--tls.yellow.time", str(int(round(signal.get("yellow", 3.0)))),  # 정수만 허용
-         "--remove-edges.isolated", "--keep-edges.by-vclass", "passenger",
-         "--no-turnarounds.except-deadend", "--output.street-names",
-         "--keep-edges.in-geo-boundary", f"{minlon},{minlat},{maxlon},{maxlat}",
-         "-o", net_path],
-        check=True, capture_output=True)
+    # 1-0) 합친 맵 모드: 따로 만든 맵(교차로 정밀맵 + 주변부 등)을 쓰면 OSM 변환을 건너뛴다
+    #   merge_parts: plain XML 묶음 목록 → 빌드할 때마다 tools/merge_nets.py로 합침
+    #   net_file   : 이미 합쳐 둔 net.xml
+    #   이후 단계(LANE_RULES, 신호, 경로/교통 생성)는 OSM 모드와 같다.
+    #   center_node / extra_signals 는 합친 맵의 노드 id와 맞춰야 한다.
+    if cfg.get("merge_parts"):
+        import sys
+        if BASE not in sys.path:
+            sys.path.insert(0, BASE)
+        from tools.merge_nets import merge_parts
+        merge_parts([os.path.join(BASE, p) for p in cfg["merge_parts"]], net_path,
+                    strict=cfg.get("merge_strict", True))
+    elif cfg.get("net_file"):
+        import shutil
+        shutil.copy(os.path.join(BASE, cfg["net_file"]), net_path)
+    else:
+        subprocess.run(
+            [checkBinary("netconvert"),
+             "--osm-files", osm_file, "--type-files", types_path,
+             "--geometry.remove", "--ramps.guess", "--junctions.join",
+             "--tls.guess-signals", "--tls.join", "--tls.default-type", "static",
+             "--tls.set", tls_nodes,
+             "--tls.yellow.time", str(int(round(signal.get("yellow", 3.0)))),  # 정수만 허용
+             "--remove-edges.isolated", "--keep-edges.by-vclass", "passenger",
+             "--no-turnarounds.except-deadend", "--output.street-names",
+             "--keep-edges.in-geo-boundary", f"{minlon},{minlat},{maxlon},{maxlat}",
+             "-o", net_path],
+            check=True, capture_output=True)
 
     # 차로별 진행 가능 방향 (road_config.LANE_RULES) — 신호/경로 생성 전에 적용
     try:
@@ -326,7 +342,7 @@ def build_osm(road: dict, ego: dict, traffic: dict, signal: dict,
 
     # 건물 (GUI 배경). 실패해도 시뮬레이션에는 영향 없음.
     additional = []
-    if cfg.get("buildings", True):
+    if cfg.get("buildings", True) and os.path.exists(osm_file):
         poly_path = os.path.join(out_dir, "highway.poly.xml")
         typ = os.path.join(os.environ["SUMO_HOME"], "data", "typemap",
                            "osmPolyconvert.typ.xml")
@@ -338,6 +354,9 @@ def build_osm(road: dict, ego: dict, traffic: dict, signal: dict,
             additional.append("highway.poly.xml")
 
     net = sumolib.net.readNet(net_path)
+    if not net.hasNode(center_id):
+        raise RuntimeError(f"도로망에 중심 노드 '{center_id}'가 없습니다. 합친 맵을 쓰면 "
+                           f"ROAD['osm']['center_node']를 그 맵의 연산교차로 노드 id로 바꾸세요.")
     for jid in extra_ids:
         if not net.hasNode(jid) or net.getNode(jid).getType() != "traffic_light":
             raise RuntimeError(f"extra_signals의 '{jid}'에 신호가 만들어지지 않았습니다. "
