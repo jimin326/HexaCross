@@ -120,12 +120,16 @@ def apply_lane_rules(net_path: str, road: dict, center_id: str, rules: dict) -> 
     allowed = {}      # lane id -> set(leg) | None(제한 없음)
     for eid, lg in approach.items():
         table = rules.get(lg) if lg else None
+        n_lanes = net.getEdge(eid).getLaneNumber()
         for ln in net.getEdge(eid).getLanes():
             if table is None:
                 allowed[ln.getID()] = None
             else:
-                allowed[ln.getID()] = set(table.get(ln.getIndex(),
-                                                    table.get(str(ln.getIndex()), [])))
+                # 차로 번호: 0 = 맨 오른쪽(양수, 오른쪽부터) / -1 = 맨 왼쪽(음수, 왼쪽부터)
+                # 연결로가 갈라진 뒤 차로 수가 줄어드는 도로는 왼쪽부터 세는 쪽이 안정적이다.
+                i, j = ln.getIndex(), ln.getIndex() - n_lanes
+                v = next((table[k] for k in (i, str(i), j, str(j)) if k in table), [])
+                allowed[ln.getID()] = set(v)
     # 2) 내부 도로 차로로 전파 (들어오는 차로들의 합집합)
     frontier = [l for l in allowed]
     while frontier:

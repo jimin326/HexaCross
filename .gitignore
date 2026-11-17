@@ -28,3 +28,7 @@ data/shards/
 # 기타
 *.bak
 *.log
+
+# 영역 지도: 사용자 지도 캡처를 겹친 확인 이미지(지도 저작권)와 로컬 경로가 든 설정은 올리지 않는다
+env/maps/*.overlay.png
+env/maps/*.netccfg
