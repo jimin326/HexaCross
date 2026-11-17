@@ -52,6 +52,8 @@ REWARD_OVERRIDES = dict(
     blocked_speed_frac=0.7,    #   그리고 내 속도 < vmax × 이 값
     lane_change_penalty=0.0,   # 변경 실행당 감점 (커리큘럼: 초기 0,
     invalid_action_penalty=0.0,#  추월 학습 후 지그재그 과하면 0.02~0.05)
+    red_light_penalty=5.0,     # 적색 신호 위반 감점
+    red_light_terminate=True,  #   위반 즉시 에피소드 종료
 )
 REWARD = {**REWARD_DEFAULTS, **REWARD_OVERRIDES}
 
@@ -146,8 +148,12 @@ if __name__ == "__main__":
     sumocfg = road_builder.build(ROAD, EGO, TRAFFIC,
                                  os.path.join(BASE, "env", "sumo"))
     print(f"도로 생성 완료: {sumocfg}")
-    print(f"  길이 {ROAD['length']}m, {ROAD['num_lanes']}차선, "
-          f"교통량 {TRAFFIC['vehs_per_hour']}대/시간")
+    if "legs" in ROAD:
+        print(f"  {ROAD.get('name', '방사형 교차로')}: {len(ROAD['legs'])}개 도로, "
+              f"총 진입 교통량 {sum(l['inflow'] for l in ROAD['legs'])}대/시간")
+    else:
+        print(f"  길이 {ROAD['length']}m, {ROAD['num_lanes']}차선, "
+              f"교통량 {TRAFFIC['vehs_per_hour']}대/시간")
 
     # 2) 결과 폴더 + 로거
     run_dir = make_run_dir()

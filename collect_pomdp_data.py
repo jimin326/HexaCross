@@ -3,11 +3,14 @@
 저장 단위는 POMDP transition 하나다:
     (o_t, a_t, r_t, o_{t+1}, terminated, truncated, s_t, s_{t+1})
 
-- o_t / o_{t+1}: agent가 실제로 보는 부분관측 (19차원)
+- o_t / o_{t+1}: agent가 실제로 보는 부분관측 (31차원, 신호 관측을 켜면 34차원)
 - a_t: [가감속 raw, 차선변경 raw]
 - lane_change: 실제 환경에 적용된 {-1, 0, +1}
 - s_t / s_{t+1}: SUMO 내부의 privileged simulator state.
   정책 입력에는 쓰지 않고 데이터 검증/representation/belief 학습용으로만 저장한다.
+
+컬럼 정의는 DATA_FORMAT.md (v1). 모든 값은 숫자다 (문자열 id·신호 문자 없음).
+신호등·도로 번호표는 출력과 같이 저장하는 <name>.meta.json에 적는다.
 
 용량을 줄이기 위해:
 - JSONL은 gzip으로 압축해서 쓰고(.jsonl.gz), observation/state/detected_vehicles의
@@ -32,6 +35,7 @@
 출력:
     data/pomdp_YYYYMMDD_HHMMSS.jsonl.gz
     data/pomdp_YYYYMMDD_HHMMSS.npz
+    data/pomdp_YYYYMMDD_HHMMSS.meta.json   (수집 조건 + 번호표, DATA_FORMAT.md 8절)
 
 읽기:
     from collect_pomdp_data import iter_transitions
@@ -48,12 +52,13 @@ import json
 import multiprocessing
 import os
 import shutil
+import subprocess
 import time
 from datetime import datetime
 
 import numpy as np
 
-from env.road_config import ROAD, EGO, TRAFFIC
+from env.road_config import ROAD, EGO, TRAFFIC, SIGNAL
 from env.mdp_config import SIMULATION, OBSERVATION, ACTION
 from env import road_builder
 from env.sumo_env import SumoHighwayEnv
@@ -241,6 +246,8 @@ def collect(args, sumocfg, episodes, worker_id, jsonl_path, npz_path, tag=""):
                         "event": {
                             "collided": bool(info["collided"]),
                             "arrived": bool(info["arrived"]),
+                            "red_light": bool(info.get("red_light", False)),
+                            "wrong_lane": bool(info.get("wrong_lane", False)),
                             "lane_before": info["lane_before"],
                             "lane_after": info["lane_after"],
                         },
@@ -322,6 +329,62 @@ def merge_parts(parts, jsonl_path, npz_path):
     np.savez_compressed(npz_path, **merged)
 
 
+def write_meta(path, args, sumocfg, total, workers, jsonl_path, npz_path):
+    """수집 조건과 번호표를 meta.json으로 저장한다 (DATA_FORMAT.md 8절).
+
+    번호표(신호등 순서, 도로 번호)는 환경과 같은 함수(_state_layout)로 만든다.
+    SUMO는 띄우지 않고 도로 파일만 읽는다.
+    """
+    from sumolib import checkBinary
+
+    def run(cmd):
+        try:
+            return subprocess.run(cmd, cwd=BASE, capture_output=True, text=True,
+                                  timeout=30).stdout.strip()
+        except (OSError, subprocess.SubprocessError):
+            return ""
+
+    env = SumoHighwayEnv(cfg_path=sumocfg, road=ROAD, ego=EGO, mdp_sim=SIMULATION,
+                         mdp_obs=OBSERVATION, action=ACTION, reward=REWARD,
+                         traffic=TRAFFIC, gui=False)
+    lay = env._state_layout()
+    sumo_version = run([checkBinary("sumo"), "--version"]).splitlines()
+    demand = TRAFFIC.get("demand")
+    meta = {
+        "format_version": "v1",
+        "git_commit": run(["git", "rev-parse", "HEAD"]),
+        "git_dirty": bool(run(["git", "status", "--porcelain", "--untracked-files=no"])),
+        "policy": args.policy,
+        "model": args.model,
+        "stochastic": bool(args.stochastic),
+        "seed": args.seed,
+        "episodes": args.episodes,
+        "transitions": total,
+        "workers": workers,
+        "step_length": float(SIMULATION["step_length"]),
+        "sumo_version": sumo_version[0].split()[-1] if sumo_version else "",
+        "created_at": datetime.now().isoformat(timespec="seconds"),
+        "files": {"jsonl": os.path.basename(jsonl_path), "npz": os.path.basename(npz_path)},
+        "ego_routes": [list(r) for r in EGO.get("routes", [])],
+        "leg_order": list(env.LEG_ORDER),
+        "leg_code": {"0-5": "연산교차로로 들어가는 도로 (leg_order 순)",
+                     "6-11": "연산교차로에서 나가는 도로 (leg_order 순 + 6)",
+                     "12": "교차로 안 (우회전 연결로 포함)", "-1": "그 밖"},
+        "tl_order": lay["tl_names"],
+        "tl_color": {"red": 0.0, "yellow": 0.5, "green": 1.0},
+        "vehicle_type": {"car": 0, "bus": 1},
+        "signal": {"green_s": {lg["id"]: lg.get("green") for lg in ROAD.get("legs", [])},
+                   "yellow_s": SIGNAL.get("yellow"), "all_red_s": SIGNAL.get("all_red")},
+        "demand": ({"scenario": demand.get("scenario"),
+                    "hour": demand.get("scenarios", {}).get(demand.get("scenario"), {}).get("hour"),
+                    "scale": demand.get("scale", 1.0)}
+                   if demand else {"scenario": "assumed"}),
+    }
+    env.close()
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(meta, f, ensure_ascii=False, indent=1)
+
+
 def main():
     parser = argparse.ArgumentParser(description="SUMO POMDP trajectory collector")
     parser.add_argument("--episodes", type=int, default=50)
@@ -364,6 +427,7 @@ def main():
     name = args.name or datetime.now().strftime("pomdp_%Y%m%d_%H%M%S")
     jsonl_path = os.path.join(args.out_dir, name + ".jsonl.gz")
     npz_path = os.path.join(args.out_dir, name + ".npz")
+    meta_path = os.path.join(args.out_dir, name + ".meta.json")
 
     # 도로 파일은 부모에서 한 번만 생성한다 (워커들이 동시에 쓰면 파일이 깨진다).
     sumocfg = road_builder.build(ROAD, EGO, TRAFFIC,
@@ -385,6 +449,7 @@ def main():
             total = sum(pool.starmap(collect, jobs))
         merge_parts(parts, jsonl_path, npz_path)
     elapsed = time.time() - t0
+    write_meta(meta_path, args, sumocfg, total, workers, jsonl_path, npz_path)
 
     mb = lambda p: os.path.getsize(p) / 2**20  # noqa: E731
     print("\n수집 완료")
@@ -392,6 +457,7 @@ def main():
           f"workers={workers})")
     print(f"  JSONL(full POMDP + privileged state): {jsonl_path} ({mb(jsonl_path):.1f} MB)")
     print(f"  NPZ(training-friendly):               {npz_path} ({mb(npz_path):.1f} MB)")
+    print(f"  meta(수집 조건 + 번호표):             {meta_path}")
 
 
 if __name__ == "__main__":
