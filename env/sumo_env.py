@@ -920,7 +920,9 @@ class SumoHighwayEnv(gym.Env):
 
         # ----- (3) 이벤트/관측 -----
         collided = self.ego_id in traci.simulation.getCollidingVehiclesIDList()
-        arrived = self.ego_id in traci.simulation.getArrivedIDList()
+        # --collision.action remove라 충돌한 ego도 도착 목록(getArrivedIDList)에
+        # 들어간다. 충돌한 스텝은 도착으로 치지 않는다.
+        arrived = (self.ego_id in traci.simulation.getArrivedIDList()) and not collided
         alive = self.ego_id in traci.vehicle.getIDList()
         lane_after = int(traci.vehicle.getLaneIndex(self.ego_id)) if alive else None
 
