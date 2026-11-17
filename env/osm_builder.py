@@ -185,6 +185,96 @@ def apply_lane_rules(net_path: str, road: dict, center_id: str, rules: dict) -> 
     return result
 
 
+def _link_exits(net, root, tl_id, center_id, legs):
+    """신호 tl_id의 linkIndex마다 "그 링크로 갈 수 있는 진출 도로(leg) 집합".
+
+    교차로가 노드 여러 개 + 내부 도로로 되어 있으면 첫 링크(진입 차로 →
+    내부 도로)에서 진출 도로가 여러 개로 갈라질 수 있어, 내부 도로를 따라가며 모은다.
+    """
+    cx, cy = net.getNode(center_id).getCoord()
+    nodes = {c[0].getEdge().getToNode().getID() for c in net.getTLS(tl_id).getConnections()}
+    inner = {e.getID() for e in net.getEdges()
+             if e.getFromNode().getID() in nodes and e.getToNode().getID() in nodes}
+
+    def leg_at(x, y):
+        b = _bearing(x - cx, y - cy)
+        return min(legs, key=lambda l: _angle_diff(b, l["bearing"]))["id"]
+
+    def reach(lane, depth=0):
+        out = set()
+        for c in lane.getOutgoing():
+            te = c.getTo()
+            if te.getID() in inner and depth < 6:
+                out |= reach(c.getToLane(), depth + 1)
+            elif te.getID() not in inner:
+                out.add(leg_at(*te.getShape()[-1]))
+        return out
+
+    exits = {}
+    for c in root.iter("connection"):
+        if c.get("tl") != tl_id:
+            continue
+        to_lane = net.getEdge(c.get("to")).getLane(int(c.get("toLane")))
+        te = to_lane.getEdge().getID()
+        exits[int(c.get("linkIndex"))] = (reach(to_lane) if te in inner
+                                          else {leg_at(*to_lane.getEdge().getShape()[-1])})
+    return exits
+
+
+def plan_to_phases(plan: dict, group: dict, exits: dict, n: int, signal: dict,
+                   name: str = "") -> list:
+    """신호 현시표(plan) 하나 → SUMO 현시 목록 [(초, 상태 문자열), ...].
+
+    group[i] : 링크 i의 진입 도로 (None = 교차로 내부 링크 → 항상 녹색)
+    exits[i] : 링크 i로 갈 수 있는 진출 도로 집합
+    현시마다: 녹색 → 황색 → 전적색. 다음 현시에도 녹색인 링크는 황색/전적색
+    동안에도 녹색을 유지한다 (끊기지 않는 이동류).
+    """
+    legs_known = {g for g in group.values() if g}
+
+    def links_of(item):
+        src, _, dst = str(item).partition(":")
+        if src not in legs_known:
+            raise ValueError(f"신호 계획 '{name}': 진입 도로 '{src}'가 교차로에 없습니다 "
+                             f"(가능: {sorted(legs_known)})")
+        idx = {i for i, g in group.items() if g == src
+               and (not dst or dst in exits.get(i, set()))}
+        if not idx:
+            raise ValueError(f"신호 계획 '{name}': '{item}' 이동류에 해당하는 차로가 없습니다 "
+                             f"(LANE_RULES 확인)")
+        if dst:
+            extra = sorted(set().union(*(exits.get(i, set()) for i in idx)) - {dst})
+            if extra:
+                print(f"[signal] 참고: 계획 '{name}'의 '{item}'은 {extra} 방향과 차로를 같이 "
+                      f"써서(LANE_RULES) 그 방향도 함께 녹색이 됩니다.")
+        return idx
+
+    phases_in = plan["phases"]
+    greens = [set().union(*(links_of(it) for it in ph["green"])) for ph in phases_in]
+    out, total = [], 0.0
+    for k, ph in enumerate(phases_in):
+        y = float(ph.get("yellow", signal.get("yellow", 3.0)))
+        ar = float(ph.get("all_red", signal.get("all_red", 2.0)))
+        if "split" in ph:                       # 현시시간 (황색·전적색 포함)
+            g = float(ph["split"]) - y - ar
+        else:                                   # 녹색 시간만
+            g = float(ph["green_time"])
+        if g <= 0:
+            raise ValueError(f"신호 계획 '{name}' {k + 1}현시: 녹색 시간이 0 이하입니다.")
+        cur, nxt = greens[k], greens[(k + 1) % len(greens)]
+
+        def st(ch_end):
+            return "".join("G" if group.get(i) is None or i in (cur & nxt)
+                           else (ch_end if i in cur else "r") for i in range(n))
+        for dur, ch in ((g, "G"), (y, "y"), (ar, "r")):
+            if dur > 0:
+                out.append((dur, st(ch)))
+        total += g + y + ar
+    if "cycle" in plan and abs(total - float(plan["cycle"])) > 0.5:
+        raise ValueError(f"신호 계획 '{name}': 현시 합 {total:g}초 ≠ cycle {plan['cycle']}초")
+    return out
+
+
 def build_osm(road: dict, ego: dict, traffic: dict, signal: dict,
               out_dir: str) -> str:
     from env.road_builder import make_vtypes_block   # 순환 import 방지
@@ -510,8 +600,24 @@ def build_osm(road: dict, ego: dict, traffic: dict, signal: dict,
         n = max(group) + 1
         yellow = float(signal.get("yellow", 3.0))
         all_red = float(signal.get("all_red", 2.0))
-        lines = [f'    <tlLogic id="{center_tl}" type="static" programID="custom" offset="0">']
-        for lg in legs:
+        plans = signal.get("plans") or {}
+        lines = []
+        if plans:
+            # 실제 신호 현시표 입력 (road_config.SIGNAL["plans"]) — 계획마다 SUMO 프로그램 하나
+            exits = _link_exits(net, root, center_tl, center_id, legs)
+            for pname, plan in plans.items():
+                lines.append(f'    <tlLogic id="{center_tl}" type="static" programID="{pname}" '
+                             f'offset="{float(plan.get("offset", 0.0)):g}">')
+                for dur, st in plan_to_phases(plan, group, exits, n, signal, pname):
+                    lines.append(f'        <phase duration="{dur:g}" state="{st}"/>')
+                lines.append("    </tlLogic>")
+            meta["signal_plans"] = {
+                "tls": center_tl, "programs": list(plans),
+                "active": signal.get("active_plan", list(plans)[0]),
+                "tod": signal.get("tod") or []}
+        else:
+            lines.append(f'    <tlLogic id="{center_tl}" type="static" programID="custom" offset="0">')
+        for lg in ([] if plans else legs):
             for dur, ch in ((float(lg.get("green", 20.0)), "G"), (yellow, "y"),
                             (all_red, "r")):
                 if dur <= 0:
@@ -520,7 +626,8 @@ def build_osm(road: dict, ego: dict, traffic: dict, signal: dict,
                     "G" if group.get(i) is None else (ch if group.get(i) == lg["id"] else "r")
                     for i in range(n))
                 lines.append(f'        <phase duration="{dur:g}" state="{state}"/>')
-        lines.append("    </tlLogic>")
+        if not plans:
+            lines.append("    </tlLogic>")
     else:
         lines = []
 

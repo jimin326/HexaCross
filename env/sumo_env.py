@@ -183,8 +183,9 @@ class SumoHighwayEnv(gym.Env):
         # refresh 확률만큼은 새로 워밍업해서 풀을 계속 바꿔 다양성을 유지한다.
         self.state_pool_size = int(mdp_sim.get("warmup_state_pool", 0))
         self.state_pool_refresh = float(mdp_sim.get("warmup_state_refresh", 0.25))
-        self._state_pool = []
+        self._state_pools = {}         # 신호 계획별 스냅샷 풀
         self._state_dir = None
+        self.signal_program = None     # 이번 에피소드의 신호 계획 이름
         self.act_dim = int(action["dim"])
         self.accel_index = int(action.get("accel_index", 0))
         self.lane_change_index = int(action.get("lane_change_index", 1))
@@ -372,13 +373,46 @@ class SumoHighwayEnv(gym.Env):
         """신호 문자 → 관측값: 녹색 +1 / 황색 0 / 적색 -1."""
         return 1.0 if ch in "GgOo" else (0.0 if ch in "yYu" else -1.0)
 
+    def _apply_signal_plan(self):
+        """SIGNAL["active_plan"]에 따라 이번 에피소드의 신호 계획(SUMO 프로그램)을 고른다.
+
+        "이름"        : 그 계획만 사용
+        ["a", "b"]   : 에피소드마다 무작위
+        "tod"        : SIGNAL["tod"] 시간대표에서 각 계획이 하루 중 차지하는
+                       시간 비율대로 무작위 (하루 전체 신호 운영을 고르게 학습)
+        """
+        sp = (self.meta or {}).get("signal_plans")
+        if not sp:
+            self.signal_program = None
+            return
+        active, progs = sp.get("active"), sp["programs"]
+        if active == "tod" and sp.get("tod"):
+            tod = sorted(sp["tod"], key=lambda t: t["start"])
+            mins = [int(t["start"][:2]) * 60 + int(t["start"][3:5]) for t in tod]
+            dur = [((mins[(i + 1) % len(mins)] - m) % 1440) or 1440
+                   for i, m in enumerate(mins)]
+            w = {}
+            for t, d in zip(tod, dur):
+                w[t["plan"]] = w.get(t["plan"], 0) + d
+            names = list(w)
+            p = np.array([w[n] for n in names], dtype=float)
+            name = names[np.random.choice(len(names), p=p / p.sum())]
+        elif isinstance(active, (list, tuple)):
+            name = active[np.random.randint(len(active))]
+        else:
+            name = active or progs[0]
+        if name not in progs:
+            raise ValueError(f"신호 계획 '{name}'이 없습니다 (가능: {progs})")
+        traci.trafficlight.setProgram(sp["tls"], name)
+        self.signal_program = name
+
     def _warmup_osm(self):
         """배경 교통을 미리 흘려 도로망을 채운다 (스냅샷 풀이 있으면 재사용)."""
-        if self.state_pool_size > 0 and self._state_pool and (
-                len(self._state_pool) >= self.state_pool_size
+        pool = self._state_pools.setdefault(self.signal_program, [])
+        if self.state_pool_size > 0 and pool and (
+                len(pool) >= self.state_pool_size
                 and np.random.rand() >= self.state_pool_refresh):
-            traci.simulation.loadState(
-                self._state_pool[np.random.randint(len(self._state_pool))])
+            traci.simulation.loadState(pool[np.random.randint(len(pool))])
             return
         lo, hi = self.warmup_seconds
         traci.simulationStep(float(np.random.uniform(lo, hi)))
@@ -386,11 +420,12 @@ class SumoHighwayEnv(gym.Env):
             import tempfile
             if self._state_dir is None:
                 self._state_dir = tempfile.mkdtemp(prefix="hexacross_state_")
-            if len(self._state_pool) < self.state_pool_size:
-                path = os.path.join(self._state_dir, f"s{len(self._state_pool)}.xml.gz")
-                self._state_pool.append(path)
+            if len(pool) < self.state_pool_size:
+                path = os.path.join(self._state_dir,
+                                    f"{self.signal_program or 'default'}_{len(pool)}.xml.gz")
+                pool.append(path)
             else:
-                path = self._state_pool[np.random.randint(len(self._state_pool))]
+                path = pool[np.random.randint(len(pool))]
             traci.simulation.saveState(path)
 
     def _approach_groups(self, tls):
@@ -509,6 +544,8 @@ class SumoHighwayEnv(gym.Env):
             self._started = False
         self._start_sumo()
 
+        # 실제 신호 현시표(road_config.SIGNAL["plans"])가 있으면 이번 에피소드 계획 선택
+        self._apply_signal_plan()
         # 신호를 주기 중 임의의 시점에서 시작 (도착 타이밍 암기 방지)
         if self.randomize_signal:
             self._randomize_signal_phase()
