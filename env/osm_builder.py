@@ -22,6 +22,7 @@ road_config.ROAD["osm"]["enabled"]가 True면 road_builder.build()가
 import json
 import math
 import os
+import re
 import subprocess
 import xml.etree.ElementTree as ET
 
@@ -287,6 +288,9 @@ def build_osm(road: dict, ego: dict, traffic: dict, signal: dict,
 
     cfg = road["osm"]
     osm_file = os.path.join(BASE, cfg["file"])
+    # 버스전용차로: 모든 도로에 같은 규칙 (env/bus_lanes.py) — OSM 버스 태그를 netconvert가 읽는 형식으로 정리
+    from env.bus_lanes import normalize_osm_file
+    osm_file = normalize_osm_file(osm_file, os.path.join(out_dir, "bus_normalized.osm"))
     center_id = str(cfg["center_node"])
     net_path = os.path.join(out_dir, "highway.net.xml")
     types_path = os.path.join(out_dir, "osm_types.typ.xml")
@@ -332,9 +336,22 @@ def build_osm(road: dict, ego: dict, traffic: dict, signal: dict,
              "--tls.yellow.time", str(int(round(signal.get("yellow", 3.0)))),  # 정수만 허용
              "--remove-edges.isolated", "--keep-edges.by-vclass", "passenger",
              "--no-turnarounds.except-deadend", "--output.street-names",
+             "--osm.lane-access", "true",                     # 버스전용차로 → 그 차로 allow="bus"
              "--keep-edges.in-geo-boundary", f"{minlon},{minlat},{maxlon},{maxlat}",
              "-o", net_path],
             check=True, capture_output=True)
+
+    # 버스전용차로가 이어지는 곳(BRT)은 버스차로 직진 연결만 (env/bus_lanes.py, 버스차로가 없으면 변화 없음)
+    from env.bus_lanes import brt_through_deletes
+    _bdel = brt_through_deletes(sumolib.net.readNet(net_path))
+    if _bdel:
+        _bcon = os.path.join(out_dir, "brt.con.xml")
+        with open(_bcon, "w") as f:
+            f.write("<connections>\n" + "".join(
+                f'    <delete from="{a}" to="{b}" fromLane="{fl}" toLane="{tl}"/>\n' for a, b, fl, tl in _bdel)
+                    + "</connections>\n")
+        subprocess.run([checkBinary("netconvert"), "-s", net_path, "--connection-files", _bcon,
+                        "--output.street-names", "-o", net_path], check=True, capture_output=True)
 
     # 차로별 진행 가능 방향 (road_config.LANE_RULES) — 신호/경로 생성 전에 적용
     try:
@@ -662,6 +679,32 @@ def build_osm(road: dict, ego: dict, traffic: dict, signal: dict,
                 lines.append(f'        <phase duration="{dur:g}" state="{state}"/>')
         if not plans:
             lines.append("    </tlLogic>")
+        # 버스전용차로(BRT)가 있으면: 녹색 버스 직진과 경로가 엇갈리는 승용차 링크는 양보 녹색(g)
+        # (같은 진입로의 일반 차로 좌회전이 맨 안쪽 버스차로를 가로지르는 경우 등). 버스차로가 없으면 변화 없음.
+        # 버스전용차로(BRT)가 있으면: 버스 직진과 엇갈리는 일반 이동류는 같은 순간 녹색이 되지 않게
+        # 진입로 녹색 끝에 짧은 BRT 현시를 둔다 (env/bus_lanes.py). 버스차로가 없으면 변화 없음.
+        from env.bus_lanes import bus_link_conflicts, bus_subphases
+        bconf = bus_link_conflicts(net_path, center_tl)
+        if bconf:
+            bus_links = set().union(*bconf.values())
+            new_lines, buf = [], []
+
+            def flush():
+                for d_, s_ in bus_subphases(buf, bconf, bus_links, float(signal.get("bus_green", 10.0)), yellow,
+                                            approach={i for i, g_ in group.items() if g_}):
+                    new_lines.append(f'        <phase duration="{d_:g}" state="{s_}"/>')
+                buf.clear()
+            for ln in lines:
+                mt = re.search(r'<phase duration="([^"]*)" state="([^"]*)"', ln)
+                if mt:
+                    buf.append((float(mt.group(1)), mt.group(2)))
+                else:
+                    flush()
+                    new_lines.append(ln)
+            flush()
+            lines = new_lines
+            meta["bus_signal"] = {"conflicts": {str(k): sorted(v) for k, v in bconf.items()},
+                                  "bus_green": float(signal.get("bus_green", 10.0))}
     else:
         lines = []
 

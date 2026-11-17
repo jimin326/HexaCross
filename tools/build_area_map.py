@@ -183,6 +183,14 @@ def apply_carriageway_merges(root, proj, nodes, ways, merges):
     """
     done = []
     way_el = {w.get("id"): w for w in root.iter("way")}
+    node_ll = {n.get("id"): n for n in root.iter("node")}
+    busways = {}
+    for w in root.iter("way"):
+        t = {x.get("k"): x.get("v") for x in w.iter("tag")}
+        if t.get("highway") == "busway":
+            pts = [proj.en(float(node_ll[x.get("ref")].get("lat")), float(node_ll[x.get("ref")].get("lon")))
+                   for x in w.iter("nd") if x.get("ref") in node_ll]
+            busways[w.get("id")] = (t, pts)
     node_el = {n.get("id"): n for n in root.iter("node")}
 
     def to_ll(p):
@@ -343,7 +351,34 @@ def apply_carriageway_merges(root, proj, nodes, ways, merges):
         junc = {start, end_id} | (reps & need)
         new_id = str(m.get("new_id", 880000000 + k))
         tags = {"name": name, "highway": ways[fw[0]][0].get("highway", "secondary"), "oneway": "no"}
-        tags.update({kk: str(v) for kk, v in (m.get("tags") or {}).items()})
+        # 일반 차로 = 각 차도의 OSM lanes (가장 흔한 값), 버스전용차로 = 가운데 선을 따라가는 OSM busway의 방향별 차로
+        def common_lanes(wids):
+            c = collections.Counter(ways[w][0].get("lanes") for w in wids if ways[w][0].get("lanes", "").isdigit())
+            return int(c.most_common(1)[0][0]) if c else None
+        gen_f, gen_b = common_lanes(fw), common_lanes(bw)
+        bus_ev = []
+        for bwid, (bt, bpts) in busways.items():
+            # 합친 도로 가운데 선의 몇 %가 이 busway 옆(8 m 안)인가 (busway는 합친 구간보다 길 수 있음)
+            cov = sum(1 for p in densify(center, 5.0) if dist_to_polyline(p, bpts) < 8) / max(len(densify(center, 5.0)), 1)
+            if cov < 0.5:
+                continue
+            bl = int(bt["lanes"]) if bt.get("lanes", "").isdigit() else (1 if bt.get("oneway") in ("yes", "1") else 2)
+            bus_ev.append({"busway": bwid, "lanes": bl, "oneway": bt.get("oneway", "no"), "coverage": round(cov, 2)})
+        bus_f = bus_b = 0
+        if bus_ev:
+            best = max(bus_ev, key=lambda b: b["coverage"])
+            if best["oneway"] in ("yes", "1"):
+                raise RuntimeError(f"{m.get('label')}: 일방 busway({best['busway']})는 아직 지원하지 않음")
+            bus_f = bus_b = best["lanes"] // 2 if best["lanes"] >= 2 else 1
+        if gen_f is None or gen_b is None:
+            raise RuntimeError(f"{m.get('label')}: 차도의 OSM lanes 태그가 없어 차로 수를 정할 수 없음")
+        tags.update({"lanes": str(gen_f + bus_f + gen_b + bus_b), "lanes:forward": str(gen_f + bus_f),
+                     "lanes:backward": str(gen_b + bus_b)})
+        if bus_f:   # 중앙 BRT: 방향마다 맨 왼쪽(안쪽) 차로가 버스전용 (OSM 순서 = 왼쪽부터)
+            for d, g, b_ in (("forward", gen_f, bus_f), ("backward", gen_b, bus_b)):
+                tags[f"bus:lanes:{d}"] = "|".join(["designated"] * b_ + ["yes"] * g)
+                tags[f"access:lanes:{d}"] = "|".join(["no"] * b_ + ["yes"] * g)
+        tags.update({kk: str(v) for kk, v in (m.get("tags") or {}).items()})       # 설정에서 직접 덮어쓰기 (선택)
         # 교차점마다 끊어 여러 way로 (회전 제한의 from/to가 어느 쪽에서 오는지 정확히 가리키도록)
         segs, cur = [], [seq[0]]
         for n in seq[1:]:
@@ -466,6 +501,7 @@ def apply_carriageway_merges(root, proj, nodes, ways, merges):
                 removed_rels.append(rel.get("id"))
         done.append({"label": m.get("label", name), "new_id": new_id, "merged": sorted(merged_ids),
                      "absorbed_nodes": sorted(rename), "dropped_ways": sorted(dropped),
+                     "lanes": {"general_per_dir": [gen_f, gen_b], "bus_per_dir": [bus_f, bus_b], "busway_evidence": bus_ev},
                      "segments": [sid for sid, _ in seg_ids], "removed_restrictions": removed_rels,
                      "length_m": round(L), "junctions": len(groups)})
     return done
@@ -606,7 +642,9 @@ def write_filtered_osm(root, sel, rels_keep, path):
 #   정방향 = OSM way 그리기 방향 (도로망 엣지 id에 '-'가 없는 쪽)
 # ──────────────────────────────────────────────────────────────
 LANE_COLS = ["way_id", "도로명", "등급", "일방", "길이_m", "OSM_lanes", "OSM_정방향", "OSM_역방향",
-             "도로망_정방향", "도로망_역방향", "실제_정방향", "실제_역방향", "turn_정방향", "turn_역방향", "메모"]
+             "도로망_정방향", "도로망_역방향", "도로망_버스전용", "실제_정방향", "실제_역방향", "turn_정방향", "turn_역방향",
+             "버스전용_정방향", "버스전용_역방향", "메모"]
+SURVEY_COLS = ("실제_정방향", "실제_역방향", "turn_정방향", "turn_역방향", "버스전용_정방향", "버스전용_역방향")
 
 
 def read_lane_table(path):
@@ -616,8 +654,8 @@ def read_lane_table(path):
         return out
     with open(path, encoding="utf-8-sig") as f:
         for row in csv.DictReader(f):
-            vals = {k: (row.get(k) or "").strip() for k in ("실제_정방향", "실제_역방향", "turn_정방향", "turn_역방향", "메모")}
-            if any(vals[k] for k in ("실제_정방향", "실제_역방향", "turn_정방향", "turn_역방향")):
+            vals = {k: (row.get(k) or "").strip() for k in (*SURVEY_COLS, "메모")}
+            if any(vals[k] for k in SURVEY_COLS):
                 out[row["way_id"]] = vals
     return out
 
@@ -659,15 +697,21 @@ def apply_overrides(root, ways, overrides):
             ways[w.get("id")][0].update(new)
 
 
-def write_lane_table(path, net_f, ways, sel, why, overrides):
+def write_lane_table(path, net_f, ways, sel, why, overrides, osm_tags=None):
     import csv
     import sumolib
     net = sumolib.net.readNet(net_f)
     lanes_net = collections.defaultdict(lambda: [None, None])
+    bus_net = collections.defaultdict(set)
     length = collections.Counter()
     for e in net.getEdges():
         wid = e.getID().lstrip("-").split("#")[0]
         lanes_net[wid][1 if e.getID().startswith("-") else 0] = e.getLaneNumber()
+        for ln in e.getLanes():
+            if ln.allows("bus") and not ln.allows("passenger"):
+                side = "역" if e.getID().startswith("-") else "정"
+                pos = "왼쪽" if ln.getIndex() == e.getLaneNumber() - 1 else ("오른쪽" if ln.getIndex() == 0 else f"{ln.getIndex()}번")
+                bus_net[wid].add(f"{side}:{pos}")
         if not e.getID().startswith("-"):
             length[wid] += e.getLength()
     dead = collections.defaultdict(list)          # 막힌 차로(V10)를 조사표 메모에 표시
@@ -681,7 +725,7 @@ def write_lane_table(path, net_f, ways, sel, why, overrides):
     for wid in sorted(sel, key=lambda w: (ways[w][0].get("name") or "~", w)):
         if wid not in lanes_net:
             continue
-        t, nds = ways[wid]
+        t = (osm_tags or {}).get(wid) or ways[wid][0]
         f, b = osm_lanes_expect(t)
         o = overrides.get(wid, {})
         rows.append({"way_id": wid, "도로명": t.get("name", ""), "등급": t.get("highway"),
@@ -689,9 +733,12 @@ def write_lane_table(path, net_f, ways, sel, why, overrides):
                      "길이_m": round(length[wid]) if length[wid] else "", "OSM_lanes": t.get("lanes", ""),
                      "OSM_정방향": "" if f is None else f, "OSM_역방향": "" if b is None else b,
                      "도로망_정방향": lanes_net[wid][0] or "", "도로망_역방향": lanes_net[wid][1] or "",
-                     "실제_정방향": o.get("실제_정방향", ""), "실제_역방향": o.get("실제_역방향", ""),
+                     "도로망_버스전용": " ".join(sorted(bus_net.get(wid, []))),
+                     "버스전용_정방향": o.get("버스전용_정방향", ""), "버스전용_역방향": o.get("버스전용_역방향", ""),
+                     "실제_정방향": "" if o.get("_assumed") else o.get("실제_정방향", ""), "실제_역방향": o.get("실제_역방향", ""),
                      "turn_정방향": o.get("turn_정방향", ""), "turn_역방향": o.get("turn_역방향", ""),
-                     "메모": o.get("메모", "") or "; ".join(dead.get(wid, []))})
+                     "메모": "; ".join(x for x in [o.get("메모", ""), (f"가정 {o.get('실제_정방향')}차로: {o['_assumed']}"
+                                                          if o.get("_assumed") else ""), *dead.get(wid, [])] if x)})
     with open(path, "w", encoding="utf-8-sig", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=LANE_COLS)
         w.writeheader()
@@ -739,7 +786,35 @@ def build(cfg_path):
     # 차로 조사표(CSV) 반영: 팀이 로드뷰로 확인한 차로 수 / 차로별 진행 방향(turn:lanes)
     lane_csv = os.path.join(BASE, cfg.get("lane_table", f"env/maps/{name}.lanes.csv"))
     overrides = read_lane_table(lane_csv)
+    osm_tags = {w: dict(t) for w, (t, _) in ways.items()}      # 조사표·가정·버스 정리 전의 OSM 원래 태그 (조사표 OSM_* 칸)
+    # 차로 수 가정(설정 lane_assumptions: OSM에 없고 설계 기준으로 정한 값). 조사표에 실제 값이 있으면 그쪽이 우선.
+    for wid, a in (cfg.get("lane_assumptions") or {}).items():
+        if wid in ways and not (overrides.get(wid) or {}).get("실제_정방향"):
+            overrides.setdefault(wid, {k: "" for k in (*SURVEY_COLS, "메모")})
+            overrides[wid] = {**overrides[wid], "실제_정방향": str(a["lanes"]), "_assumed": a.get("reason", "")}
     apply_overrides(root, ways, overrides)
+    # 버스전용차로: 모든 도로에 같은 규칙 (env/bus_lanes.py) — OSM 표기 정리 + 조사표 버스전용 칸
+    from env.bus_lanes import normalize_bus_tags, parse_survey
+    bus_changed = {}
+    for w in root.iter("way"):
+        wid = w.get("id")
+        if wid not in ways:
+            continue
+        o = overrides.get(wid) or {}
+        survey = {"forward": parse_survey(o.get("버스전용_정방향")), "backward": parse_survey(o.get("버스전용_역방향"))}
+        new = normalize_bus_tags(ways[wid][0], survey)
+        if not new:
+            continue
+        tag_el = {x.get("k"): x for x in w.iter("tag")}
+        for k, v in new.items():
+            if v is None:
+                if k in tag_el:
+                    w.remove(tag_el[k])
+                ways[wid][0].pop(k, None)
+            else:
+                (tag_el[k].set("v", v) if k in tag_el else ET.SubElement(w, "tag", {"k": k, "v": v}))
+                ways[wid][0][k] = v
+        bus_changed[wid] = new
 
     tmp = tempfile.mkdtemp(prefix="area_")
     osm_f = os.path.join(tmp, "area.osm")
@@ -807,6 +882,57 @@ def build(cfg_path):
                        check=True, capture_output=True)
     else:
         raw_f = raw0_f
+
+    # 갈 곳 없는 차로(차로 수가 줄어드는 곳, 예: 2차로 진입로 → 1차로 회전교차로) → 옆 차로와 같은 곳으로 합류.
+    # netconvert는 차로가 줄면 남는 차로의 연결을 만들지 않아 그 차로 끝에서 차가 멈춘다.
+    merge_cons = []
+    rnet = sumolib.net.readNet(raw_f)
+    for e in rnet.getEdges():
+        lanes = [ln for ln in e.getLanes() if ln.allows("passenger")]
+        if not e.getOutgoing() or not lanes:
+            continue
+        for ln in lanes:
+            if ln.getOutgoing():
+                continue
+            # 가장 가까운 연결 있는 차로의 연결 중, 그 차로 쪽으로 가장 가까운 진출 차로로
+            nb = sorted((l for l in lanes if l.getOutgoing()), key=lambda l: abs(l.getIndex() - ln.getIndex()))
+            if not nb:
+                continue
+            src = nb[0]
+            for c in src.getOutgoing():
+                if src.getIndex() < ln.getIndex():
+                    pick = max(c2.getToLane().getIndex() for c2 in src.getOutgoing() if c2.getTo() == c.getTo())
+                else:
+                    pick = min(c2.getToLane().getIndex() for c2 in src.getOutgoing() if c2.getTo() == c.getTo())
+                if c.getToLane().getIndex() != pick:
+                    continue
+                merge_cons.append((e.getID(), c.getTo().getID(), ln.getIndex(), pick))
+    merge_cons = sorted(set(merge_cons))
+    if merge_cons:
+        mc_f = os.path.join(tmp, "lane_merge.con.xml")
+        with open(mc_f, "w") as f:
+            f.write("<connections>\n" + "".join(
+                f'    <connection from="{a}" to="{b}" fromLane="{fl}" toLane="{tl}"/>\n' for a, b, fl, tl in merge_cons)
+                    + "</connections>\n")
+        merged_f = os.path.join(tmp, "raw_merge.net.xml")
+        subprocess.run([sumolib.checkBinary("netconvert"), "-s", raw_f, "--connection-files", mc_f,
+                        "--output.street-names", "-o", merged_f], check=True, capture_output=True)
+        raw_f = merged_f
+    print(f"[lane-merge] 차로가 줄어드는 곳 합류 연결 {len(merge_cons)}개: {merge_cons[:8]}")
+    # BRT: 버스전용차로 다음에 버스전용차로가 이어지면 그 직진 연결만 남김 (env/bus_lanes.py)
+    from env.bus_lanes import brt_through_deletes
+    brt_del = brt_through_deletes(sumolib.net.readNet(raw_f))
+    if brt_del:
+        bd_f = os.path.join(tmp, "brt.con.xml")
+        with open(bd_f, "w") as f:
+            f.write("<connections>\n" + "".join(
+                f'    <delete from="{a}" to="{b}" fromLane="{fl}" toLane="{tl}"/>\n' for a, b, fl, tl in brt_del)
+                    + "</connections>\n")
+        brt_f = os.path.join(tmp, "raw_brt.net.xml")
+        subprocess.run([sumolib.checkBinary("netconvert"), "-s", raw_f, "--connection-files", bd_f,
+                        "--output.street-names", "-o", brt_f], check=True, capture_output=True)
+        raw_f = brt_f
+    print(f"[brt] 버스전용차로 → 버스전용차로 직진만 남기고 지운 연결 {len(brt_del)}개")
 
     # 영역 밖 도로 자르기: 도로 중간점이 (순환 도로 + buffer) 밖이면 제거
     net = sumolib.net.readNet(raw_f)
@@ -925,9 +1051,11 @@ def build(cfg_path):
             txt = re.sub(r"<!-- generated on .*?-->\s*", "", txt, count=1, flags=re.S)
             open(fpath, "w", encoding="utf-8").write(txt)
 
-    write_lane_table(lane_csv, net_f, ways, sel, why, overrides)
+    write_lane_table(lane_csv, net_f, ways, sel, why, overrides, osm_tags)
     meta = {"name": name, "ring_ways": ring_ways, "selected_ways": {w: why[w] for w in sorted(sel)},
             "lane_overrides": len(overrides), "carriageway_merges": merges_done,
+            "lane_merge_connections": merge_cons, "bus_tag_changes": bus_changed, "brt_deleted_connections": brt_del,
+            "lane_assumptions": cfg.get("lane_assumptions", {}),
             "restrictions_kept": len(rels_keep), "tls_assumed": tls_set, "lat0": lat0, "lon0": lon0}
     json.dump(meta, open(os.path.join(out_dir, f"{name}.meta.json"), "w", encoding="utf-8"),
               ensure_ascii=False, indent=1)
@@ -1212,6 +1340,32 @@ def check(cfg, name, out_dir, net_f, proj, red, ring_line, ring_poly, nodes, nta
             v11.append(res)
     rep["V11_radial_roads"] = v11
 
+    # V12 버스전용차로: OSM(정리된 태그)의 버스전용 차로 위치 ↔ 도로망 차로 권한(allow=bus), 버스 연결 끊김
+    from env.bus_lanes import bus_lane_summary
+    v12 = {"edges_checked": 0, "match": 0, "mismatch": [], "bus_lanes": 0}
+    for e in edges:
+        wid = e.getID().lstrip("-").split("#")[0]
+        if wid not in ways:
+            continue
+        t = ways[wid][0]
+        oneway = t.get("oneway") in ("yes", "1", "true") or t.get("junction") in ("roundabout", "circular")
+        key = "bus:lanes" if oneway else ("bus:lanes:backward" if e.getID().startswith("-") else "bus:lanes:forward")
+        pv = (t.get(key) or t.get(key.replace("bus:", "psv:")) or "").split("|")
+        n = e.getLaneNumber()
+        # OSM 순서(왼쪽부터) → SUMO 차로 번호(오른쪽부터 0)
+        want = sorted(n - 1 - i for i, v in enumerate(pv) if v == "designated") if len(pv) == n else []
+        got = sorted(ln.getIndex() for ln in e.getLanes() if ln.allows("bus") and not ln.allows("passenger"))
+        v12["edges_checked"] += 1
+        v12["bus_lanes"] += len(got)
+        if want == got:
+            v12["match"] += 1
+        else:
+            v12["mismatch"].append({"edge": e.getID(), "name": e.getName(), "osm": want, "net": got})
+    summ = bus_lane_summary(net)
+    v12["problems"] = summ["problems"]
+    v12["by_road"] = dict(collections.Counter(r["name"] or "(이름없음)" for r in summ["lanes"]))
+    rep["V12_bus_lanes"] = v12
+
     # V6 보충: 입구/출구 (배경 교통이 드나드는 도로)
     rep["V6_connectivity"]["entries"] = [e.getID() for e in edges if not e.getIncoming()]
     rep["V6_connectivity"]["exits"] = [e.getID() for e in edges if not e.getOutgoing()]
@@ -1281,6 +1435,12 @@ def print_report(rep):
             o, i = r["나가는 방향"], r["들어오는 방향"]
             fmt = lambda x: x if isinstance(x, str) else f"{'OK' if x['ok'] else '문제'} {x['길이_m']}m {x['차로']}차로"
             print(f"   {r['id']:2s} {r['name']:6s} ({r['bearing']}°) 나감: {fmt(o)} | 들어옴: {fmt(i)}")
+    v12 = rep.get("V12_bus_lanes")
+    if v12:
+        print(f"== V12 버스전용차로: 도로망 버스전용 차로 {v12['bus_lanes']}개 (도로별 {v12['by_road']}) | "
+              f"OSM과 위치 일치 {v12['match']}/{v12['edges_checked']} 엣지, 불일치 {len(v12['mismatch'])}, 문제 {len(v12['problems'])}")
+        for x in v12["mismatch"][:10] + v12["problems"][:10]:
+            print("     ", x)
 
 
 if __name__ == "__main__":

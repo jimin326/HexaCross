@@ -132,7 +132,7 @@
    "from": 16,
    "to": 0,
    "len_m": 38,
-   "median_m": 5.7,
+   "median_m": 5.3,
    "p90_m": 7.9,
    "max_m": 7.9
   }
@@ -141,7 +141,7 @@
   "forward": {
    "ok": true,
    "edges": 25,
-   "length_m": 5697,
+   "length_m": 5699,
    "ring_m": 6168,
    "detours": [],
    "broken": []
@@ -149,7 +149,7 @@
   "reverse": {
    "ok": true,
    "edges": 28,
-   "length_m": 5714,
+   "length_m": 5715,
    "ring_m": 6168,
    "detours": [],
    "broken": []
@@ -162,7 +162,7 @@
   },
   "거제천로": {
    "osm_m": 3610,
-   "net_m": 3368
+   "net_m": 3372
   },
   "월드컵대로": {
    "osm_m": 3581,
@@ -190,7 +190,7 @@
   },
   "신촌로": {
    "osm_m": 968,
-   "net_m": 851
+   "net_m": 854
   },
   "세병로": {
    "osm_m": 960,
@@ -198,13 +198,13 @@
   },
   "(이름없음)": {
    "osm_m": 789,
-   "net_m": 333
+   "net_m": 335
   }
  },
  "V4_lanes": {
   "count": {
-   "match": 68,
-   "unknown": 68
+   "match": 72,
+   "unknown": 64
   },
   "unknown_by_road": {
    "신촌로": 4,
@@ -215,7 +215,7 @@
    "반송로": 12,
    "고분로": 6,
    "연수로": 2,
-   "(이름없음)": 9,
+   "(이름없음)": 5,
    "월드컵대로": 2
   },
   "mismatch": []
@@ -392,5 +392,15 @@
    },
    "ok": true
   }
- ]
+ ],
+ "V12_bus_lanes": {
+  "edges_checked": 136,
+  "match": 136,
+  "mismatch": [],
+  "bus_lanes": 20,
+  "problems": [],
+  "by_road": {
+   "중앙대로": 20
+  }
+ }
 }

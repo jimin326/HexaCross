@@ -4480,6 +4480,14 @@
  <node id="14158297263" visible="true" version="1" changeset="188637014" timestamp="2026-09-06T19:54:15Z" user="mendines" uid="7147307" lat="35.1904231" lon="129.0872785" />
  <node id="14238289354" visible="true" version="1" changeset="189809360" timestamp="2026-10-01T08:27:46Z" user="깅세하" uid="24613426" lat="35.1902142" lon="129.1064722" />
  <node id="14359011272" visible="true" version="1" changeset="191645409" timestamp="2026-11-08T12:50:17Z" user="Iranto_Ham" uid="3042055" lat="35.2131960" lon="129.0328571" />
+ <node id="12791011296" visible="true" version="1" changeset="165490159" timestamp="2025-04-27T05:23:51Z" user="qIRENEp" uid="20925809" lat="35.1857416" lon="129.0814184" />
+ <node id="12785591067" visible="true" version="1" changeset="165417023" timestamp="2025-04-25T10:33:30Z" user="qIRENEp" uid="20925809" lat="35.1876935" lon="129.0812405">
+  <tag k="crossing" v="traffic_signals" />
+  <tag k="crossing:markings" v="zebra" />
+  <tag k="highway" v="crossing" />
+ </node>
+ <node id="12785591056" visible="true" version="1" changeset="165417023" timestamp="2025-04-25T10:33:30Z" user="qIRENEp" uid="20925809" lat="35.1865047" lon="129.0815647" />
+ <node id="13694994269" visible="true" version="1" changeset="180666517" timestamp="2026-03-31T10:45:38Z" user="mendines" uid="7147307" lat="35.1862028" lon="129.0816817" />
  <way id="26005519" visible="true" version="38" changeset="157521617" timestamp="2024-10-06T01:13:06Z" user="saori_" uid="14338173">
   <nd ref="12109759152" />
   <nd ref="2860431547" />
@@ -16847,6 +16855,30 @@
   <tag k="name:ko" v="월드컵대로" />
   <tag k="oneway" v="yes" />
   <tag k="parking:both" v="no" />
+  <tag k="surface" v="asphalt" />
+ </way>
+ <way id="1381093793" visible="true" version="3" changeset="180666517" timestamp="2026-03-31T10:45:38Z" user="mendines" uid="7147307">
+  <nd ref="414663644" />
+  <nd ref="12791011296" />
+  <nd ref="12791011297" />
+  <nd ref="12791011298" />
+  <nd ref="12791050004" />
+  <nd ref="12791011299" />
+  <nd ref="12791011269" />
+  <nd ref="436724931" />
+  <tag k="highway" v="busway" />
+  <tag k="lanes" v="2" />
+  <tag k="surface" v="asphalt" />
+ </way>
+ <way id="1576543239" visible="true" version="1" changeset="191639025" timestamp="2026-11-08T10:19:08Z" user="Iranto_Ham" uid="3042055">
+  <nd ref="4654857450" />
+  <nd ref="436724952" />
+  <nd ref="12785591067" />
+  <nd ref="12785591056" />
+  <nd ref="13694994269" />
+  <nd ref="414663644" />
+  <tag k="highway" v="busway" />
+  <tag k="lanes" v="2" />
   <tag k="surface" v="asphalt" />
  </way>
  <relation id="7837817" visible="true" version="2" changeset="72145229" timestamp="2019-07-11T17:02:36Z" user="maphunter36" uid="2924920">
