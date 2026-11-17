@@ -24,9 +24,11 @@ road_builder.py가 SUMO 도로 파일(.net.xml 등)을 자동으로 다시 만�
 #   SW 중앙대로(서면 방면)    S 월드컵대로
 #
 #    방위각은 OpenStreetMap 도로 데이터에서 교차점 기준 100~300m 지점을
-#    측정한 값이다. 차로 수는 OSM 태그 값이고, 태그가 없는 도로(반송로,
-#    고분로)는 왕복 4차로로 가정했다. 실제 차로 수는 지도 로드뷰로 확인 후
-#    고칠 것. 중앙대로의 BRT 전용차로는 일반 차로에 포함하지 않았다.
+#    측정한 값이다. 차로 수는 기본적으로 OSM 태그 값(태그가 없으면
+#    osm_builder의 도로 등급별 기본값)이고, 6개 진입부의 정지선 앞 차로 수와
+#    차로별 방향은 로드뷰 조사(docs/research/연산교차로_도로조사.md)대로
+#    env/osm/yeonsan_fix.edg.xml / yeonsan_fix.con.xml에서 바로잡는다.
+#    중앙대로의 BRT 전용차로는 아직 넣지 않았다 (일반 차로만).
 #
 #    교통량(inflow)은 실측값이 아니라, 신호 1주기 동안 처리 가능한 양의
 #    약 60~70% 수준으로 잡은 값이다 (넘치면 대기열이 끝없이 늘어난다).
@@ -74,8 +76,12 @@ ROAD = {
             "green_by_road": {"중앙대로": 30.0},   # 간선
             "green_default": 20.0,                # 그 외 (시청로 등)
         },
-        # OSM 원본과 실제 도로가 다른 연결을 바로잡는 netconvert connection 파일.
+        # OSM 원본과 실제 도로가 다른 부분을 바로잡는 netconvert 보정 파일.
         # 근거는 docs/research/연산교차로_도로조사.md. None이면 OSM 그대로.
+        #   fix_edges      : 차로 수 (6개 진입부 정지선 앞)
+        #   fix_connections: 금지 회전 삭제 + 정지선 앞 차로별 방향
+        # 고친 뒤에는 python docs/research/check_lanes.py --build 로 확인.
+        "fix_edges": "env/osm/yeonsan_fix.edg.xml",
         "fix_connections": "env/osm/yeonsan_fix.con.xml",
         # 연산교차로 금지 이동 (진입 leg, 진출 leg). 국가교통정보센터 표준노드링크
         # TURNINFO + 로드뷰 표지판으로 확인 (PR #1 실측 OD에서도 0대).
@@ -104,20 +110,24 @@ ROAD = {
     # id     : 도로 식별자 (엣지 이름에 쓰임: in_N, out_N, ...)
     # bearing: 교차점에서 그 도로 쪽을 바라본 방위각
     # length : 교차점에서 도로 끝까지 길이 (m)
-    # lanes_in / lanes_out : 교차로로 들어오는 / 나가는 방향 차로 수
+    # lanes_in / lanes_out : 교차로로 들어오는(정지선 앞 일반 차로) / 나가는 방향 차로 수.
+    #          OSM 모드에서는 실제 차로를 env/osm/yeonsan_fix.*.xml이 정하고, lanes_in은
+    #          단순화 모드(junction_builder)와 화면 표시용, lanes_out은 배경 교통
+    #          배분 비율로 쓰인다. 진출 차로 수는 아직 OSM 그대로
+    #          (조사: W·NE 진출은 실제 3차로인데 도로는 2차로 → HANDOFF 7번).
     # green  : 이 도로 진입 차량의 녹색 신호 시간 (s)
     # inflow : 이 도로로 들어오는 배경 교통량 (대/시간)
     "legs": [
         dict(id="N", road="중앙대로",  name="중앙대로 (동래 방면)", bearing=348.0, length=300.0,
-             lanes_in=2, lanes_out=2, green=25.0, inflow=420),
+             lanes_in=4, lanes_out=2, green=25.0, inflow=420),
         dict(id="NE", road="반송로", name="반송로",               bearing=46.0,  length=250.0,
-             lanes_in=2, lanes_out=2, green=15.0, inflow=220),
+             lanes_in=4, lanes_out=2, green=15.0, inflow=220),
         dict(id="E", road="고분로",  name="고분로",               bearing=100.0, length=250.0,
-             lanes_in=2, lanes_out=2, green=15.0, inflow=220),
+             lanes_in=4, lanes_out=2, green=15.0, inflow=220),
         dict(id="S", road="월드컵대로",  name="월드컵대로 (남쪽)",    bearing=158.0, length=300.0,
-             lanes_in=3, lanes_out=3, green=25.0, inflow=560),
+             lanes_in=4, lanes_out=3, green=25.0, inflow=560),
         dict(id="SW", road="중앙대로", name="중앙대로 (서면 방면)", bearing=217.0, length=400.0,
-             lanes_in=2, lanes_out=2, green=25.0, inflow=420),
+             lanes_in=5, lanes_out=2, green=25.0, inflow=420),
         dict(id="W", road="월드컵대로",  name="월드컵대로 (사직 방면)", bearing=293.0, length=300.0,
              lanes_in=4, lanes_out=3, green=25.0, inflow=700),
     ],

@@ -84,9 +84,13 @@ def build_osm(road: dict, ego: dict, traffic: dict, signal: dict,
     extra_ids = [("cluster_" + "_".join(sorted(map(str, s)))) if isinstance(s, (list, tuple))
                  else str(s) for s in cfg.get("extra_signals", [])]
     tls_nodes = ",".join([center_id] + extra_ids)
-    # 보정 파일: OSM 원본은 그대로 두고 실제 도로와 다른 연결만 바로잡는다
-    # (금지 회전 삭제 등). OSM과 같은 netconvert 실행에 넣어야 연결이 다시 계산된다.
+    # 보정 파일: OSM 원본은 그대로 두고 실제 도로와 다른 차로 수(fix_edges)와
+    # 차로별 연결(fix_connections: 금지 회전 삭제, 차로별 방향)만 바로잡는다.
+    # OSM과 같은 netconvert 실행에 넣어야 바뀐 차로의 연결이 다시 계산된다
+    # (완성된 net.xml에 netconvert를 한 번 더 돌리면 늘린 차로가 막다른 차로가 됨).
     fix_args = []
+    if cfg.get("fix_edges"):
+        fix_args += ["--edge-files", os.path.join(BASE, cfg["fix_edges"])]
     if cfg.get("fix_connections"):
         fix_args += ["--connection-files", os.path.join(BASE, cfg["fix_connections"])]
     subprocess.run(
