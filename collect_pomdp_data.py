@@ -3,7 +3,7 @@
 저장 단위는 POMDP transition 하나다:
     (o_t, a_t, r_t, o_{t+1}, terminated, truncated, s_t, s_{t+1})
 
-- o_t / o_{t+1}: agent가 실제로 보는 부분관측 (19차원)
+- o_t / o_{t+1}: agent가 실제로 보는 부분관측 (31차원, 신호 관측을 켜면 34차원)
 - a_t: [가감속 raw, 차선변경 raw]
 - lane_change: 실제 환경에 적용된 {-1, 0, +1}
 - s_t / s_{t+1}: SUMO 내부의 privileged simulator state.
@@ -241,6 +241,9 @@ def collect(args, sumocfg, episodes, worker_id, jsonl_path, npz_path, tag=""):
                         "event": {
                             "collided": bool(info["collided"]),
                             "arrived": bool(info["arrived"]),
+                            "red_light": bool(info.get("red_light", False)),
+                            "wrong_lane": bool(info.get("wrong_lane", False)),
+                            "signal_state": info.get("signal_state"),
                             "lane_before": info["lane_before"],
                             "lane_after": info["lane_after"],
                         },

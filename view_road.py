@@ -46,11 +46,18 @@ def print_summary():
     print("─" * 46)
     print(" 현재 도로 설정 (env/road_config.py)")
     print("─" * 46)
-    print(f"  도로 길이      : {ROAD['length']} m")
-    print(f"  차선 수        : {ROAD['num_lanes']}")
+    if "legs" in ROAD:
+        print(f"  교차로         : {ROAD.get('name', '방사형 교차로')}")
+        for lg in ROAD["legs"]:
+            print(f"    {lg['id']:>3} {lg['name']:<16} 방위 {lg['bearing']:5.0f}°  "
+                  f"진입 {lg['lanes_in']}차로 / 진출 {lg['lanes_out']}차로  "
+                  f"녹색 {lg['green']:.0f}s  {lg['inflow']}대/시간")
+    else:
+        print(f"  도로 길이      : {ROAD['length']} m")
+        print(f"  차선 수        : {ROAD['num_lanes']}")
+        print(f"  배경 교통량    : {TRAFFIC['vehs_per_hour']} 대/시간")
     print(f"  제한속도       : {ROAD['speed_limit']} m/s "
           f"(≈ {float(ROAD['speed_limit']) * 3.6:.0f} km/h)")
-    print(f"  배경 교통량    : {TRAFFIC['vehs_per_hour']} 대/시간")
     print(f"  배경차 최고속도: {TRAFFIC['max_speed']} m/s")
     print(f"  ego 가속/감속  : +{EGO['accel']} / -{EGO['decel']} m/s²")
     print("─" * 46)

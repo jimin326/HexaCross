@@ -1,0 +1,505 @@
+<title>연산교차로 차로 조사</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: 한 열 문서. 위에 교차로 개요도, 아래로 접근로별 "정지선에서 본 차로 단면" 카드, 마지막에 신호 주기 막대 */
+:root {
+  --bg: #f4f5f2;
+  --surface: #ffffff;
+  --fg: #1d2023;
+  --muted: #5c6268;
+  --line: #d9dcd6;
+  --asphalt: #3a3e43;
+  --asphalt-2: #2f3237;
+  --paint: #f3f3ef;
+  --bus-line: #4fa3e0;
+  --island: #6f9a5b;
+  --done: #2f7d4f;
+  --todo: #9a8f7a;
+  --bad: #c0392b;
+  --av: #e2541b;
+  /* 방면(목적지) 색: 지도·차로·신호 막대 모두 같은 색 */
+  --d-n: #e2541b;   /* 교대 · 동래  (AV 도착) */
+  --d-sw: #6b52c8;  /* 시청 · 서면 */
+  --d-s: #0e8a7c;   /* 수영 · 광안리 */
+  --d-ne: #b8860b;  /* 안락 · 반송로 */
+  --d-e: #3b7d34;   /* 연산터널 · 고분로 */
+  --d-w: #b2336c;   /* 거제천 · 법원검찰청 */
+  --chip-fg: #ffffff;
+  --font-body: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15171a; --surface: #1d2024; --fg: #e9eae6; --muted: #a2a7ac; --line: #33373c;
+    --asphalt: #2b2e33; --asphalt-2: #24272b; --paint: #e6e6e0; --bus-line: #6bb6ec; --island: #6f9a5b;
+    --done: #5bbf82; --todo: #b3a88f; --bad: #ef6b5b; --av: #ff7a45;
+    --d-n: #f06a33; --d-sw: #8b75e6; --d-s: #23a796; --d-ne: #cf9d1d; --d-e: #55a04b; --d-w: #d0528a;
+    --chip-fg: #ffffff; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #15171a; --surface: #1d2024; --fg: #e9eae6; --muted: #a2a7ac; --line: #33373c;
+  --asphalt: #2b2e33; --asphalt-2: #24272b; --paint: #e6e6e0; --bus-line: #6bb6ec; --island: #6f9a5b;
+  --done: #5bbf82; --todo: #b3a88f; --bad: #ef6b5b; --av: #ff7a45;
+  --d-n: #f06a33; --d-sw: #8b75e6; --d-s: #23a796; --d-ne: #cf9d1d; --d-e: #55a04b; --d-w: #d0528a;
+  --chip-fg: #ffffff; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.6;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 28px 64px;
+}
+.wrap { max-width: 980px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px; }
+h1 { font-size: 1.75rem; line-height: 1.25; margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+h2 { font-size: 1.2rem; margin: 0; text-wrap: balance; }
+h3 { font-size: 0.8rem; margin: 0; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; }
+p { margin: 0; max-width: 68ch; }
+.muted { color: var(--muted); }
+.mono { font-family: var(--font-mono); font-size: 0.82em; }
+
+header { display: flex; flex-direction: column; gap: 10px; }
+.status-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: 0.82rem; border: 1px solid var(--line); background: var(--surface); }
+.pill .dot { width: 8px; height: 8px; border-radius: 50%; }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+
+/* 개요 */
+.overview { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 20px; align-items: center; }
+@media (max-width: 720px) { .overview { grid-template-columns: 1fr; } }
+.overview svg { width: 100%; max-width: 440px; height: auto; display: block; margin: 0 auto; }
+.legend { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 14px; }
+.legend div { display: flex; align-items: center; gap: 8px; font-size: 0.88rem; }
+.swatch { width: 14px; height: 14px; border-radius: 3px; flex: none; }
+
+/* 접근로 카드 */
+.approach-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 8px; }
+.tag { font-size: 0.78rem; padding: 2px 8px; border-radius: 4px; font-weight: 600; }
+.tag.done { color: var(--done); border: 1px solid var(--done); }
+.tag.todo { color: var(--todo); border: 1px dashed var(--todo); }
+.tag.av { color: var(--av); border: 1px solid var(--av); }
+
+.section-label { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.road-scroll { overflow-x: auto; padding-bottom: 4px; }
+.road { display: flex; align-items: stretch; min-width: max-content; background: var(--asphalt-2); border-radius: 6px; padding: 6px; gap: 0; }
+.edge { width: 10px; flex: none; }
+.edge.curb { background: repeating-linear-gradient(90deg, #c9b458 0 3px, transparent 3px 10px); opacity: .9; border-radius: 2px; }
+.edge.fence { background: repeating-linear-gradient(180deg, #8a8f95 0 6px, transparent 6px 12px); width: 8px; }
+.lane { width: 104px; flex: none; background: var(--asphalt); color: var(--paint); padding: 10px 8px 12px; display: flex; flex-direction: column; gap: 6px; align-items: stretch; position: relative; }
+.lane .ln { font-family: var(--font-mono); font-size: 0.72rem; opacity: .75; text-align: center; }
+.lane .kind { font-size: 0.72rem; text-align: center; font-weight: 600; letter-spacing: .04em; }
+.lane.bus { background: color-mix(in srgb, var(--asphalt) 82%, var(--bus-line)); }
+.lane.bus .kind { color: var(--bus-line); }
+.lane.slip { width: 112px; background: color-mix(in srgb, var(--asphalt) 90%, var(--paint)); }
+.lane.av::after { content: "AV"; position: absolute; top: 6px; right: 6px; font-size: .64rem; font-weight: 700; color: var(--av); }
+.chip { display: flex; align-items: center; justify-content: center; gap: 4px; font-size: 0.8rem; font-weight: 600; padding: 4px 4px; border-radius: 4px; color: var(--chip-fg); text-align: center; line-height: 1.25; }
+.chip .arr { font-size: 0.95rem; line-height: 1; }
+.chip.n { background: var(--d-n); } .chip.sw { background: var(--d-sw); } .chip.s { background: var(--d-s); }
+.chip.ne { background: var(--d-ne); } .chip.e { background: var(--d-e); } .chip.w { background: var(--d-w); }
+.chip.plain { background: transparent; color: var(--paint); border: 1px dashed color-mix(in srgb, var(--paint) 45%, transparent); font-weight: 500; }
+
+/* 차선(선) 종류 */
+.div { width: 6px; flex: none; position: relative; background: var(--asphalt); }
+.div::before { content: ""; position: absolute; left: 2px; width: 2px; top: 6px; bottom: 6px; }
+.div.dash::before { background: repeating-linear-gradient(180deg, var(--paint) 0 10px, transparent 10px 20px); }
+.div.solid::before { background: var(--paint); }
+.div.bus-dash::before { background: repeating-linear-gradient(180deg, var(--bus-line) 0 10px, transparent 10px 20px); }
+.div.bus-double { width: 10px; }
+.div.bus-double::before { left: 2px; background: var(--bus-line); }
+.div.bus-double::after { content: ""; position: absolute; left: 6px; width: 2px; top: 6px; bottom: 6px; background: var(--bus-line); }
+.div.island { width: 26px; background: var(--island); border-radius: 3px; }
+.div.island::before { display: none; }
+
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+.facts > div { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+table { border-collapse: collapse; width: 100%; font-size: 0.86rem; }
+th, td { text-align: left; padding: 5px 8px 5px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--muted); font-weight: 500; font-size: 0.78rem; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; padding-right: 0; }
+.bar-cell { width: 34%; }
+.vbar { height: 8px; border-radius: 2px; }
+ul.diff { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; font-size: 0.88rem; }
+ul.diff li::marker { color: var(--bad); }
+.ban { color: var(--bad); font-weight: 600; }
+.note { font-size: 0.84rem; color: var(--muted); border-left: 3px solid var(--line); padding-left: 10px; }
+
+/* 신호 막대 */
+.cycle { display: flex; flex-direction: column; gap: 10px; }
+.cycle-row { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 10px; align-items: center; }
+@media (max-width: 520px) { .cycle-row { grid-template-columns: 1fr; gap: 4px; } }
+.cycle-bar { display: flex; height: 30px; border-radius: 4px; overflow: hidden; border: 1px solid var(--line); }
+.seg { display: flex; align-items: center; justify-content: center; color: var(--chip-fg); font-size: 0.72rem; font-weight: 600; min-width: 0; overflow: hidden; white-space: nowrap; }
+.seg.yr { background: repeating-linear-gradient(135deg, #d9b23a 0 4px, #8b8f94 4px 8px); }
+.moves { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: 20px; align-items: center; }
+@media (max-width: 640px) { .moves { grid-template-columns: 1fr; } .moves-map svg { margin: 0 auto; } }
+.moves-text { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+ul.movelist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 0.9rem; }
+.todo-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.todo-card { border: 1px dashed var(--todo); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 6px; font-size: 0.88rem; }
+footer { font-size: 0.8rem; color: var(--muted); }
+:focus-visible { outline: 2px solid var(--av); outline-offset: 2px; }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>연산교차로 차로 조사</h1>
+    <p class="muted">카카오맵 로드뷰로 읽은 정지선 앞 차로 구성을 PR #2 도로망, 표준노드링크, 부산시 2025 교통조사(PR #1)와 맞춰 본 기록이야. 차로 단면은 교차로를 바라본 운전자 시점으로, 왼쪽이 중앙선(펜스), 오른쪽이 인도야.</p>
+    <div class="status-row">
+      <span class="pill"><span class="dot" style="background:var(--done)"></span>진입부 6 / 6 완료</span>
+      <span class="pill"><span class="dot" style="background:var(--av)"></span>AV 경로 서면 → 동래 확인 완료</span>
+      <span class="pill"><span class="dot" style="background:var(--bad)"></span>좌회전 금지 5개 확인</span>
+      <span class="pill"><span class="dot" style="background:var(--todo)"></span>신호 동시 구조 미확인</span>
+    </div>
+  </header>
+
+  <section class="panel">
+    <h2>교차로 개요</h2>
+    <div class="overview">
+      <svg viewBox="-270 -215 540 430" role="img" aria-label="연산교차로 6갈래 개요도. AV는 남서쪽 중앙대로 서면 방면에서 들어와 북쪽 중앙대로 동래 방면으로 나간다.">
+        <defs>
+          <marker id="avhead" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" style="fill:var(--av)"/>
+          </marker>
+        </defs>
+        <g id="legs"></g>
+        <circle r="34" style="fill:var(--asphalt)"/>
+        <text x="0" y="5" text-anchor="middle" style="fill:var(--paint);font-size:12px;font-weight:600;font-family:var(--font-body)">연산역</text>
+        <path d="M -100 134 L -14 16 Q -6 4 -9 -12 L -33 -158" style="fill:none;stroke:var(--av);stroke-width:5;stroke-linecap:round;stroke-dasharray:2 9" marker-end="url(#avhead)"/>
+        <text x="-6" y="208" text-anchor="middle" style="fill:var(--muted);font-size:11px;font-family:var(--font-body)">북쪽이 위 · 점선 = AV 경로</text>
+      </svg>
+      <div class="legend" id="legend"></div>
+    </div>
+  </section>
+
+  <div id="approaches" style="display:flex;flex-direction:column;gap:28px"></div>
+
+  <section class="panel">
+    <div class="approach-head"><h2>신호 주기</h2><span class="tag todo">동시 신호 구조 미확인</span></div>
+    <p>지금은 PR #2처럼 <b>한 번에 한 도로만 녹색</b>인 6현시를 유지하고, 녹색 시간만 실측 교통량(12시, 이륜차·버스 제외)으로 Webster 계산한 값으로 바꾸는 안이야. 황색 3초와 전적색 2초는 빗금으로 표시했어.</p>
+    <div class="cycle" id="cycle"></div>
+    <p class="note">6개 진입부 모두 정지선 앞에서 차로가 늘어나는 것을 반영하면 포화도는 0.57, 주기는 116초야 (18시 혼잡 기준은 137초). 실제로는 서로 부딪히지 않는 방향끼리 동시에 녹색일 가능성이 높아(추론). 북쪽 진입부에 버스 전용 신호가 따로 있는 것도 확인했어. 남서쪽(AV)과 북쪽이 같이 녹색이면, 북쪽에서 수영 방향으로 가는 차가 교차로 안에서 AV 경로와 엇갈려.</p>
+  </section>
+
+  <section class="panel">
+    <h2>남은 조사</h2>
+    <div class="todo-grid" id="todo"></div>
+  </section>
+
+  <footer>출처: 카카오맵 로드뷰(지민 판독), 국가교통정보센터 표준노드링크 2026-11-11판(차로 수·회전 제한), 부산광역시 2025년 교통조사 분석용역 결과서 부록1(연산교차로 방향별 교통량), PR #2 도로망(<span class="mono">map/yeonsan-cityhall</span>). 조사일 2026-11-17.</footer>
+</div>
+
+<script>
+const LEGS = {
+  n:  { name: "교대 · 동래",    road: "중앙대로 동래 방면",   brg: 348 },
+  ne: { name: "안락 · 반송로",  road: "반송로",              brg: 46 },
+  e:  { name: "연산터널 · 고분로", road: "고분로",            brg: 100 },
+  s:  { name: "수영 · 광안리",   road: "월드컵대로 남쪽",     brg: 158 },
+  sw: { name: "시청 · 서면",    road: "중앙대로 서면 방면",   brg: 217 },
+  w:  { name: "거제천 · 법원",   road: "월드컵대로 사직 방면", brg: 293 },
+};
+const STATUS = { sw: "done", n: "done", w: "done", s: "done", ne: "done", e: "done" };
+
+// 개요도
+(function drawOverview(){
+  const g = document.getElementById("legs");
+  const ns = "http://www.w3.org/2000/svg";
+  for (const [k, L] of Object.entries(LEGS)) {
+    const a = L.brg * Math.PI / 180, x = Math.sin(a), y = -Math.cos(a);
+    const road = document.createElementNS(ns, "line");
+    road.setAttribute("x1", 0); road.setAttribute("y1", 0);
+    road.setAttribute("x2", x * 175); road.setAttribute("y2", y * 175);
+    road.setAttribute("style", `stroke:var(--asphalt);stroke-width:${k==="sw"||k==="n"?30:22};stroke-linecap:butt`);
+    g.appendChild(road);
+    const tip = document.createElementNS(ns, "line");
+    tip.setAttribute("x1", x * 150); tip.setAttribute("y1", y * 150);
+    tip.setAttribute("x2", x * 175); tip.setAttribute("y2", y * 175);
+    tip.setAttribute("style", `stroke:var(--d-${k});stroke-width:${k==="sw"||k==="n"?30:22}`);
+    g.appendChild(tip);
+    const lx = x * 198, ly = y * 198 + 4;
+    const t = document.createElementNS(ns, "text");
+    t.setAttribute("x", lx); t.setAttribute("y", ly);
+    t.setAttribute("text-anchor", Math.abs(x) < 0.3 ? "middle" : (x > 0 ? "start" : "end"));
+    t.setAttribute("style", "fill:var(--fg);font-size:12.5px;font-weight:600;font-family:var(--font-body)");
+    t.textContent = L.name.split(" · ")[0] + (STATUS[k] === "done" ? " ✓" : "");
+    g.appendChild(t);
+  }
+  const lg = document.getElementById("legend");
+  for (const [k, L] of Object.entries(LEGS)) {
+    const d = document.createElement("div");
+    d.innerHTML = `<span class="swatch" style="background:var(--d-${k})"></span><span><b>${L.name}</b><br><span class="muted" style="font-size:.8rem">${L.road}</span></span>`;
+    lg.appendChild(d);
+  }
+})();
+
+// 차로 단면 데이터. 순서는 중앙(펜스) → 인도. sep = 이 차로 오른쪽 경계선 종류
+const chip = (k, arr, label) => ({ k, arr, label: label || LEGS[k].name.split(" · ")[0] });
+const APPROACHES = [
+  {
+    id: "sw", title: "중앙대로 서면 방면 진입", sub: "남서쪽에서 북동쪽(교차로)을 바라봄", tags: [["done","완료"],["av","AV 출발"]],
+    sections: [
+      { label: "들어오는 구간", note: "편도 3차로", lanes: [
+        { kind: "BRT", bus: true, chips: [{plain:"버스 전용"}], sep: "bus-double" },
+        { kind: "일반 1", av: true, chips: [{plain:"직진"}], sep: "dash" },
+        { kind: "일반 2", av: true, chips: [{plain:"직진"}], sep: "curb" },
+      ]},
+      { label: "정지선 앞", note: "편도 7차로 + 우회전 연결로 · 약 80m 전부터 늘어남", lanes: [
+        { kind: "BRT 1", bus: true, chips: [chip("n","↑")], sep: "bus-dash" },
+        { kind: "BRT 2", bus: true, chips: [chip("ne","↗")], sep: "bus-double" },
+        { kind: "일반 1", av: true, chips: [chip("n","↑")], sep: "dash" },
+        { kind: "일반 2", av: true, chips: [chip("n","↑")], sep: "solid" },
+        { kind: "일반 3", chips: [chip("ne","↗")], sep: "dash" },
+        { kind: "일반 4", chips: [chip("ne","↗"), chip("e","→","연산터널")], sep: "dash" },
+        { kind: "일반 5", chips: [chip("e","→","연산터널")], sep: "island" },
+        { kind: "연결로", slip: true, chips: [chip("s","↘","광안리")], sep: "curb" },
+      ]},
+    ],
+    extra: [["진출부", "미확인 (서면 방향으로 나가는 차로)"], ["좌회전", "<span class='ban'>사직(거제천·법원) 방향 금지</span> · 표지판과 표준노드링크 일치"], ["실선", "일반 2·3 사이, 정지선 약 30m 전부터 차로 변경 금지"]],
+    vol: { s12: { n: 344, ne: 537, e: 165, s: 54, w: 0 }, s18: { n: 414, ne: 709, e: 283, s: 32, w: 0 } },
+    diff: ["정지선 앞 일반 차로 2개뿐 (실제 5개), 차로가 늘어나지 않음", "BRT 없음", "교대 차로가 왼쪽 1개 (실제 일반 1·2 두 개) → AV 차로 선택이 실제보다 빡빡함", "금지된 사직 좌회전이 AV와 같은 왼쪽 차로에 연결됨", "광안리가 연결로 외에 교차로 안 오른쪽 차로에서도 연결됨", "가정 교통량 420대/h (실측 1,100대/h)"],
+    edges: "512187678#14 → #15 (신호) → #16, 연결로 369240560",
+  },
+  {
+    id: "n", title: "중앙대로 동래 방면 진입·진출", sub: "북쪽에서 남쪽(교차로)을 바라봄", tags: [["done","완료"],["av","AV 도착"]],
+    sections: [
+      { label: "진입 · 정지선 앞", note: "BRT 1 + 일반 4 + 우회전 연결로 · 들어오는 구간 미확인", lanes: [
+        { kind: "BRT", bus: true, chips: [chip("sw","↗","시청")], sep: "bus-double" },
+        { kind: "일반 2", chips: [chip("s","↑","수영")], sep: "dash" },
+        { kind: "일반 3", chips: [chip("s","↑","수영")], sep: "solid" },
+        { kind: "일반 4", chips: [chip("sw","↗","시청")], sep: "dash" },
+        { kind: "일반 5", chips: [chip("sw","↗","시청")], sep: "island" },
+        { kind: "연결로", slip: true, chips: [chip("w","→","거제천")], sep: "curb", note: "잠정" },
+      ]},
+      { label: "진출 (AV가 나가는 쪽)", note: "북쪽을 바라봄 · BRT 1 + 일반 2", lanes: [
+        { kind: "BRT", bus: true, chips: [{plain:"버스 전용"}], sep: "bus-double" },
+        { kind: "일반 1", av: true, chips: [chip("n","↑","동래")], sep: "dash" },
+        { kind: "일반 2", av: true, chips: [chip("n","↑","동래")], sep: "curb" },
+      ]},
+    ],
+    extra: [["좌회전", "<span class='ban'>반송로 · 고분로 방향 금지</span> (표지판 ⊘ 2개, 표준노드링크 일치)"], ["신호", "버스 전용 신호 따로 있음 · 좌회전 금지 표지 아래 보조표지(버스 제외로 추정)"], ["BRT", "들어오면서 1 → 2로 갈라졌다가 정지선 앞에서는 1 (지민 관찰)"]],
+    vol: { s12: { s: 278, sw: 313, w: 46, ne: 0, e: 0 }, s18: { s: 353, sw: 485, w: 51, ne: 0, e: 0 } },
+    diff: ["진입 일반 차로 2개 (실제 4개 + 연결로)", "금지된 반송로·고분로 좌회전과 동래 방향 유턴이 왼쪽 차로에 연결됨", "BRT 없음", "진출 일반 2차로는 실제와 일치 ✓"],
+    edges: "진입 1381093802#1 → 1494563723#1, 진출 1381093796",
+  },
+  {
+    id: "w", title: "월드컵대로 사직 방면 진입·진출", sub: "서쪽에서 동쪽(교차로)을 바라봄", tags: [["done","완료"]],
+    sections: [
+      { label: "진입 · 정지선 앞", note: "일반 4 + 우회전 연결로 · BRT 없음", lanes: [
+        { kind: "일반 1", chips: [chip("n","↖","교대"), chip("ne","↖","안락")], sep: "dash" },
+        { kind: "일반 2", chips: [chip("ne","↖","안락"), chip("e","↑","연산터널")], sep: "dash" },
+        { kind: "일반 3", chips: [chip("e","↑","연산터널"), chip("s","↗","수영")], sep: "dash" },
+        { kind: "일반 4", chips: [chip("s","↗","수영")], sep: "island" },
+        { kind: "연결로", slip: true, chips: [chip("sw","↘","시청")], sep: "curb" },
+      ]},
+      { label: "진출", note: "일반 3차로", lanes: [
+        { kind: "일반 1", chips: [{plain:"사직 방면"}], sep: "dash" },
+        { kind: "일반 2", chips: [{plain:"사직 방면"}], sep: "dash" },
+        { kind: "일반 3", chips: [{plain:"사직 방면"}], sep: "curb" },
+      ]},
+    ],
+    extra: [["회전 금지", "없음 (표지판·표준노드링크 일치)"], ["AV 관련", "교대(동래)로 가는 차는 AV와 같은 진출부로 합류 · 동시 녹색일 때만 마주침"]],
+    vol: { s12: { n: 72, ne: 204, e: 335, s: 186, sw: 87 }, s18: { n: 41, ne: 239, e: 372, s: 205, sw: 34 } },
+    diff: ["접근로는 4차로인데 교차로 직전 2차로로 줄어듦", "시청이 연결로가 아닌 교차로 안에서 회전", "진출 2차로 (실제 3)", "가정 교통량 700대/h (실측 884대/h)"],
+    edges: "517488002#4 → 506009344 (신호), 진출 506007334",
+  },
+  {
+    id: "s", title: "월드컵대로 남쪽 진입·진출", sub: "남남동쪽에서 북북서쪽(교차로)을 바라봄", tags: [["done","완료"]],
+    sections: [
+      { label: "들어오는 구간", note: "일반 3차로", lanes: [
+        { kind: "일반 1", chips: [{plain:"직진"}], sep: "dash" },
+        { kind: "일반 2", chips: [{plain:"직진"}], sep: "dash" },
+        { kind: "일반 3", chips: [{plain:"직진"}], sep: "curb" },
+      ]},
+      { label: "정지선 앞", note: "일반 4 + 우회전 연결로 · 3차로가 3·4로 갈라지고 연결로가 생김", lanes: [
+        { kind: "일반 1", chips: [chip("sw","↰","시청")], sep: "dash" },
+        { kind: "일반 2", chips: [chip("w","↖","거제"), chip("n","↑","교대")], sep: "dash" },
+        { kind: "일반 3", chips: [chip("n","↑","교대")], sep: "dash" },
+        { kind: "일반 4", chips: [chip("ne","↗","안락"), chip("n","↑","동래")], sep: "island" },
+        { kind: "연결로", slip: true, chips: [chip("e","→","고분로")], sep: "curb", note: "추정" },
+      ]},
+      { label: "진출", note: "일반 3차로", lanes: [
+        { kind: "일반 1", chips: [{plain:"광안리 방면"}], sep: "dash" },
+        { kind: "일반 2", chips: [{plain:"광안리 방면"}], sep: "dash" },
+        { kind: "일반 3", chips: [{plain:"광안리 방면"}], sep: "curb" },
+      ]},
+    ],
+    extra: [["회전 금지", "없음 (표지판·표준노드링크 일치)"], ["연결로", "오른쪽으로 빠지는 길이라 고분로(연산터널)로 추정, 노면 글씨는 미확인"]],
+    vol: { s12: { n: 311, w: 169, ne: 82, sw: 63, e: 32 }, s18: { n: 337, w: 195, ne: 118, sw: 60, e: 30 } },
+    diff: ["정지선 앞 3차로 (실제 4 + 연결로)", "고분로가 연결로가 아닌 교차로 안 회전", "차로별 방향이 다름: 왼쪽 차로가 거제·시청 둘 다, 오른쪽 차로가 고분로·안락·교대", "진출 3차로는 실제와 일치 ✓", "가정 교통량 560대/h (실측 657대/h)"],
+    edges: "795083570 (신호, 3차로), 진출 -795083570",
+  },
+  {
+    id: "e", title: "고분로 진입·진출", sub: "동쪽에서 서쪽(교차로)을 바라봄", tags: [["done","완료"]],
+    sections: [
+      { label: "들어오는 구간", note: "일반 2차로", lanes: [
+        { kind: "일반 1", chips: [{plain:"→ 1·2차로"}], sep: "dash" },
+        { kind: "일반 2", chips: [{plain:"→ 3·4차로"}], sep: "curb" },
+      ]},
+      { label: "정지선 앞", note: "일반 4 + 우회전 연결로 · 교차로 입구에서 갈라짐", lanes: [
+        { kind: "일반 1", chips: [chip("s","↰","수영"), chip("sw","↖","시청")], sep: "dash" },
+        { kind: "일반 2", chips: [chip("sw","↖","시청"), chip("w","↑","거제")], sep: "dash" },
+        { kind: "일반 3", chips: [chip("w","↑","거제"), chip("n","↗","교대")], sep: "dash" },
+        { kind: "일반 4", chips: [chip("n","↗","교대")], sep: "island" },
+        { kind: "연결로", slip: true, chips: [chip("ne","↱","안락")], sep: "curb" },
+      ]},
+      { label: "진출", note: "일반 2차로", lanes: [
+        { kind: "일반 1", chips: [{plain:"연산터널 방면"}], sep: "dash" },
+        { kind: "일반 2", chips: [{plain:"연산터널 방면"}], sep: "curb" },
+      ]},
+    ],
+    extra: [["회전 금지", "없음 (표준노드링크)"], ["연결로", "노면에 '안락' 글씨 확인"]],
+    vol: { s12: { w: 203, sw: 187, s: 76, n: 73, ne: 41 }, s18: { w: 198, sw: 199, s: 52, n: 38, ne: 32 } },
+    diff: ["정지선 앞 2차로 (실제 4 + 연결로)", "안락이 연결로가 아닌 교차로 안 회전", "진출 2차로는 실제와 일치 ✓", "가정 교통량 220대/h (실측 580대/h, 약 2.6배)"],
+    edges: "794688378 (신호, 2차로), 진출 -794688378",
+  },
+  {
+    id: "ne", title: "반송로 진입·진출", sub: "북동쪽에서 남서쪽(교차로)을 바라봄", tags: [["done","완료"]],
+    sections: [
+      { label: "정지선 앞", note: "일반 4 + 우회전 연결로 · 들어오는 구간 미확인", lanes: [
+        { kind: "일반 1", chips: [chip("sw","↑","시청")], sep: "dash" },
+        { kind: "일반 2", chips: [chip("sw","↑","시청")], sep: "dash" },
+        { kind: "일반 3", chips: [chip("w","↗","거제")], sep: "dash" },
+        { kind: "일반 4", chips: [chip("w","↗","거제")], sep: "island" },
+        { kind: "연결로", slip: true, chips: [chip("n","↱","교대")], sep: "curb" },
+      ]},
+      { label: "진출", note: "일반 3차로", lanes: [
+        { kind: "일반 1", chips: [{plain:"안락 방면"}], sep: "dash" },
+        { kind: "일반 2", chips: [{plain:"안락 방면"}], sep: "dash" },
+        { kind: "일반 3", chips: [{plain:"안락 방면"}], sep: "curb" },
+      ]},
+    ],
+    extra: [["좌회전", "<span class='ban'>수영(광안리) · 연산터널(고분로) 방향 금지</span> · 노면에도 해당 차로 없음 (표준노드링크 일치)"]],
+    vol: { s12: { sw: 483, w: 113, n: 53, s: 0, e: 0 }, s18: { sw: 464, w: 62, n: 32, s: 0, e: 0 } },
+    diff: ["정지선 앞 2차로 (실제 4 + 연결로)", "금지된 수영·연산터널 좌회전이 왼쪽 차로에 연결됨", "교대가 연결로가 아닌 교차로 안 회전", "진출 2차로 (실제 3)", "가정 교통량 220대/h (실측 649대/h, 약 3배)"],
+    edges: "-37400617#0 (신호, 2차로), 진출 37400617#0",
+  },
+];
+
+function laneHTML(L) {
+  const cls = ["lane", L.bus ? "bus" : "", L.slip ? "slip" : "", L.av ? "av" : ""].join(" ");
+  const chips = L.chips.map(c => c.plain
+    ? `<div class="chip plain">${c.plain}</div>`
+    : `<div class="chip ${c.k}"><span class="arr" aria-hidden="true">${c.arr}</span>${c.label}</div>`).join("");
+  const kind = L.bus ? `${L.kind}` : L.kind;
+  return `<div class="${cls}"><div class="kind">${kind}</div>${chips}${L.note ? `<div class="ln">${L.note}</div>` : ""}</div>`;
+}
+function sepHTML(s) {
+  if (s === "curb") return `<div class="edge curb" title="인도 경계"></div>`;
+  return `<div class="div ${s}" title="${{dash:"점선",solid:"실선 (차로 변경 금지)","bus-dash":"버스 차로 사이 파란 점선","bus-double":"버스 차로 경계 파란 이중선",island:"교통섬"}[s]}"></div>`;
+}
+function volTable(v) {
+  const keys = Object.keys(v.s12);
+  const max = Math.max(...keys.map(k => Math.max(v.s12[k], v.s18[k])));
+  const rows = keys.map(k => `<tr><td><span class="swatch" style="display:inline-block;vertical-align:-2px;margin-right:6px;background:var(--d-${k})"></span>${LEGS[k].name.split(" · ")[0]}</td>
+    <td class="num">${v.s12[k] ? v.s12[k].toLocaleString() : '<span class="ban">0 금지</span>'}</td>
+    <td class="num">${v.s18[k] ? v.s18[k].toLocaleString() : '<span class="ban">0</span>'}</td>
+    <td class="bar-cell"><div class="vbar" style="width:${(v.s18[k]/max*100).toFixed(0)}%;background:var(--d-${k})"></div></td></tr>`).join("");
+  const sum = o => Object.values(o).reduce((a,b)=>a+b,0).toLocaleString();
+  return `<table><thead><tr><th>가는 곳</th><th class="num">12시</th><th class="num">18시</th><th class="bar-cell"><span class="muted">18시 비율</span></th></tr></thead><tbody>${rows}
+    <tr><td><b>합계</b></td><td class="num"><b>${sum(v.s12)}</b></td><td class="num"><b>${sum(v.s18)}</b></td><td></td></tr></tbody></table>`;
+}
+
+// 접근로별 이동 방향 미니맵
+const BANNED = { sw: ["w"], n: ["ne", "e"], ne: ["s", "e"] };
+const pt = (b, r) => { const a = b * Math.PI / 180; return [Math.sin(a) * r, -Math.cos(a) * r]; };
+const unit = (v) => { const l = Math.hypot(v[0], v[1]) || 1; return [v[0] / l, v[1] / l]; };
+const rightOf = (d) => [-d[1], d[0]];
+function movePath(from, to, off) {
+  const fb = LEGS[from].brg, tb = LEGS[to].brg;
+  const din = unit(pt(fb, -1)), dout = unit(pt(tb, 1));
+  const ri = rightOf(din), ro = rightOf(dout);
+  const s = pt(fb, 118), e = pt(tb, 112);
+  const S = [s[0] + ri[0] * off, s[1] + ri[1] * off], E = [e[0] + ro[0] * off, e[1] + ro[1] * off];
+  const a = pt(fb, 30), b = pt(tb, 30);
+  const A1 = [a[0] + ri[0] * off, a[1] + ri[1] * off], B1 = [b[0] + ro[0] * off, b[1] + ro[1] * off];
+  return `M ${S[0].toFixed(1)} ${S[1].toFixed(1)} L ${A1[0].toFixed(1)} ${A1[1].toFixed(1)} Q 0 0 ${B1[0].toFixed(1)} ${B1[1].toFixed(1)} L ${E[0].toFixed(1)} ${E[1].toFixed(1)}`;
+}
+function movesOf(A) {
+  const stop = A.sections.find(S => S.label.includes("정지선")) || A.sections[0];
+  const map = {};
+  for (const L of stop.lanes) for (const c of L.chips) {
+    if (c.plain) continue;
+    (map[c.k] = map[c.k] || []).push(L.kind.replace("일반 ", "").replace("연결로", "연결로"));
+  }
+  const exitSec = A.sections.find(S => S.label.startsWith("진출"));
+  return { map, banned: BANNED[A.id] || [], exitLanes: exitSec ? exitSec.lanes.length : null };
+}
+function miniMap(A) {
+  const { map, banned } = movesOf(A);
+  const legs = Object.entries(LEGS).map(([k, L]) => {
+    const p = pt(L.brg, 135), lp = pt(L.brg, 158);
+    const anchor = Math.abs(lp[0]) < 40 ? "middle" : (lp[0] > 0 ? "start" : "end");
+    const isMe = k === A.id;
+    return `<line x1="0" y1="0" x2="${p[0].toFixed(1)}" y2="${p[1].toFixed(1)}" style="stroke:var(--asphalt);stroke-width:${isMe ? 26 : 20}"/>
+      <text x="${lp[0].toFixed(1)}" y="${(lp[1] + 4).toFixed(1)}" text-anchor="${anchor}" style="fill:${isMe ? "var(--fg)" : "var(--muted)"};font-size:17px;font-weight:${isMe ? 700 : 500};font-family:var(--font-body)">${L.name.split(" · ")[0]}</text>`;
+  }).join("");
+  const dests = Object.keys(map);
+  const arrows = dests.map(k => {
+    const av = A.id === "sw" && k === "n";
+    return `<path d="${movePath(A.id, k, 6)}" marker-end="url(#mh-${A.id}-${k})" style="fill:none;stroke:var(--d-${k});stroke-width:${av ? 5 : 3.2};stroke-linecap:round;stroke-linejoin:round;opacity:.95"/>`;
+  }).join("");
+  const bans = banned.map(k => {
+    const mid = pt((LEGS[A.id].brg + LEGS[k].brg) / 2 + (Math.abs(LEGS[A.id].brg - LEGS[k].brg) > 180 ? 180 : 0), 22);
+    return `<path d="${movePath(A.id, k, 6)}" style="fill:none;stroke:var(--bad);stroke-width:2;stroke-dasharray:4 4;opacity:.8"/>
+      <g transform="translate(${pt(LEGS[k].brg, 70).map(v => v.toFixed(1)).join(",")})"><circle r="9" style="fill:var(--surface);stroke:var(--bad);stroke-width:2"/><path d="M -4 -4 L 4 4 M 4 -4 L -4 4" style="stroke:var(--bad);stroke-width:2.2"/></g>`;
+  }).join("");
+  const markers = dests.map(k => `<marker id="mh-${A.id}-${k}" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--d-${k})"/></marker>`).join("");
+  const eye = pt(LEGS[A.id].brg, 135);
+  return `<svg viewBox="-235 -190 470 380" role="img" aria-label="${A.title}: 진입 차량이 가는 방향" style="width:100%;max-width:300px;height:auto;display:block">
+    <defs>${markers}</defs>${legs}<circle r="26" style="fill:var(--asphalt)"/>${bans}${arrows}
+    <circle cx="${eye[0].toFixed(1)}" cy="${eye[1].toFixed(1)}" r="7" style="fill:var(--surface);stroke:var(--fg);stroke-width:2"/>
+  </svg>`;
+}
+function moveList(A) {
+  const { map, banned, exitLanes } = movesOf(A);
+  const rows = Object.entries(map).map(([k, lanes]) => `<li><span class="swatch" style="display:inline-block;vertical-align:-2px;margin-right:6px;background:var(--d-${k})"></span><b>${LEGS[k].name}</b> <span class="muted">· ${lanes.map(x => /^\d/.test(x) ? x + "차로" : x).join(", ")}</span>${A.id === "sw" && k === "n" ? ' <span class="tag av" style="font-size:.7rem">AV</span>' : ""}</li>`).join("");
+  const banRows = banned.map(k => `<li><span class="ban">✕ ${LEGS[k].name}</span> <span class="muted">· 좌회전 금지</span></li>`).join("");
+  return `<ul class="movelist">${rows}${banRows}</ul>
+    <p class="muted" style="font-size:.82rem">○ = 로드뷰를 본 위치(진입 쪽). 화살표는 정지선 앞 차로 기준이고, 같은 색 차로가 그 방면으로 가.${exitLanes ? ` 이 도로로 나가는 진출 차로는 일반 ${exitLanes - (A.id === "n" ? 1 : 0)}개야.` : ""}</p>`;
+}
+
+const host = document.getElementById("approaches");
+for (const A of APPROACHES) {
+  const sec = document.createElement("section");
+  sec.className = "panel"; sec.id = A.id;
+  const tags = A.tags.map(([c,t]) => `<span class="tag ${c}">${t}</span>`).join(" ");
+  const sections = A.sections.map(S => `
+    <div style="display:flex;flex-direction:column;gap:8px;min-width:0">
+      <div class="section-label"><h3>${S.label}</h3><span class="muted" style="font-size:.84rem">${S.note}</span></div>
+      <div class="road-scroll"><div class="road"><div class="edge fence" title="중앙 펜스"></div>${S.lanes.map(L => laneHTML(L) + sepHTML(L.sep)).join("")}</div></div>
+    </div>`).join("");
+  const extra = A.extra.map(([k,v]) => `<tr><th style="width:84px">${k}</th><td>${v}</td></tr>`).join("");
+  sec.innerHTML = `
+    <div class="approach-head"><div><h2>${A.title}</h2><span class="muted" style="font-size:.86rem">${A.sub}</span></div><div>${tags}</div></div>
+    <div class="moves"><div class="moves-map">${miniMap(A)}</div><div class="moves-text"><h3>진입 차량이 가는 방향</h3>${moveList(A)}</div></div>
+    ${sections}
+    <table><tbody>${extra}</tbody></table>
+    <div class="facts">
+      <div><h3>실측 교통량 (대/시간, 이륜차 제외)</h3>${volTable(A.vol)}</div>
+      <div><h3>PR #2와 다른 점</h3><ul class="diff">${A.diff.map(d => `<li>${d}</li>`).join("")}</ul><p class="muted mono">${A.edges}</p></div>
+    </div>`;
+  host.appendChild(sec);
+}
+
+// 신호 주기
+const PR2 = [["n",25],["ne",15],["e",15],["s",25],["sw",25],["w",25]];
+const NEW = [["n",13],["ne",13],["e",12],["s",13],["sw",18],["w",18]];
+function cycleRow(label, plan) {
+  const total = plan.reduce((a,[,g]) => a + g + 5, 0);
+  const segs = plan.map(([k,g]) => `<div class="seg" style="flex:${g};background:var(--d-${k})" title="${LEGS[k].name} 녹색 ${g}초">${LEGS[k].name.split(" · ")[0]} ${g}</div><div class="seg yr" style="flex:5" title="황색 3초 + 전적색 2초"></div>`).join("");
+  return `<div class="cycle-row"><div><b>${label}</b><br><span class="muted" style="font-size:.82rem">주기 ${total}초</span></div><div class="cycle-bar" role="img" aria-label="${label} 신호 주기 ${total}초">${segs}</div></div>`;
+}
+document.getElementById("cycle").innerHTML = cycleRow("PR #2 (가정)", PR2) + cycleRow("바꿀 안 (실측)", NEW);
+
+// 남은 조사
+const TODO = [
+  ["중앙대로 서면 진출", "서면 방향으로 나가는 차로 수"],
+  ["북쪽 진입 들어오는 구간", "정지선 100m 뒤 BRT·일반 차로 수 (급하지 않음)"],
+  ["동시 신호 구조", "카카오맵 CCTV(교차로 북서쪽)로 2~3주기 관찰. 남서쪽이 갈 때 북쪽도 가는지"],
+];
+document.getElementById("todo").innerHTML = TODO.map(([t,d]) => `<div class="todo-card"><b>${t}</b><span class="muted">${d}</span></div>`).join("");
+</script>

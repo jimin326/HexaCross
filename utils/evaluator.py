@@ -20,7 +20,7 @@ class DrivingMetrics:
     """평가 1회(n_episodes 평균)의 주행 지표."""
     collision_rate: float   # 충돌로 끝난 에피소드 비율 (0~1, 낮을수록 좋음)
     success_rate: float     # 도로 끝까지 완주한 비율 (0~1, 높을수록 좋음)
-    timeout_rate: float     # 시간초과로 끝난 비율 (= 1 - 충돌 - 완주)
+    timeout_rate: float     # 시간초과로 끝난 비율 (= 1 - 충돌 - 완주 - 신호위반)
     mean_speed: float       # 전 스텝 평균 주행속도 (m/s)
     mean_gap: float         # 선행차 감지 스텝에서의 평균 차간거리 (m)
     min_gap: float          # 관측된 최소 차간거리 (m) — 위험 운전 지표
@@ -29,6 +29,8 @@ class DrivingMetrics:
     lane_changes: float     # 에피소드당 평균 "실행된" 차선변경 횟수
                             # (추월 시나리오에서 정책이 실제로 차선을
                             #  활용하는지 보는 핵심 지표)
+    red_light_rate: float = 0.0  # 신호위반이 발생한 에피소드 비율 (0~1)
+    wrong_lane_rate: float = 0.0  # 경로 이탈(막힌 차선)로 끝난 에피소드 비율
 
     def as_dict(self) -> dict:
         return asdict(self)
@@ -37,6 +39,8 @@ class DrivingMetrics:
         """콘솔 한 줄 출력용 문자열."""
         return (f"충돌률={self.collision_rate:.0%}  "
                 f"완주율={self.success_rate:.0%}  "
+                f"신호위반={self.red_light_rate:.0%}  "
+                f"경로이탈={self.wrong_lane_rate:.0%}  "
                 f"평균속도={self.mean_speed:.1f}m/s  "
                 f"평균차간={self.mean_gap:.1f}m  "
                 f"최소차간={self.min_gap:.1f}m  "
@@ -59,7 +63,7 @@ def evaluate_policy(policy, env, n_episodes: int = 5,
         모든 지표는 env.step()의 info(collided/arrived/speed/gap)에서 읽는다.
         관측(obs) 벡터의 구성과 무관하므로, 관측을 바꿔도 이 코드는 안 깨진다.
     """
-    n_collide, n_arrive, n_timeout = 0, 0, 0
+    n_collide, n_arrive, n_timeout, n_red, n_wrong = 0, 0, 0, 0, 0
     speeds, gaps, returns, lengths, lane_changes = [], [], [], [], []
 
     for _ in range(n_episodes):
@@ -83,6 +87,10 @@ def evaluate_policy(policy, env, n_episodes: int = 5,
                 ended_by = "collision"
             elif info.get("arrived"):
                 ended_by = "arrival"
+            elif info.get("red_light") and terminated:
+                ended_by = "red_light"   # 위반 즉시 종료 설정일 때
+            elif info.get("wrong_lane"):
+                ended_by = "wrong_lane"
 
             # 속도/차간거리는 env가 info로 넘겨주는 원시값(m/s, m)을 쓴다.
             # 관측(obs) 레이아웃이 바뀌어도 평가 코드는 영향받지 않는다.
@@ -96,6 +104,10 @@ def evaluate_policy(policy, env, n_episodes: int = 5,
             n_collide += 1
         elif ended_by == "arrival":
             n_arrive += 1
+        elif ended_by == "red_light":
+            n_red += 1
+        elif ended_by == "wrong_lane":
+            n_wrong += 1
         else:
             n_timeout += 1
 
@@ -113,4 +125,6 @@ def evaluate_policy(policy, env, n_episodes: int = 5,
         ep_return=float(np.mean(returns)),
         ep_length=float(np.mean(lengths)),
         lane_changes=float(np.mean(lane_changes)),
+        red_light_rate=n_red / n_episodes,
+        wrong_lane_rate=n_wrong / n_episodes,
     )
