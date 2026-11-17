@@ -8,6 +8,7 @@
     B. 금지 회전 연결 수 (전부 0이어야 함)
     C. 우회전 연결로 6개 (출발·도착 방향, 가짜 연결)
     D. 배경 교통 경로 점검 (교차로를 2번 이상 지나는 경로, 가짜 연결 사용 경로)
+    E. 진출 차로 수 (교차로를 나온 직후 edge, 조사 md와 비교)
 
 기대값은 docs/research/연산교차로_도로조사.md의 각 진입부 "정지선 앞" 표에서
 옮겨 적은 것이다. 도로 보정 파일(env/osm/yeonsan_fix.*.xml)과 따로 적어 두어서
@@ -36,6 +37,8 @@ EXPECTED = {
     "E":  ["N", "W N", "SW W", "S SW"],    # 교대 / 거제·교대 / 시청·거제 / 수영·시청
     "NE": ["W", "W", "SW", "SW"],          # 거제 / 거제 / 시청 / 시청
 }
+# 진출 일반 차로 수 (교차로 → 바깥, 조사 md "진출부"). SW 진출은 조사 없음
+EXIT = {"N": 2, "W": 3, "S": 3, "E": 2, "NE": 3}
 # 우회전 연결로 (교통섬으로 분리, 신호 없음): 출발 leg → 도착 leg
 SLIP = {"SW": "S", "N": "W", "W": "SW", "S": "E", "E": "NE", "NE": "N"}
 # 금지 회전 (표준노드링크 TURNINFO + 로드뷰). 반송로 유턴은 조사 md 목록,
@@ -179,6 +182,32 @@ def main():
     print(f"| 전체 | {len(routes)} | {total:.0f} |")
     print(f"| 교차로를 2번 이상 지나는 경로 | {len(twice)} | {sum(rates.get(r, 0) for r in twice):.0f} |")
     print(f"| 연결로 가짜 연결을 지나는 경로 | {len(via_fake)} | {sum(rates.get(r, 0) for r in via_fake):.0f} |")
+
+    # ── E. 진출 차로 ──
+    print("\n### E. 진출 차로 (교차로를 나온 직후 edge, 5m 미만 조각은 건너뜀)\n")
+    print("| 진출 | edge | 차로 수 조사/결과 | 들어오는 연결 수 (차로 0 → 끝) | 일치 |")
+    print("|---|---|---|---|---|")
+    for leg in ORDER:
+        e = exit_edge.get(leg)
+        if e is None:
+            print(f"| {leg} | (없음) | | | ❌ |")
+            ok = False
+            continue
+        # 교차로 영역에 거의 다 들어간 짧은 조각(5m 미만)은 건너뛰고 다음 조각을 본다
+        while e.getLength() < 5.0:
+            nxt = [o for o in e.getOutgoing() if o.getName() == e.getName()]
+            if not nxt:
+                break
+            e = nxt[0]
+        n = sum(1 for ln in e.getLanes() if ln.allows("passenger"))
+        feed = [sum(1 for f in e.getIncoming() for fl in f.getLanes()
+                    for c in fl.getOutgoing() if c.getToLane() == ln)
+                for ln in e.getLanes() if ln.allows("passenger")]
+        exp = EXIT.get(leg)
+        match = (exp is None or n == exp) and all(feed)
+        ok &= match
+        print(f"| {leg} | `{e.getID()}` | {exp if exp else '조사 없음'}/{n} | "
+              f"{' / '.join(map(str, feed))} | {'✅' if match else '❌'} |")
 
     print(f"\n결과: {'통과' if ok else '불일치 있음'}")
     sys.exit(0 if ok else 1)
