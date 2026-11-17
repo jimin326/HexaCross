@@ -23,10 +23,15 @@
 ## 알아둘 점
 
 - 방면은 6개(부산시청, 부산교대, 안락교차로, 연산터널, 신리삼거리, 종합운동장), 방향은 25개다.
-- 원본에 표가 없는 방향 5개: 부산시청→종합운동장, 부산교대→안락교차로, 부산교대→연산터널, 안락교차로→연산터널, 안락교차로→신리삼거리. 회전 금지인지 조사 제외인지는 확인하지 못했다.
+- 원본에 표가 없는 방향 5개: 부산시청→종합운동장, 부산교대→안락교차로, 부산교대→연산터널, 안락교차로→연산터널, 안락교차로→신리삼거리. 표준노드링크 TURNINFO와 로드뷰로 회전 금지임을 확인했다.
 - 24시간 총량 95,941대. 첨두는 08~09시 5,387대, 18~19시 5,567대.
 - 이륜차가 7.7% 포함되어 있다. `road_config.py`의 `include_motorcycle`로 수요에 넣을지 정한다.
 
 ## 쓰는 곳
 
-`env/road_config.py`의 `TRAFFIC["demand"]`가 시나리오(시간대)를 고르고, `env/road_builder.py`의 `build_od_flows()`가 방향별 flow로 바꾼다.
+`env/road_config.py`의 `TRAFFIC["demand"]`가 시나리오(시간대)와 방면 → 간선(leg) 매핑을 정하고, `env/road_builder.py`의 `load_od_demand()`가 CSV를 읽어 `env/osm_builder.py`가 연산교차로 OSM 도로망의 방향별 flow로 만든다.
+
+- 원본에 없는 5개 방향은 회전 금지다 (국가교통정보센터 표준노드링크 TURNINFO + 로드뷰, `docs/research/연산교차로_도로조사.md`).
+- 이륜차·버스는 기본 제외 (`include_motorcycle`, `include_bus`).
+- 지금은 배율 `scale` 0.5 (임시). 가정 신호로는 실측 교통량을 다 처리하지 못해서다 — `road_config.py` 주석 참고.
+- 실측 대비 검증: `python docs/research/check_demand.py`

@@ -373,7 +373,9 @@ def write_meta(path, args, sumocfg, total, workers, jsonl_path, npz_path):
         "tl_order": lay["tl_names"],
         "tl_color": {"red": 0.0, "yellow": 0.5, "green": 1.0},
         "vehicle_type": {"car": 0, "bus": 1},
-        "signal": {"green_s": {lg["id"]: lg.get("green") for lg in ROAD.get("legs", [])},
+        # 실제로 쓴 녹색 시간 (수요 시나리오별 값이면 osm_builder가 meta에 남긴 값)
+        "signal": {"green_s": (env.meta or {}).get("signal_green_s")
+                              or {lg["id"]: lg.get("green") for lg in ROAD.get("legs", [])},
                    "yellow_s": SIGNAL.get("yellow"), "all_red_s": SIGNAL.get("all_red")},
         "demand": ({"scenario": demand.get("scenario"),
                     "hour": demand.get("scenarios", {}).get(demand.get("scenario"), {}).get("hour"),

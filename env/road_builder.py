@@ -348,7 +348,8 @@ def _finish_straight(road, ego, traffic, out_dir, cross_x, signal_on):
 def load_od_demand(demand: dict) -> dict:
     """실측 교통량 CSV에서 선택된 시나리오(시간대)의 OD 교통량을 읽는다.
 
-    Returns: {(출발 방면, 도착 방면): 대/시}  — scale과 이륜차 제외가 반영된 값.
+    Returns: {(출발 방면, 도착 방면): 대/시}  — scale, 이륜차·버스 제외가 반영된 값.
+    osm_builder.build_osm()이 연산교차로 도로망의 배경 교통을 만들 때 쓴다.
     """
     import csv
     scenario = demand["scenario"]
@@ -367,6 +368,8 @@ def load_od_demand(demand: dict) -> dict:
             vph = float(row["합계"])
             if not demand.get("include_motorcycle", False):
                 vph -= float(row["이륜차"])
+            if not demand.get("include_bus", False):
+                vph -= float(row["버스중형"]) + float(row["버스대형"])
             od[(row["from"], row["to"])] = vph * scale
     if not od:
         raise ValueError(f"{path}에 hour='{hour}' 데이터가 없습니다.")
