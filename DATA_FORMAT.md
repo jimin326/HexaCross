@@ -1,9 +1,12 @@
-# 데이터 포맷 (초안 v0 — 확정 전)
+# 데이터 포맷 (초안 v1 — 확정 전)
 
 > 담당: 지민 · 확인: 서영(obs · reward 정의), 호섭(학습에 쓰는 컬럼)
 >
 > 이 문서가 확정되기 전에는 대량 수집(10^7)을 시작하지 않는다.
 > 확정 후 컬럼을 바꾸면 버전을 올린다 (v1 → v2).
+>
+> v1은 수업 피드백과 FAQ를 반영한 초안이다 (맨 아래 7절 "v0 → v1 변경").
+> **아직 코드에 구현되지 않은 컬럼이 있다** (6절 "구현 상태").
 
 ## 1. 저장 단위
 
@@ -11,83 +14,157 @@
 - 목표: **10^7 transition 이상**
 - 수집: `collect_pomdp_data.py --workers N` (SUMO N개 병렬)
 
-## 2. 컬럼
+## 2. 원칙
 
-굵게 표시한 것은 원본 코드에 없고 우리가 추가하는 컬럼.
+1. **모든 컬럼은 숫자다.** 문자열(신호 `"G"`, SUMO id `"512187678#15_3"` 등)은 저장하지 않는다.
+   범주형 값은 정수 번호나 0~1 숫자로 바꾸고, 번호표는 `meta.json`에 적는다.
+2. **신호는 신호등별로 나눠서 저장한다.** 연산교차로 6개 진입부 신호를 각각 한 컬럼씩
+   (한 컬럼에 여러 신호를 섞지 않음).
+3. **AV가 어느 신호등 앞에 있는지 기록한다** (`state.ego_tl`).
+4. **겹치는 정보는 한 번만 저장한다.** 예: 신호 색은 `state`에만 있고 `event`에는 없다.
 
-### 기본 (원본 `collect_pomdp_data.py`)
+### 번호표 (meta.json에도 같은 값을 적는다)
+
+| 이름 | 값 |
+|---|---|
+| 진입부·신호등 번호 (연산교차로) | 0 = SW 중앙대로(서면) · 1 = N 중앙대로(동래) · 2 = W 월드컵대로(사직) · 3 = S 월드컵대로(남) · 4 = E 고분로 · 5 = NE 반송로 |
+| 시청 인근 교차로 신호등 번호 | 6 = 중앙대로 북행 (서면 → 연산, AV가 지나는 쪽) · 7 = 중앙대로 남행 (연산 → 서면) · 8 = 시청로 |
+| 신호 색 | 0 = 적색 · 0.5 = 황색 · 1 = 녹색 |
+| 도로 위치 (`leg`) | 0~5 = 연산교차로로 **들어가는** 도로 (위 번호) · 6~11 = 연산교차로에서 **나가는** 도로 (번호 + 6) · 12 = 교차로 안 · -1 = 그 밖 (이면도로 등) |
+| 차종 (`type`) | 0 = 승용차 계열 · 1 = 버스 (지금 배경 교통에는 0만 있음) |
+
+## 3. 컬럼
+
+### 기본
 
 | 컬럼 | 타입 | 내용 | 단위 |
 |---|---|---|---|
 | `episode` | int | 에피소드 번호 | – |
 | `t` | int | 에피소드 안 스텝 번호 | step |
-| `observation` | float[**34**] | AV가 보는 부분관측. 원본 31 + **신호 3** (아래 3절) | 정규화 [-1, 1] |
+| `observation` | float[34] | AV가 보는 부분관측 (아래 4절) | 정규화 [-1, 1] |
 | `action_raw` | float[2] | 정책 출력 [가감속, 차로변경] | [-1, 1] |
 | `action.accel_raw` | float | 가감속 명령 | [-1, 1] |
 | `action.lane_change_raw` | float | 차로변경 원시값 | [-1, 1] |
 | `action.lane_change` | int | 양자화된 명령 (-1 오른쪽 / 0 유지 / +1 왼쪽) | – |
 | `action.lane_change_applied` | bool | 안전 게이트를 통과해 실제로 실행됐는지 | – |
 | `reward` | float | 스텝 보상 | – |
-| `terminated` | bool | 충돌 · 완주 · (추가 종료조건)으로 끝남 | – |
+| `terminated` | bool | 충돌 · 완주 · 신호위반 · 차로 갇힘으로 끝남 | – |
 | `truncated` | bool | 시간 초과로 끝남 | – |
 | `state` | object | 시뮬레이터 절대 상태 (아래) | – |
-| `detected_vehicles` | list | 시야 W 안에 감지된 차량 좌표 | m |
-| `event.collided` | bool | 충돌 | – |
-| `event.arrived` | bool | 목적지 도착 | – |
-| `event.lane_before` / `lane_after` | int | 차로변경 전후 차로 번호 | – |
+| `detected_vehicles` | list | 관측 범위(시야 W) 안에서 감지된 차량. 원소: `x, y, rel_pos, speed, lane_offset` | m, m/s |
+| `event.*` | – | 아래 event 표 | – |
 | `next_observation` / `next_state` | – | **에피소드 마지막 스텝에만 저장** (중간은 다음 줄과 같음. `iter_transitions()`가 복원) | – |
 
-### state (절대 정보)
+### state — AV
 
 | 컬럼 | 타입 | 내용 | 단위 |
 |---|---|---|---|
+| `state.ego_alive` | bool | AV가 시뮬레이션에 있는지 (충돌·도착 후 False) | – |
 | `state.ego_x`, `ego_y` | float | AV 좌표 | m |
 | `state.ego_speed` | float | AV 속도 | m/s |
 | `state.ego_lane` | int | 차로 번호 (0 = 맨 오른쪽) | – |
-| `state.ego_lane_id`, `ego_road_id` | str | SUMO 차로 id, 도로(edge) id | – |
 | `state.ego_lane_pos` | float | 현재 차로 안 위치 | m |
-| `state.vehicles[]` | list | 주변 차량: `id, x, y, speed, lane, lane_id, road_id, lane_pos` | m, m/s |
-| **`state.signal_state`** | str | AV가 진입하는 신호등의 현재 상태 (예: `"G"`, `"y"`, `"r"`) | – |
-| **`state.signal_phase`** | int | 6현시 중 현재 현시 번호 | – |
-| **`state.signal_remaining`** | float | 현재 현시 남은 시간 | s |
-| **`state.dist_to_stopline`** | float | AV 앞 정지선까지 거리 | m |
+| **`state.ego_leg`** | int | 연산교차로 기준 AV 위치 (2절 `leg` 번호표) | – |
+| **`state.ego_lane_count`** | int | 지금 도로의 일반 차로 수 (버스 전용 차로 제외) | – |
+| **`state.ego_dist_to_center`** | float | 경로를 따라 연산교차로 중심까지 남은 거리. 지난 뒤에는 음수 | m |
 
-### event (추가)
+### state — 신호 (연산교차로 6개 신호등, 신호등별로 한 컬럼)
+
+| 컬럼 | 타입 | 내용 | 단위 |
+|---|---|---|---|
+| **`state.tl_color_0` … `tl_color_5`** | float | 신호등 0~5의 현재 색 (0 / 0.5 / 1) | – |
+| **`state.tl_remaining_0` … `tl_remaining_5`** | float | 신호등 0~5의 색이 바뀔 때까지 남은 시간 | s |
+| **`state.ego_tl`** | int | AV가 다음에 만나는 신호등 번호 (0~5 연산, 6~8 시청 인근, -1 = 앞에 신호 없음) | – |
+| **`state.ego_tl_dist`** | float | 그 신호등 정지선까지 거리 (-1 = 신호 없음) | m |
+
+- 6개 신호등은 한 번에 한 진입부만 녹색인 6현시(가정)라 "지금 몇 번 현시인지"는 따로 저장하지 않는다. `tl_color_*`에서 알 수 있다.
+- 시청 인근 교차로(신호등 6~8)는 AV가 그 앞에 있을 때 `ego_tl`, `ego_tl_dist`로만 기록한다.
+
+### state — 주변 차량
+
+| 컬럼 | 타입 | 내용 | 단위 |
+|---|---|---|---|
+| `state.vehicles[]` | list | AV 반경 R m 안의 차량 (R은 4절 "아직 정할 것") | – |
+| ↳ `x`, `y` | float | 좌표 | m |
+| ↳ `speed` | float | 속도 | m/s |
+| ↳ `lane` | int | 차로 번호 (0 = 맨 오른쪽) | – |
+| ↳ `lane_pos` | float | 현재 차로 안 위치 | m |
+| ↳ **`leg`** | int | 도로 위치 (2절 번호표) | – |
+| ↳ **`type`** | int | 차종 (2절 번호표) | – |
+
+### event
 
 | 컬럼 | 타입 | 내용 |
 |---|---|---|
-| **`event.red_light`** | bool | 적색 신호에 정지선 통과 (신호 위반) |
-| **`event.wrong_lane`** | bool | 경로상 갈 수 없는 차로에 갇힘 (차로 선택 실패) |
+| `event.collided` | bool | 충돌 |
+| `event.arrived` | bool | 목적지 도착 (충돌한 스텝은 False) |
+| `event.red_light` | bool | 적색 신호에 정지선 통과 (신호 위반) |
+| `event.wrong_lane` | bool | 경로상 갈 수 없는 차로에 갇힘 (차로 선택 실패) |
+| `event.lane_before` / `lane_after` | int | 차로변경 전후 차로 번호 |
 
-## 3. observation 34차원 (서영 확정 필요)
+## 4. observation 34차원 (서영 확정 필요)
+
+지금 코드 기준 (`env/sumo_env.py` `_get_obs`, 레이아웃 주석은 `env/mdp_config.py`).
 
 | 인덱스 | 내용 |
 |---|---|
 | 0 | 내 속도 / vmax |
-| 1–20 | 5개 차로 × (앞차 거리, 앞차 속도차, 뒤차 거리, 뒤차 속도차) |
-| 21–25 | 5개 차로 연결성 (끊김 예고) |
-| 26–30 | 5개 차로 전방 밀도 |
-| **31** | 신호 상태 (TBD: 인코딩 방식) |
-| **32** | 정지선까지 거리 / W |
-| **33** | 현시 남은 시간 (정규화 TBD) |
+| 1–20 | 5개 차로(좌2, 좌1, 현재, 우1, 우2) × (앞차 거리, 앞차 속도차, 뒤차 거리, 뒤차 속도차) |
+| 21–25 | 5개 차로 연결성: 그 차로로 내 경로를 따라 갈 수 있는 거리 (-1 = 차로 없음) |
+| 26–30 | 5개 차로 전방 밀도 (차로 없음 = 1) |
+| 31 | 다음 신호 색: 1 = 녹색 (범위 150m 안에 신호 없으면 1) · 0 = 황색 · -1 = 적색 |
+| 32 | 정지선까지 거리 / 150m (신호 없으면 1) |
+| 33 | 색이 바뀔 때까지 남은 시간 / 60s (신호 없으면 1) |
 
-## 4. 아직 정할 것
+서영 확인 필요:
+- **21–25**: 차로마다 "내 경로로 이어지는가"를 알려 주는데, 수업 FAQ의 "어떤 차선으로 주행해야 하는지 등 세밀한 주행 정보 금지"에 걸릴 수 있다. 정지선 앞 차로별 방향이 생기면서 더 분명해졌다. 빼면 경로 정보를 큰 틀(예: 다음 교차로에서 직진·좌·우)로 다시 줄지 정해야 한다.
+- **31**: FAQ는 신호를 숫자로, 차원을 나눠서 주라고 한다. 지금도 숫자지만 한 칸에 세 색을 섞었다. 녹·황·적 3칸으로 나눌지 정한다 (그러면 차원이 늘어 v2).
+- 중앙대로 BRT 버스 전용 차로가 지금 관측에서는 "빈 차로"로 보인다 (차로 번호만 확인). 관측을 바꾸면 이 문서 4절도 같이 고친다.
+
+## 5. 아직 정할 것
 
 | 항목 | 선택지 | 메모 |
 |---|---|---|
-| `state.vehicles` 범위 | 전체 차량 / AV 반경 R m 안 | 전체 저장 시 1스텝 ≈ 5.4KB(gzip, 차량 ~300대 기준) → 10^7이면 약 **54GB**. 반경 제한 권장 |
-| 파일 형식 | jsonl.gz + npz (원본) / Parquet | HF 업로드 · 로딩은 Parquet가 유리 |
+| `state.vehicles` 범위 R | 전체 차량 / AV 반경 R m 안 | 전체 저장 시 1스텝 ≈ 5.4KB(gzip, 차량 ~300대 기준) → 10^7이면 약 **54GB**. 반경 제한 권장 |
+| `tl_remaining_*` 개수 | 6개 모두 / AV 신호(`ego_tl`) 것만 | 6개 모두 저장해도 1스텝 6칸 |
+| 파일 형식 | jsonl.gz + npz (원본) / Parquet | HF 업로드 · 로딩은 Parquet가 유리. Parquet면 `tl_color_0..5`처럼 펼친 컬럼이 다루기 쉬움 |
 | 샤드 크기 | 파일 하나에 N 에피소드 | HF 단일 파일 크기 제한 고려 |
 | 수집 정책 | PPO / BC / 규칙 기반 / 혼합 | 정책별로 폴더 분리 |
-| 신호 인코딩 | 문자열 / one-hot / 정수 | obs 31번과 맞출 것 |
+| 교통 시나리오 섞기 | 한 데이터셋에 12시·18시 섞기 / 시나리오별 폴더 | 섞을 거면 시나리오별 컬럼을 따로 두지 말고 `meta.json` + 숫자 하나로 구분 (FAQ) |
 
-## 5. 메타데이터
+## 6. 구현 상태
+
+| 컬럼 | 상태 | 고칠 곳 |
+|---|---|---|
+| `state.ego_leg`, `ego_lane_count`, `ego_dist_to_center` | 미구현 | `env/sumo_env.py` `get_privileged_state` |
+| `state.tl_color_*`, `tl_remaining_*`, `ego_tl`, `ego_tl_dist` | 미구현 | 같은 곳 (신호 번호는 `highway.meta.json`의 leg·신호 정보 사용) |
+| `state.vehicles[].leg`, `type` / `id`·`lane_id`·`road_id` 삭제 | 미구현 | 같은 곳 |
+| `state.ego_lane_id`, `ego_road_id` 삭제 | 미구현 | 같은 곳 |
+| `detected_vehicles[].id` 삭제 | 미구현 | `env/sumo_env.py` `get_detected_vehicles` |
+| `event.signal_state` (문자열) 삭제 | 미구현 (지금 저장 중) | `collect_pomdp_data.py` |
+| `event.arrived` 충돌 스텝 False | 구현됨 (PR #2) | – |
+| 나머지 | 구현됨 | – |
+
+## 7. v0 → v1 변경
+
+| 변경 | 이유 |
+|---|---|
+| `state.signal_state` (문자열 `"G"/"y"/"r"`) → `state.tl_color_0..5` (0 / 0.5 / 1) | 피드백 1 "String을 쓰지 말자", 2 "6개 신호등으로 나눠서", FAQ "신호는 숫자로, 차원을 쪼개서" |
+| `state.signal_phase`, `signal_remaining` → `tl_remaining_0..5` | 신호등별로 나눔. 현시 번호는 색에서 알 수 있어 삭제 (FAQ "겹치는 정보 삭제") |
+| `state.ego_tl`, `state.ego_tl_dist` 추가 (v0의 `dist_to_stopline` 대체) | 피드백 3 "어느 신호등인지 기억하는 게 필요" |
+| `state.ego_lane_id`, `ego_road_id`, `vehicles[].id / lane_id / road_id` (문자열) 삭제 → `ego_leg`, `ego_lane_count`, `ego_dist_to_center`, `vehicles[].leg`, `type` 추가 | 피드백 1. FAQ "State로 도로 구성을 예측할 수 있으면 충분" |
+| `event.signal_state` (문자열) 삭제 | 피드백 1. `state.tl_color_*`와 겹침 |
+| `detected_vehicles[].id` (문자열) 삭제 | 피드백 1 |
+| `event.arrived`: 충돌한 스텝은 False | PR #2에서 코드 수정 (`--collision.action remove` 때문에 둘 다 True였음) |
+| 4절 observation을 실제 코드 값으로 적음 (31번 인코딩, 32·33 정규화 기준) | v0은 "TBD"였음 |
+
+## 8. 메타데이터
 
 수집 실행마다 `meta.json`을 같이 저장한다.
 
 ```json
 {
-  "format_version": "v0",
+  "format_version": "v1",
   "git_commit": "<collect 실행 시점 커밋 해시>",
   "policy": "ppo",
   "model": "results/run_xxx/model.pt",
@@ -96,11 +173,20 @@
   "transitions": 0,
   "step_length": 0.5,
   "sumo_version": "1.27.1",
-  "created_at": "2026-11-xx"
+  "created_at": "2026-11-xx",
+  "ego_route": ["SW", "N"],
+  "tl_order": ["SW", "N", "W", "S", "E", "NE", "cityhall_northbound", "cityhall_southbound", "cityhall_road"],
+  "leg_order": ["SW", "N", "W", "S", "E", "NE"],
+  "tl_color": {"red": 0, "yellow": 0.5, "green": 1},
+  "vehicle_type": {"car": 0, "bus": 1},
+  "signal_green_s": {"SW": 18, "W": 18, "S": 13, "NE": 13, "N": 13, "E": 12},
+  "demand": {"scenario": "normal", "hour": 12, "scale": 1.0}
 }
 ```
 
-## 6. Hugging Face 업로드 구조 (안)
+- `demand`는 PR #1(실측 교통량)을 합친 뒤부터 의미가 있다. 그 전에는 가정 교통량이라 `{"scenario": "assumed"}`.
+
+## 9. Hugging Face 업로드 구조 (안)
 
 ```
 <hf-id>/HexaCross-dataset
