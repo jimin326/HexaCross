@@ -85,6 +85,11 @@ def main():
     def inbound(e):
         return dist(e.getShape()[-1]) < dist(e.getShape()[0])
 
+    def is_slip(e):
+        """연산교차로 우회전 연결로 (교차점 150m 안의 *_link)."""
+        return ("_link" in (e.getType() or "")
+                and min(dist(e.getShape()[0]), dist(e.getShape()[-1])) <= 150.0)
+
     ok = True
     stop_edge = {}
     for e in center.getIncoming():
@@ -136,11 +141,9 @@ def main():
     print("|---|---|---|---|")
     found = set()
     for e in net.getEdges():
-        if "_link" not in (e.getType() or ""):
+        if not is_slip(e):
             continue
         p0, p1 = e.getShape()[0], e.getShape()[-1]
-        if min(dist(p0), dist(p1)) > 150.0:
-            continue
         a, b = leg_at(*p0), leg_at(*p1)
         found.add((a, b))
         fake = [f"→{n.getID()}" for n in e.getOutgoing()
@@ -165,7 +168,7 @@ def main():
         if sum(1 for x in es if x.getToNode().getID() == cid) >= 2:
             twice.append(rid)
         for x, y in zip(es, es[1:]):
-            xl, yl = "_link" in (x.getType() or ""), "_link" in (y.getType() or "")
+            xl, yl = is_slip(x), is_slip(y)
             if (xl and (yl or inbound(y))) or (yl and not xl and not inbound(x)):
                 via_fake.append(rid)
                 break
