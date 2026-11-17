@@ -30,8 +30,10 @@ road_builder.py가 SUMO 도로 파일(.net.xml 등)을 자동으로 다시 만�
 #    env/osm/yeonsan_fix.edg.xml / yeonsan_fix.con.xml에서 바로잡는다.
 #    중앙대로의 BRT 전용차로는 아직 넣지 않았다 (일반 차로만).
 #
-#    교통량(inflow)은 실측값이 아니라, 신호 1주기 동안 처리 가능한 양의
-#    약 60~70% 수준으로 잡은 값이다 (넘치면 대기열이 끝없이 늘어난다).
+#    교통량(inflow)은 아직 실측값이 아닌 가정값이다 (PR #1 실측 OD를 합치면
+#    교체). 옛 신호(주기 160초) 처리 능력의 약 60~70%로 잡았던 값이고,
+#    지금 신호(117초)와 정지선 차로 수로는 진입부별 처리 능력의 약 30~70%다.
+#    넘치면 대기열이 끝없이 늘어나므로 inflow를 올릴 때는 신호도 같이 확인할 것.
 #
 #    road_builder.py는 "legs"가 있으면 env/junction_builder.py로
 #    방사형 교차로를 만든다. legs를 바꾸면 다른 다지 교차로도 만들 수 있다.
@@ -115,31 +117,42 @@ ROAD = {
     #          단순화 모드(junction_builder)와 화면 표시용, lanes_out은 배경 교통
     #          배분 비율로 쓰인다. 진출 차로 수는 아직 OSM 그대로
     #          (조사: W·NE 진출은 실제 3차로인데 도로는 2차로 → HANDOFF 7번).
-    # green  : 이 도로 진입 차량의 녹색 신호 시간 (s)
+    # green  : 이 도로 진입 차량의 녹색 신호 시간 (s). 근거는 아래 1-1) 신호 설명
     # inflow : 이 도로로 들어오는 배경 교통량 (대/시간)
     "legs": [
         dict(id="N", road="중앙대로",  name="중앙대로 (동래 방면)", bearing=348.0, length=300.0,
-             lanes_in=4, lanes_out=2, green=25.0, inflow=420),
+             lanes_in=4, lanes_out=2, green=13.0, inflow=420),
         dict(id="NE", road="반송로", name="반송로",               bearing=46.0,  length=250.0,
-             lanes_in=4, lanes_out=2, green=15.0, inflow=220),
+             lanes_in=4, lanes_out=2, green=13.0, inflow=220),
         dict(id="E", road="고분로",  name="고분로",               bearing=100.0, length=250.0,
-             lanes_in=4, lanes_out=2, green=15.0, inflow=220),
+             lanes_in=4, lanes_out=2, green=12.0, inflow=220),
         dict(id="S", road="월드컵대로",  name="월드컵대로 (남쪽)",    bearing=158.0, length=300.0,
-             lanes_in=4, lanes_out=3, green=25.0, inflow=560),
+             lanes_in=4, lanes_out=3, green=13.0, inflow=560),
         dict(id="SW", road="중앙대로", name="중앙대로 (서면 방면)", bearing=217.0, length=400.0,
-             lanes_in=5, lanes_out=2, green=25.0, inflow=420),
+             lanes_in=5, lanes_out=2, green=18.0, inflow=420),
         dict(id="W", road="월드컵대로",  name="월드컵대로 (사직 방면)", bearing=293.0, length=300.0,
-             lanes_in=4, lanes_out=3, green=25.0, inflow=700),
+             lanes_in=4, lanes_out=3, green=18.0, inflow=700),
     ],
 }
 
 # ──────────────────────────────────────────────────────────────
 # 1-1) 교차로 신호등
 #    도로별 "동시신호": 한 번에 한 도로의 진입 차량만 녹색을 받아
-#    직진·좌회전·우회전을 모두 한다 (legs 순서대로 돌아감).
-#    각 녹색 뒤에 황색 → 전적색이 붙는다.
-#    기본값 기준 1주기 = (25×4 + 15×2) + 6×(3+2) = 160초.
-#    우회전 연결로는 신호 없이 합류 지점에서 양보한다.
+#    직진·좌회전을 모두 한다 (legs 순서 N → NE → E → S → SW → W로 돌아감).
+#    각 녹색 뒤에 황색 → 전적색이 붙는다. 우회전 연결로는 신호 없이
+#    합류 지점에서 양보한다.
+#    ※ 이 현시 구조(6현시)는 가정이다. 실제로는 서로 안 부딪히는 방향끼리
+#      같이 녹색일 가능성이 높다 (조사 md "동시 신호 구조 확인", CCTV로 확인 예정).
+#
+#    녹색 시간(legs의 green)은 Webster 방법으로 계산한 값이다
+#    (docs/research/연산교차로_도로조사.md "신호"):
+#      - 교통량: 부산시 2025 교통조사(PR #1) 12시(보통) 실측, 이륜차·버스 제외
+#      - 포화교통류율 1,800대/h/차로, 현시당 손실시간 5초
+#      - 정지선 앞 일반 차로 수: 로드뷰 조사 (SW 5 / N 4 / W 4 / S 4 / NE 4 / E 4)
+#      → SW 18 / W 18 / S 13 / NE 13 / N 13 / E 12초, 교차로 포화도 약 0.57
+#    1주기 = (18×2 + 13×3 + 12) + 6×(3+2) = 117초
+#      (Webster 계산 주기는 116초. 녹색을 정수로 반올림해서 1초 늘어남)
+#    18시(혼잡) 참고값: SW 26 / W 20 / S 17 / NE 12 / N 20 / E 12초 → 137초
 # ──────────────────────────────────────────────────────────────
 SIGNAL = {
     "enabled": True,
