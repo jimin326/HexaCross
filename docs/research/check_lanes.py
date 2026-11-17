@@ -9,6 +9,7 @@
     C. 우회전 연결로 6개 (출발·도착 방향, 가짜 연결)
     D. 배경 교통 경로 점검 (교차로를 2번 이상 지나는 경로, 가짜 연결 사용 경로)
     E. 진출 차로 수 (교차로를 나온 직후 edge, 조사 md와 비교)
+    F. BRT 버스 전용 차로 (중앙대로 SW·N, 정지선 앞·상류·진출)
 
 기대값은 docs/research/연산교차로_도로조사.md의 각 진입부 "정지선 앞" 표에서
 옮겨 적은 것이다. 도로 보정 파일(env/osm/yeonsan_fix.*.xml)과 따로 적어 두어서
@@ -39,6 +40,11 @@ EXPECTED = {
 }
 # 진출 일반 차로 수 (교차로 → 바깥, 조사 md "진출부"). SW 진출은 조사 없음
 EXIT = {"N": 2, "W": 3, "S": 3, "E": 2, "NE": 3}
+# BRT 버스 전용 차로 (조사 md + HANDOFF 5번). 정지선 앞은 차로별 목적지
+# (차로 번호 순서 = 인도 쪽 → 중앙), 나머지는 차로 수. SW 진출은 가정.
+BRT_STOP = {"SW": ["NE", "N"], "N": ["SW"]}      # SW: BRT2 안락, BRT1 교대 / N: 시청
+BRT_UP = {"SW": 1, "N": 1}                       # 정지선 200m 이상 상류
+BRT_EXIT = {"SW": 1, "N": 1}
 # 우회전 연결로 (교통섬으로 분리, 신호 없음): 출발 leg → 도착 leg
 SLIP = {"SW": "S", "N": "W", "W": "SW", "S": "E", "E": "NE", "NE": "N"}
 # 금지 회전 (표준노드링크 TURNINFO + 로드뷰). 반송로 유턴은 조사 md 목록,
@@ -147,7 +153,12 @@ def main():
         if not is_slip(e):
             continue
         p0, p1 = e.getShape()[0], e.getShape()[-1]
-        a, b = leg_at(*p0), leg_at(*p1)
+        # 출발·도착 방향은 연결로 끝점 대신 이어진 진입로(시작점)·진출로(멀리 따라간
+        # 끝점)로 판정한다. 진입로 폭이 바뀌면 연결로 끝점이 방위 경계를 넘을 수 있다.
+        feeders = [p for p in e.getIncoming() if inbound(p) and not is_slip(p)]
+        nexts = [n for n in e.getOutgoing() if not inbound(n) and not is_slip(n)]
+        a = leg_at(*feeders[0].getShape()[0]) if feeders else leg_at(*p0)
+        b = out_leg(nexts[0]) if nexts else leg_at(*p1)
         found.add((a, b))
         fake = [f"→{n.getID()}" for n in e.getOutgoing()
                 if "_link" in (n.getType() or "") or inbound(n)]
@@ -208,6 +219,50 @@ def main():
         ok &= match
         print(f"| {leg} | `{e.getID()}` | {exp if exp else '조사 없음'}/{n} | "
               f"{' / '.join(map(str, feed))} | {'✅' if match else '❌'} |")
+
+    # ── F. BRT ──
+    def bus_lanes(e):
+        return [ln for ln in e.getLanes() if ln.allows("bus") and not ln.allows("passenger")]
+
+    print("\n### F. BRT 버스 전용 차로 (일반 차량 진입 불가)\n")
+    print("| 위치 | edge | 조사 | 결과 | 일치 |")
+    print("|---|---|---|---|---|")
+    for leg in ORDER:
+        e = stop_edge.get(leg)
+        exp = BRT_STOP.get(leg, [])
+        got = [sorted({out_leg(c.getTo()) for c in ln.getOutgoing()}) for ln in bus_lanes(e)] if e else []
+        got_s = " / ".join("·".join(g) or "∅" for g in got) or "없음"
+        match = [g for g in got] == [[x] for x in exp]
+        ok &= match
+        if exp or got:
+            print(f"| {leg} 정지선 앞 (목적지) | `{e.getID()}` | {' / '.join(exp) or '없음'} | "
+                  f"{got_s} | {'✅' if match else '❌'} |")
+        # 상류: 같은 이름 도로를 거슬러 200m 이상
+        cur, tot = e, 0.0
+        while cur is not None and tot < 200.0:
+            tot += cur.getLength()
+            prv = [p for p in cur.getIncoming() if p.getName() == cur.getName()
+                   and p.getID().lstrip("-") != cur.getID().lstrip("-")]
+            cur = prv[0] if prv else None
+        n_up = len(bus_lanes(cur)) if cur is not None else 0
+        exp_up = BRT_UP.get(leg, 0)
+        ok &= n_up == exp_up
+        if exp_up or n_up:
+            print(f"| {leg} 진입 상류 (차로 수) | `{cur.getID() if cur else '-'}` | {exp_up} | {n_up} | "
+                  f"{'✅' if n_up == exp_up else '❌'} |")
+        x = exit_edge.get(leg)
+        n_ex = len(bus_lanes(x)) if x is not None else 0
+        exp_ex = BRT_EXIT.get(leg, 0)
+        ok &= n_ex == exp_ex
+        if exp_ex or n_ex:
+            print(f"| {leg} 진출 (차로 수) | `{x.getID()}` | {exp_ex}{' (가정)' if leg == 'SW' else ''} | "
+                  f"{n_ex} | {'✅' if n_ex == exp_ex else '❌'} |")
+    # 일반 차로 → 버스 차로로 들어가는 연결이 없어야 함 (교차로 안)
+    leak = [f"{fl.getID()}→{c.getToLane().getID()}" for f in center.getIncoming() for fl in f.getLanes()
+            if fl.allows("passenger") for c in fl.getOutgoing()
+            if not c.getToLane().allows("passenger")]
+    ok &= not leak
+    print(f"| 교차로에서 일반 차로 → 버스 차로 연결 | | 0 | {len(leak)} | {'✅' if not leak else '❌ ' + ' '.join(leak)} |")
 
     print(f"\n결과: {'통과' if ok else '불일치 있음'}")
     sys.exit(0 if ok else 1)
