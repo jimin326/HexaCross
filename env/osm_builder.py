@@ -58,6 +58,133 @@ def _angle_diff(a, b):
     return abs((a - b + 180.0) % 360.0 - 180.0)
 
 
+def apply_lane_rules(net_path: str, road: dict, center_id: str, rules: dict) -> dict:
+    """LANE_RULES 표대로 교차로의 "차로 → 진출 도로" 연결만 남기고 나머지를 지운다.
+
+    연산교차로는 SUMO에서 노드 여러 개(신호 하나로 묶임)와 그 사이의 짧은
+    내부 도로로 이루어져 있어서, 진입 차로에서 진출 도로까지 연결을 여러 번
+    거친다. 그래서
+      1) 진입 차로마다 "갈 수 있는 진출 도로" 집합(표)을 정하고,
+      2) 내부 도로 차로에는 거기로 들어오는 진입 차로들의 집합을 합쳐 물려준 뒤,
+      3) 각 연결(차로 → 다음 차로)을 "그 연결로 표에 있는 진출 도로에 갈 수
+         있을 때만" 남긴다.
+    지운 연결은 <delete>로 적어 netconvert로 도로망을 다시 만든다.
+
+    Returns: {진입 도로 id: {차로: [실제로 갈 수 있는 진출 도로]}} (검증용)
+    """
+    net = sumolib.net.readNet(net_path)
+    cx, cy = net.getNode(center_id).getCoord()
+    legs = road["legs"]
+
+    def leg_at(x, y):
+        b = _bearing(x - cx, y - cy)
+        lg = min(legs, key=lambda l: _angle_diff(b, l["bearing"]))
+        return lg["id"] if _angle_diff(b, lg["bearing"]) < 40.0 else None
+
+    # 교차로 = 중심 노드로 들어오는 연결을 제어하는 신호가 묶고 있는 노드들
+    center_tl = next((c.getTLSID() for e in net.getNode(center_id).getIncoming()
+                      for c in e.getOutgoing().values() for c in c if c.getTLSID()), None)
+    nodes = {center_id}
+    if center_tl:
+        nodes |= {c[0].getEdge().getToNode().getID()
+                  for c in net.getTLS(center_tl).getConnections()}
+    inner = {e.getID() for e in net.getEdges()
+             if e.getFromNode().getID() in nodes and e.getToNode().getID() in nodes}
+    approach = {}     # 진입 엣지 id -> leg
+    exit_leg = {}     # 진출 엣지 id -> leg
+    for e in net.getEdges():
+        if e.getID() in inner or not e.allows("passenger"):
+            continue
+        if e.getToNode().getID() in nodes:
+            approach[e.getID()] = leg_at(*e.getShape()[0])
+        if e.getFromNode().getID() in nodes:
+            exit_leg[e.getID()] = leg_at(*e.getShape()[-1])
+
+    def conns(lane):
+        return [(c, c.getToLane()) for c in lane.getOutgoing()]
+
+    def reach(lane, keep=None, depth=0):
+        """lane에서 (keep 연결만 따라) 갈 수 있는 진출 leg 집합."""
+        out = set()
+        for c, tl in conns(lane):
+            if keep is not None and (lane.getID(), tl.getID()) not in keep:
+                continue
+            te = tl.getEdge().getID()
+            if te in exit_leg:
+                out.add(exit_leg[te])
+            elif te in inner and depth < 6:
+                out |= reach(tl, keep, depth + 1)
+        return out
+
+    # 1) 진입 차로별 허용 집합
+    allowed = {}      # lane id -> set(leg) | None(제한 없음)
+    for eid, lg in approach.items():
+        table = rules.get(lg) if lg else None
+        for ln in net.getEdge(eid).getLanes():
+            if table is None:
+                allowed[ln.getID()] = None
+            else:
+                allowed[ln.getID()] = set(table.get(ln.getIndex(),
+                                                    table.get(str(ln.getIndex()), [])))
+    # 2) 내부 도로 차로로 전파 (들어오는 차로들의 합집합)
+    frontier = [l for l in allowed]
+    while frontier:
+        lid = frontier.pop()
+        for _, tl in conns(net.getLane(lid)):
+            if tl.getEdge().getID() not in inner:
+                continue
+            a, b = allowed.get(tl.getID(), set()), allowed[lid]
+            new = None if (a is None or b is None) else (a | b)
+            if tl.getID() not in allowed or new != allowed[tl.getID()]:
+                allowed[tl.getID()] = new
+                frontier.append(tl.getID())
+    # 3) 연결 거르기
+    keep, deletes = set(), []
+    for lid, al in allowed.items():
+        lane = net.getLane(lid)
+        for c, tl in conns(lane):
+            te = tl.getEdge().getID()
+            ok = (al is None
+                  or (te in exit_leg and exit_leg[te] in al)
+                  or (te in inner and reach(tl) & al))
+            if ok:
+                keep.add((lid, tl.getID()))
+            else:
+                deletes.append((lane.getEdge().getID(), te, lane.getIndex(), tl.getIndex()))
+    # 표에 없는 엣지의 연결은 모두 유지
+    for e in net.getEdges():
+        for ln in e.getLanes():
+            if ln.getID() not in allowed:
+                for _, tl in conns(ln):
+                    keep.add((ln.getID(), tl.getID()))
+
+    if deletes:
+        con_path = os.path.join(os.path.dirname(net_path), "lane_rules.con.xml")
+        with open(con_path, "w") as f:
+            f.write("<connections>\n")
+            for fe, te, fl, tl in deletes:
+                f.write(f'    <delete from="{fe}" to="{te}" fromLane="{fl}" toLane="{tl}"/>\n')
+            f.write("</connections>\n")
+        subprocess.run(
+            [checkBinary("netconvert"), "-s", net_path, "--connection-files", con_path,
+             "--output.street-names", "-o", net_path],
+            check=True, capture_output=True)
+
+    # 검증: 실제로 갈 수 있는 진출 도로 (거른 연결 기준)
+    result = {}
+    for eid, lg in approach.items():
+        if lg is None or lg not in rules:
+            continue
+        for ln in net.getEdge(eid).getLanes():
+            got = sorted(reach(ln, keep))
+            want = sorted(allowed[ln.getID()] or [])
+            result.setdefault(lg, {})[ln.getIndex()] = got
+            if got != want:
+                print(f"[lane_rules] 경고: {lg} {ln.getIndex()}번 차로 — 표 {want}, "
+                      f"실제 도로망 {got} (표의 이동 중 도로망에 없는 것은 만들 수 없음)")
+    return result
+
+
 def build_osm(road: dict, ego: dict, traffic: dict, signal: dict,
               out_dir: str) -> str:
     from env.road_builder import make_vtypes_block   # 순환 import 방지
@@ -96,6 +223,16 @@ def build_osm(road: dict, ego: dict, traffic: dict, signal: dict,
          "--keep-edges.in-geo-boundary", f"{minlon},{minlat},{maxlon},{maxlat}",
          "-o", net_path],
         check=True, capture_output=True)
+
+    # 차로별 진행 가능 방향 (road_config.LANE_RULES) — 신호/경로 생성 전에 적용
+    try:
+        from env.road_config import LANE_RULES
+    except ImportError:
+        LANE_RULES = {"enabled": False}
+    lane_table = None
+    if LANE_RULES.get("enabled", False):
+        lane_table = apply_lane_rules(net_path, road, center_id,
+                                      LANE_RULES.get("rules", {}))
 
     # 건물 (GUI 배경). 실패해도 시뮬레이션에는 영향 없음.
     additional = []
@@ -439,6 +576,7 @@ def build_osm(road: dict, ego: dict, traffic: dict, signal: dict,
             f.write("<additional>\n" + "\n".join(lines) + "\n</additional>\n")
         additional.append("highway.tls.xml")
     meta["center_tls"] = center_tl
+    meta["lane_rules"] = lane_table      # 실제 적용된 차로 → 진출 도로 표
     with open(os.path.join(out_dir, "highway.meta.json"), "w", encoding="utf-8") as f:
         json.dump(meta, f, ensure_ascii=False, indent=1)
 
