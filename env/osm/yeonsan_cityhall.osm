@@ -4810,6 +4810,21 @@
   <node id="14330410301" lat="35.1779045" lon="129.0854675" version="1" timestamp="2026-10-29T06:08:36Z" changeset="191177189" uid="3042055" user="Iranto_Ham"/>
   <node id="14330410302" lat="35.1779275" lon="129.0855433" version="1" timestamp="2026-10-29T06:08:36Z" changeset="191177189" uid="3042055" user="Iranto_Ham"/>
   <node id="14330410303" lat="35.1780348" lon="129.0854947" version="1" timestamp="2026-10-29T06:08:36Z" changeset="191177189" uid="3042055" user="Iranto_Ham"/>
+  <node id="12791011296" visible="true" version="1" changeset="165490159" timestamp="2025-04-27T05:23:51Z" user="qIRENEp" uid="20925809" lat="35.1857416" lon="129.0814184" />
+  <node id="12791011269" visible="true" version="1" changeset="165490159" timestamp="2025-04-27T05:23:51Z" user="qIRENEp" uid="20925809" lat="35.1759229" lon="129.0735773" />
+  <node id="436724931" visible="true" version="3" changeset="83968622" timestamp="2020-04-23T02:30:23Z" user="lensur" uid="9918175" lat="35.1728887" lon="129.0711759" />
+  <node id="4654857450" visible="true" version="1" changeset="45732163" timestamp="2017-02-02T01:34:49Z" user="Bongblo" uid="5182205" lat="35.1916147" lon="129.0802131" />
+  <node id="12785591067" visible="true" version="1" changeset="165417023" timestamp="2025-04-25T10:33:30Z" user="qIRENEp" uid="20925809" lat="35.1876935" lon="129.0812405">
+  <tag k="crossing" v="traffic_signals" />
+  <tag k="crossing:markings" v="zebra" />
+  <tag k="highway" v="crossing" />
+ </node>
+  <node id="12785591056" visible="true" version="1" changeset="165417023" timestamp="2025-04-25T10:33:30Z" user="qIRENEp" uid="20925809" lat="35.1865047" lon="129.0815647" />
+  <node id="13694994269" visible="true" version="1" changeset="180666517" timestamp="2026-03-31T10:45:38Z" user="mendines" uid="7147307" lat="35.1862028" lon="129.0816817" />
+  <node id="12791011262" visible="true" version="1" changeset="165490159" timestamp="2025-04-27T05:23:51Z" user="qIRENEp" uid="20925809" lat="35.1759593" lon="129.0735047" />
+  <node id="12791011263" visible="true" version="1" changeset="165490159" timestamp="2025-04-27T05:23:51Z" user="qIRENEp" uid="20925809" lat="35.1738976" lon="129.0718885" />
+  <node id="12791011263" visible="true" version="1" changeset="165490159" timestamp="2025-04-27T05:23:51Z" user="qIRENEp" uid="20925809" lat="35.1738976" lon="129.0718885" />
+  <node id="12791011264" visible="true" version="1" changeset="165490159" timestamp="2025-04-27T05:23:51Z" user="qIRENEp" uid="20925809" lat="35.1732071" lon="129.0713397" />
   <way id="26005519" version="38" timestamp="2024-10-06T01:13:06Z" changeset="157521617" uid="14338173" user="saori_">
     <nd ref="12109759152"/>
     <nd ref="2860431547"/>
@@ -16974,4 +16989,163 @@
     <tag k="surface" v="asphalt"/>
   </way>
 
+  <way id="1381590060" visible="true" version="2" changeset="175111975" timestamp="2025-11-25T13:57:59Z" user="LuxuryCoop" uid="7245212">
+  <nd ref="12791011261" />
+  <nd ref="12791011262" />
+  <nd ref="12791011263" />
+  <tag k="cycleway:right" v="no" />
+  <tag k="highway" v="secondary" />
+  <tag k="lanes" v="2" />
+  <tag k="lit" v="24/7" />
+  <tag k="maxheight" v="default" />
+  <tag k="name" v="중앙대로" />
+  <tag k="name:en" v="Jungang-daero" />
+  <tag k="name:ja" v="中央大路" />
+  <tag k="name:ko" v="중앙대로" />
+  <tag k="oneway" v="yes" />
+  <tag k="parking:both" v="no" />
+  <tag k="ref" v="7" />
+  <tag k="surface" v="asphalt" />
+ </way>
+  <way id="1381590059" visible="true" version="2" changeset="175111975" timestamp="2025-11-25T13:57:59Z" user="LuxuryCoop" uid="7245212">
+  <nd ref="12791011263" />
+  <nd ref="12791011264" />
+  <nd ref="436724931" />
+  <tag k="cycleway:right" v="no" />
+  <tag k="highway" v="secondary" />
+  <tag k="lanes" v="2" />
+  <tag k="lit" v="24/7" />
+  <tag k="maxheight" v="default" />
+  <tag k="name" v="중앙대로" />
+  <tag k="name:en" v="Jungang-daero" />
+  <tag k="name:ja" v="中央大路" />
+  <tag k="name:ko" v="중앙대로" />
+  <tag k="oneway" v="yes" />
+  <tag k="parking:both" v="no" />
+  <tag k="ref" v="7" />
+  <tag k="surface" v="asphalt" />
+ </way>
+  <!-- 2026-11-17: OSM API 0.6에서 같은 범위의 BRT busway 2개와 회전 제한 relation을 추가 (Overpass 추출에 빠져 있던 것). 중앙대로 서면 방향 차도 1381590060,1381590059는 반대 차도(512187678)만큼 범위 밖까지 이어지도록 추가 -->
+  <way id="1381093793" visible="true" version="3" changeset="180666517" timestamp="2026-03-31T10:45:38Z" user="mendines" uid="7147307">
+  <nd ref="414663644" />
+  <nd ref="12791011296" />
+  <nd ref="12791011297" />
+  <nd ref="12791011298" />
+  <nd ref="12791050004" />
+  <nd ref="12791011299" />
+  <nd ref="12791011269" />
+  <nd ref="436724931" />
+  <tag k="highway" v="busway" />
+  <tag k="lanes" v="2" />
+  <tag k="surface" v="asphalt" />
+ </way>
+  <way id="1576543239" visible="true" version="1" changeset="191639025" timestamp="2026-11-08T10:19:08Z" user="Iranto_Ham" uid="3042055">
+  <nd ref="4654857450" />
+  <nd ref="436724952" />
+  <nd ref="12785591067" />
+  <nd ref="12785591056" />
+  <nd ref="13694994269" />
+  <nd ref="414663644" />
+  <tag k="highway" v="busway" />
+  <tag k="lanes" v="2" />
+  <tag k="surface" v="asphalt" />
+ </way>
+  <relation id="19035905" visible="true" version="3" changeset="191639025" timestamp="2026-11-08T10:19:08Z" user="Iranto_Ham" uid="3042055">
+  <member type="way" ref="1576543239" role="from" />
+  <member type="node" ref="414663644" role="via" />
+  <member type="way" ref="37400617" role="to" />
+  <tag k="restriction" v="no_left_turn" />
+  <tag k="type" v="restriction" />
+ </relation>
+  <relation id="19035906" visible="true" version="3" changeset="191639025" timestamp="2026-11-08T10:19:08Z" user="Iranto_Ham" uid="3042055">
+  <member type="way" ref="1576543239" role="from" />
+  <member type="node" ref="414663644" role="via" />
+  <member type="way" ref="506007334" role="to" />
+  <tag k="restriction" v="no_right_turn" />
+  <tag k="type" v="restriction" />
+ </relation>
+  <relation id="19035907" visible="true" version="3" changeset="191639025" timestamp="2026-11-08T10:19:08Z" user="Iranto_Ham" uid="3042055">
+  <member type="way" ref="1576543239" role="from" />
+  <member type="node" ref="414663644" role="via" />
+  <member type="way" ref="1576543239" role="to" />
+  <tag k="restriction" v="no_u_turn" />
+  <tag k="type" v="restriction" />
+ </relation>
+  <relation id="21855762" visible="true" version="2" changeset="191639025" timestamp="2026-11-08T10:19:08Z" user="Iranto_Ham" uid="3042055">
+  <member type="way" ref="1494563723" role="from" />
+  <member type="node" ref="414663644" role="via" />
+  <member type="way" ref="1576543239" role="to" />
+  <tag k="restriction" v="no_left_turn" />
+  <tag k="type" v="restriction" />
+ </relation>
+  <relation id="21855763" visible="true" version="1" changeset="191312789" timestamp="2026-11-01T10:58:48Z" user="Iranto_Ham" uid="3042055">
+  <member type="way" ref="1494563723" role="from" />
+  <member type="node" ref="414663644" role="via" />
+  <member type="way" ref="1381093796" role="to" />
+  <tag k="restriction" v="no_left_turn" />
+  <tag k="type" v="restriction" />
+ </relation>
+  <relation id="21855764" visible="true" version="1" changeset="191312789" timestamp="2026-11-01T10:58:48Z" user="Iranto_Ham" uid="3042055">
+  <member type="way" ref="1494563723" role="from" />
+  <member type="node" ref="414663644" role="via" />
+  <member type="way" ref="37400617" role="to" />
+  <tag k="restriction" v="no_left_turn" />
+  <tag k="type" v="restriction" />
+ </relation>
+  <relation id="21855765" visible="true" version="2" changeset="191639025" timestamp="2026-11-08T10:19:08Z" user="Iranto_Ham" uid="3042055">
+  <member type="way" ref="1576543239" role="from" />
+  <member type="node" ref="414663644" role="via" />
+  <member type="way" ref="1381093796" role="to" />
+  <tag k="restriction" v="no_left_turn" />
+  <tag k="type" v="restriction" />
+ </relation>
+  <relation id="21855766" visible="true" version="1" changeset="191312789" timestamp="2026-11-01T10:58:48Z" user="Iranto_Ham" uid="3042055">
+  <member type="way" ref="1381093793" role="from" />
+  <member type="node" ref="414663644" role="via" />
+  <member type="way" ref="1381093793" role="to" />
+  <tag k="restriction" v="no_u_turn" />
+  <tag k="type" v="restriction" />
+ </relation>
+  <relation id="21855767" visible="true" version="1" changeset="191312789" timestamp="2026-11-01T10:58:48Z" user="Iranto_Ham" uid="3042055">
+  <member type="way" ref="1381093793" role="from" />
+  <member type="node" ref="414663644" role="via" />
+  <member type="way" ref="1381093795" role="to" />
+  <tag k="restriction" v="no_left_turn" />
+  <tag k="type" v="restriction" />
+ </relation>
+  <relation id="21855768" visible="true" version="1" changeset="191312789" timestamp="2026-11-01T10:58:48Z" user="Iranto_Ham" uid="3042055">
+  <member type="way" ref="512187678" role="from" />
+  <member type="node" ref="414663644" role="via" />
+  <member type="way" ref="795083570" role="to" />
+  <tag k="restriction" v="no_right_turn" />
+  <tag k="type" v="restriction" />
+ </relation>
+  <relation id="21855769" visible="true" version="1" changeset="191312789" timestamp="2026-11-01T10:58:48Z" user="Iranto_Ham" uid="3042055">
+  <member type="way" ref="512187678" role="from" />
+  <member type="node" ref="414663644" role="via" />
+  <member type="way" ref="794688378" role="to" />
+  <tag k="restriction" v="no_right_turn" />
+  <tag k="type" v="restriction" />
+ </relation>
+  <relation id="21855770" visible="true" version="1" changeset="191312789" timestamp="2026-11-01T10:58:48Z" user="Iranto_Ham" uid="3042055">
+  <member type="way" ref="1381093808" role="from" />
+  <member type="node" ref="414663644" role="via" />
+  <member type="way" ref="506007334" role="to" />
+  <tag k="restriction" v="no_u_turn" />
+  <tag k="type" v="restriction" />
+ </relation>
+  <relation id="21855771" visible="true" version="1" changeset="191312789" timestamp="2026-11-01T10:58:48Z" user="Iranto_Ham" uid="3042055">
+  <member type="way" ref="1381093808" role="from" />
+  <member type="node" ref="414663644" role="via" />
+  <member type="way" ref="1381093795" role="to" />
+  <tag k="restriction" v="no_right_turn" />
+  <tag k="type" v="restriction" />
+ </relation>
+  <relation id="21919577" visible="true" version="1" changeset="191639025" timestamp="2026-11-08T10:19:08Z" user="Iranto_Ham" uid="3042055">
+  <member type="way" ref="1576543239" role="from" />
+  <member type="node" ref="4654857450" role="via" />
+  <member type="way" ref="1576543239" role="to" />
+  <tag k="restriction" v="no_u_turn" />
+  <tag k="type" v="restriction" />
+ </relation>
 </osm>

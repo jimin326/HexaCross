@@ -4488,6 +4488,15 @@
  </node>
  <node id="12785591056" visible="true" version="1" changeset="165417023" timestamp="2025-04-25T10:33:30Z" user="qIRENEp" uid="20925809" lat="35.1865047" lon="129.0815647" />
  <node id="13694994269" visible="true" version="1" changeset="180666517" timestamp="2026-03-31T10:45:38Z" user="mendines" uid="7147307" lat="35.1862028" lon="129.0816817" />
+  <node id="12785591037" visible="true" version="1" changeset="165417023" timestamp="2025-04-25T10:33:30Z" user="qIRENEp" uid="20925809" lat="35.1965875" lon="129.0797894" />
+  <node id="12785591038" visible="true" version="1" changeset="165417023" timestamp="2025-04-25T10:33:30Z" user="qIRENEp" uid="20925809" lat="35.1962916" lon="129.0799155" />
+  <node id="12785591060" visible="true" version="1" changeset="165417023" timestamp="2025-04-25T10:33:30Z" user="qIRENEp" uid="20925809" lat="35.1960603" lon="129.0799768">
+  <tag k="highway" v="crossing" />
+ </node>
+  <node id="12785591039" visible="true" version="1" changeset="165417023" timestamp="2025-04-25T10:33:30Z" user="qIRENEp" uid="20925809" lat="35.1951825" lon="129.0799718" />
+  <node id="12785591040" visible="true" version="1" changeset="165417023" timestamp="2025-04-25T10:33:30Z" user="qIRENEp" uid="20925809" lat="35.1943693" lon="129.0798645" />
+  <node id="12785591041" visible="true" version="1" changeset="165417023" timestamp="2025-04-25T10:33:30Z" user="qIRENEp" uid="20925809" lat="35.1935912" lon="129.0797492" />
+  <node id="12785591063" visible="true" version="1" changeset="165417023" timestamp="2025-04-25T10:33:30Z" user="qIRENEp" uid="20925809" lat="35.1931545" lon="129.0798337" />
  <way id="26005519" visible="true" version="38" changeset="157521617" timestamp="2024-10-06T01:13:06Z" user="saori_" uid="14338173">
   <nd ref="12109759152" />
   <nd ref="2860431547" />
@@ -16877,6 +16886,22 @@
   <nd ref="12785591056" />
   <nd ref="13694994269" />
   <nd ref="414663644" />
+  <tag k="highway" v="busway" />
+  <tag k="lanes" v="2" />
+  <tag k="surface" v="asphalt" />
+ </way>
+  <way id="1494563722" visible="true" version="2" changeset="191639025" timestamp="2026-11-08T10:19:08Z" user="Iranto_Ham" uid="3042055">
+  <nd ref="12509191971" />
+  <nd ref="12785591037" />
+  <nd ref="12785591038" />
+  <nd ref="12785591060" />
+  <nd ref="12785591043" />
+  <nd ref="12785591039" />
+  <nd ref="12785591040" />
+  <nd ref="12785591041" />
+  <nd ref="12785591042" />
+  <nd ref="12785591063" />
+  <nd ref="4654857450" />
   <tag k="highway" v="busway" />
   <tag k="lanes" v="2" />
   <tag k="surface" v="asphalt" />

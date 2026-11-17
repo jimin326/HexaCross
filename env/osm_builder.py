@@ -282,15 +282,41 @@ def plan_to_phases(plan: dict, group: dict, exits: dict, n: int, signal: dict,
     return out
 
 
+def _merge_carriageways(osm_file, merges, out_dir):
+    """분리 차도 + 가운데 busway를 하나의 양방향 도로로 (tools/build_area_map.apply_carriageway_merges).
+    반환: (새 OSM 파일, 노드 이름 바꿈 {옛 id: 새 id}, 합친 결과 목록)"""
+    import sys
+    if BASE not in sys.path:
+        sys.path.insert(0, BASE)
+    from tools.build_area_map import Proj, load_osm, apply_carriageway_merges
+    tree = ET.parse(osm_file)
+    lats = [float(n.get("lat")) for n in tree.getroot().iter("node")]
+    lons = [float(n.get("lon")) for n in tree.getroot().iter("node")]
+    proj = Proj(sum(lats) / len(lats), sum(lons) / len(lons))
+    tmp = os.path.join(out_dir, "src.osm")
+    tree.write(tmp, encoding="UTF-8", xml_declaration=True)
+    root, nodes, ntags, ways, rels = load_osm(tmp, proj)
+    done = apply_carriageway_merges(root, proj, nodes, ways, merges)
+    rename = {}
+    for d in done:
+        rename.update(d.get("rename", {}))
+    # OSM 파일은 node → way → relation 순서여야 netconvert가 읽는다 (새로 만든 노드가 뒤에 붙어 있음)
+    order = {"bounds": 0, "node": 1, "way": 2, "relation": 3}
+    kids = sorted(list(root), key=lambda el: order.get(el.tag, 0))
+    for el in list(root):
+        root.remove(el)
+    root.extend(kids)
+    out = os.path.join(out_dir, "merged.osm")
+    ET.ElementTree(root).write(out, encoding="UTF-8", xml_declaration=True)
+    return out, rename, done
+
+
 def build_osm(road: dict, ego: dict, traffic: dict, signal: dict,
               out_dir: str) -> str:
     from env.road_builder import make_vtypes_block   # 순환 import 방지
 
     cfg = road["osm"]
     osm_file = os.path.join(BASE, cfg["file"])
-    # 버스전용차로: 모든 도로에 같은 규칙 (env/bus_lanes.py) — OSM 버스 태그를 netconvert가 읽는 형식으로 정리
-    from env.bus_lanes import normalize_osm_file
-    osm_file = normalize_osm_file(osm_file, os.path.join(out_dir, "bus_normalized.osm"))
     center_id = str(cfg["center_node"])
     net_path = os.path.join(out_dir, "highway.net.xml")
     types_path = os.path.join(out_dir, "osm_types.typ.xml")
@@ -310,7 +336,6 @@ def build_osm(road: dict, ego: dict, traffic: dict, signal: dict,
     # 신호를 붙여야 하므로 그 이름으로 바꿔서 넘긴다.
     extra_ids = [("cluster_" + "_".join(sorted(map(str, s)))) if isinstance(s, (list, tuple))
                  else str(s) for s in cfg.get("extra_signals", [])]
-    tls_nodes = ",".join([center_id] + extra_ids)
     # 1-0) 합친 맵 모드: 따로 만든 맵(교차로 정밀맵 + 주변부 등)을 쓰면 OSM 변환을 건너뛴다
     #   merge_parts: plain XML 묶음 목록 → 빌드할 때마다 tools/merge_nets.py로 합침
     #   net_file   : 이미 합쳐 둔 net.xml
@@ -327,19 +352,70 @@ def build_osm(road: dict, ego: dict, traffic: dict, signal: dict,
         import shutil
         shutil.copy(os.path.join(BASE, cfg["net_file"]), net_path)
     else:
+        # 1-1) 분리 차도 + 가운데 BRT busway → 하나의 양방향 도로 (영역 지도와 같은 함수, cfg["merge_carriageways"])
+        osm_in, rename = osm_file, {}
+        merges_done = []
+        if cfg.get("merge_carriageways"):
+            osm_in, rename, merges_done = _merge_carriageways(osm_file, cfg["merge_carriageways"], out_dir)
+        # 버스전용차로: 모든 도로에 같은 규칙 (env/bus_lanes.py) — OSM 버스 태그를 netconvert가 읽는 형식으로 정리
+        from env.bus_lanes import normalize_osm_file
+        osm_in = normalize_osm_file(osm_in, os.path.join(out_dir, "bus_normalized.osm"))
+        # 1-2) 1차 변환 (신호는 OSM 신호만)
+        raw0 = os.path.join(out_dir, "raw0.net.xml")
+        # 합친 도로는 범위(bbox) 밖 조각도 남긴다 — 범위 밖에서 골목길과 만나 끊긴 바깥 조각이 버려지면
+        # 간선 입구가 범위 경계(바로 앞 신호 교차로)로 당겨진다. (--keep-edges.explicit는 범위 조건과 합집합)
+        keep_merged = [f"{d}{sid}{('#' + str(k)) if k >= 0 else ''}" for m in merges_done
+                       for sid in m.get("segments", []) for d in ("", "-") for k in range(-1, 80)]
+        keep_args = ["--keep-edges.explicit", ",".join(keep_merged)] if keep_merged else []
         subprocess.run(
             [checkBinary("netconvert"),
-             "--osm-files", osm_file, "--type-files", types_path,
+             "--osm-files", osm_in, "--type-files", types_path,
              "--geometry.remove", "--ramps.guess", "--junctions.join",
+             "--junctions.join-exclude", center_id,           # 연산교차로 중심 노드 id 유지 (LANE_RULES·신호 기준)
              "--tls.guess-signals", "--tls.join", "--tls.default-type", "static",
-             "--tls.set", tls_nodes,
-             "--tls.yellow.time", str(int(round(signal.get("yellow", 3.0)))),  # 정수만 허용
              "--remove-edges.isolated", "--keep-edges.by-vclass", "passenger",
              "--no-turnarounds.except-deadend", "--output.street-names",
              "--osm.lane-access", "true",                     # 버스전용차로 → 그 차로 allow="bus"
-             "--keep-edges.in-geo-boundary", f"{minlon},{minlat},{maxlon},{maxlat}",
-             "-o", net_path],
+             "--keep-edges.in-geo-boundary", f"{minlon},{minlat},{maxlon},{maxlat}", *keep_args,
+             "-o", raw0],
             check=True, capture_output=True)
+        # 1-3) 신호 배치 (env/signals.py): 중심·extra + 빠진 OSM 신호(신호 횡단보도 등) + 간선끼리 만나는 교차로
+        from env.signals import osm_signal_nodes, missing_osm_signals, assumed_major_signals
+        net0 = sumolib.net.readNet(raw0)
+
+        def node_of(osm_ids):
+            ids = [rename.get(str(i), str(i)) for i in osm_ids]
+            return next((n.getID() for n in net0.getNodes()
+                         if n.getID() in ids or set(ids) & set(n.getID().split("_"))), None)
+        tls_list = [node_of([center_id])]
+        for spec in cfg.get("extra_signals", []):
+            tls_list.append(node_of(spec if isinstance(spec, (list, tuple)) else [spec]))
+        if None in tls_list:
+            raise RuntimeError(f"신호로 지정할 노드를 도로망에서 못 찾음: center/extra_signals {tls_list}")
+        sig_add, sig_skip = missing_osm_signals(net0, osm_signal_nodes(osm_file), rename=rename)
+        major_add = assumed_major_signals(net0) if cfg.get("assume_major_signals", True) else []
+        tls_list += [n for n in sig_add + major_add if n not in tls_list]
+        subprocess.run(
+            [checkBinary("netconvert"), "-s", raw0,
+             "--tls.set", ",".join(tls_list), "--tls.join", "--tls.default-type", "static",
+             "--tls.layout", "incoming",                      # 아래 korean_phase_programs가 현시를 다시 만듦
+             "--tls.allred.time", str(int(round(signal.get("all_red", 2.0)))),   # 황색 뒤 전적색 (교차로 비우기)
+             "--tls.yellow.time", str(int(round(signal.get("yellow", 3.0)))),  # 정수만 허용
+             "--output.street-names", "-o", net_path],
+            check=True, capture_output=True)
+        from env.signals import fix_midblock_programs, fix_joined_programs, korean_phase_programs
+        phased = korean_phase_programs(net_path)        # 연산교차로·extra_signals는 아래에서 다시 덮어씀
+        from env.signals import brt_split_programs
+        brt_split = (brt_split_programs(net_path, bus_green=float(signal.get("bus_green", 0.0)),
+                                        yellow=float(signal.get("yellow", 3.0)))
+                     if float(signal.get("bus_green", 0.0)) > 0 else [])
+        midblock = fix_midblock_programs(net_path)
+        joined_inner = fix_joined_programs(net_path)
+        signal_build = {"osm_signals_added": sig_add, "osm_signals_skipped": sig_skip,
+                        "assumed_major": major_add, "phase_programs": phased, "brt_split": brt_split, "midblock_programs": midblock,
+                        "joined_inner_green": joined_inner,
+                        "carriageway_merges": [{k: v for k, v in m.items() if k != "rename"} for m in merges_done]}
+        extra_osm = [spec if isinstance(spec, (list, tuple)) else [spec] for spec in cfg.get("extra_signals", [])]
 
     # 버스전용차로가 이어지는 곳(BRT)은 버스차로 직진 연결만 (env/bus_lanes.py, 버스차로가 없으면 변화 없음)
     from env.bus_lanes import brt_through_deletes
@@ -377,11 +453,21 @@ def build_osm(road: dict, ego: dict, traffic: dict, signal: dict,
             additional.append("highway.poly.xml")
 
     net = sumolib.net.readNet(net_path)
+    if not (cfg.get("merge_parts") or cfg.get("net_file")):
+        # extra_signals → 최종 도로망에서 그 노드를 제어하는 신호 id (합치기·--tls.join으로 이름이 바뀔 수 있음)
+        tl_of = {c[0].getEdge().getToNode().getID(): tl.getID() for tl in net.getTrafficLights() for c in tl.getConnections()}
+        extra_ids = []
+        for ids in extra_osm:
+            ids = [rename.get(str(i), str(i)) for i in ids]
+            nid = next((n for n in tl_of if n in ids or set(ids) & set(n.split("_"))), None)
+            if nid is None:
+                raise RuntimeError(f"extra_signals {ids}에 신호가 만들어지지 않았습니다.")
+            extra_ids.append(tl_of[nid])
     if not net.hasNode(center_id):
         raise RuntimeError(f"도로망에 중심 노드 '{center_id}'가 없습니다. 합친 맵을 쓰면 "
                            f"ROAD['osm']['center_node']를 그 맵의 연산교차로 노드 id로 바꾸세요.")
     for jid in extra_ids:
-        if not net.hasNode(jid) or net.getNode(jid).getType() != "traffic_light":
+        if jid not in {tl.getID() for tl in net.getTrafficLights()}:
             raise RuntimeError(f"extra_signals의 '{jid}'에 신호가 만들어지지 않았습니다. "
                                f"노드 id 또는 합쳐지는 노드 묶음을 확인하세요.")
     center = net.getNode(center_id)
@@ -592,17 +678,21 @@ def build_osm(road: dict, ego: dict, traffic: dict, signal: dict,
                     for i, s in enumerate(ego.get("demo_routes", []))])
     for rid, spec, key in all_specs:
         p = ego_path(spec)
-        route_lines.append(f'    <route id="{rid}" edges="{" ".join(p)}"/>')
-        meta[key].append(rid)
-        # 경로상 교차점까지 거리 → 첫 엣지 위 출발 위치
+        # 출발 위치 = 연산교차로까지 경로상 approach(m) 앞. 그 지점이 들어 있는 엣지부터 경로를 시작한다
+        # (도로망 끝 엣지가 짧으면 첫 엣지 안에서는 그만큼 앞에 설 수 없음)
         to_center, edges = 0.0, [net.getEdge(e) for e in p]
         for e in edges:
             to_center += e.getLength()
             if e.getToNode().getID() == center_id or center_id in e.getToNode().getID():
                 break
-        first_len = edges[0].getLength()
-        meta["ego_depart_pos"][rid] = float(
-            min(max(to_center - approach, 0.0), max(first_len - 10.0, 0.0)))
+        d0, acc, k = max(to_center - approach, 0.0), 0.0, 0
+        while k < len(edges) - 1 and acc + edges[k].getLength() <= d0:
+            acc += edges[k].getLength()
+            k += 1
+        p = p[k:]
+        route_lines.append(f'    <route id="{rid}" edges="{" ".join(p)}"/>')
+        meta[key].append(rid)
+        meta["ego_depart_pos"][rid] = float(min(max(d0 - acc, 0.0), max(edges[k].getLength() - 10.0, 0.0)))
 
     with open(os.path.join(out_dir, "highway.rou.xml"), "w", encoding="utf-8") as f:
         f.write(f"""<routes>
@@ -684,13 +774,13 @@ def build_osm(road: dict, ego: dict, traffic: dict, signal: dict,
         # 버스전용차로(BRT)가 있으면: 버스 직진과 엇갈리는 일반 이동류는 같은 순간 녹색이 되지 않게
         # 진입로 녹색 끝에 짧은 BRT 현시를 둔다 (env/bus_lanes.py). 버스차로가 없으면 변화 없음.
         from env.bus_lanes import bus_link_conflicts, bus_subphases
-        bconf = bus_link_conflicts(net_path, center_tl)
+        bconf = bus_link_conflicts(net_path, center_tl) if float(signal.get("bus_green", 0.0)) > 0 else {}
         if bconf:
             bus_links = set().union(*bconf.values())
             new_lines, buf = [], []
 
             def flush():
-                for d_, s_ in bus_subphases(buf, bconf, bus_links, float(signal.get("bus_green", 10.0)), yellow,
+                for d_, s_ in bus_subphases(buf, bconf, bus_links, float(signal.get("bus_green", 0.0)), yellow,
                                             approach={i for i, g_ in group.items() if g_}):
                     new_lines.append(f'        <phase duration="{d_:g}" state="{s_}"/>')
                 buf.clear()
@@ -704,7 +794,7 @@ def build_osm(road: dict, ego: dict, traffic: dict, signal: dict,
             flush()
             lines = new_lines
             meta["bus_signal"] = {"conflicts": {str(k): sorted(v) for k, v in bconf.items()},
-                                  "bus_green": float(signal.get("bus_green", 10.0))}
+                                  "bus_green": float(signal.get("bus_green", 0.0))}
     else:
         lines = []
 
@@ -721,7 +811,9 @@ def build_osm(road: dict, ego: dict, traffic: dict, signal: dict,
     green_default = float(plan.get("green_default", 20.0))
     if signal.get("enabled", True):
         for jid in extra_ids:
-            jx, jy = net.getNode(jid).getCoord()
+            _jn = {c[0].getEdge().getToNode() for c in net.getTLS(jid).getConnections()}
+            jx = sum(n.getCoord()[0] for n in _jn) / len(_jn)
+            jy = sum(n.getCoord()[1] for n in _jn) / len(_jn)
             groups = []                        # [(이름, 방위각, [linkIndex...])]
             group_of = {}
             for c in root.iter("connection"):
@@ -760,6 +852,8 @@ def build_osm(road: dict, ego: dict, traffic: dict, signal: dict,
             f.write("<additional>\n" + "\n".join(lines) + "\n</additional>\n")
         additional.append("highway.tls.xml")
     meta["center_tls"] = center_tl
+    if not (cfg.get("merge_parts") or cfg.get("net_file")):
+        meta["signal_build"] = signal_build
     meta["lane_rules"] = lane_table      # 실제 적용된 차로 → 진출 도로 표
     with open(os.path.join(out_dir, "highway.meta.json"), "w", encoding="utf-8") as f:
         json.dump(meta, f, ensure_ascii=False, indent=1)

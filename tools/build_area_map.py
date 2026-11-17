@@ -305,6 +305,9 @@ def apply_carriageway_merges(root, proj, nodes, ways, merges):
                         break
         rename = {}
         reps = set()
+        one_side = {}                               # 한쪽 차도에만 붙어 있던 교차점 → "out"(바깥으로 가는 차도) / "in"
+        fw_nodes = {n for w in fw for n in ways[w][1]}
+        bw_nodes = {n for w in bw for n in ways[w][1]}
         new_nodes = []                              # (s, id)
         for g in groups:
             rep = next((a for a in g if a[3]), g[0])   # 다른 도로가 붙는 노드를 대표로
@@ -320,6 +323,9 @@ def apply_carriageway_merges(root, proj, nodes, ways, merges):
             for a in g:
                 if a[1] != nid:
                     rename[a[1]] = nid
+            sides = {("out" if a[1] in fw_nodes else "in") for a in g if a[1] in fw_nodes or a[1] in bw_nodes}
+            if len(sides) == 1 and any(a[3] for a in g):
+                one_side[nid] = sides.pop()
             reps.add(nid)
             new_nodes.append((s, nid))
         # 모양 점 (붙는 점 사이 20m 간격)
@@ -360,7 +366,7 @@ def apply_carriageway_merges(root, proj, nodes, ways, merges):
         for bwid, (bt, bpts) in busways.items():
             # 합친 도로 가운데 선의 몇 %가 이 busway 옆(8 m 안)인가 (busway는 합친 구간보다 길 수 있음)
             cov = sum(1 for p in densify(center, 5.0) if dist_to_polyline(p, bpts) < 8) / max(len(densify(center, 5.0)), 1)
-            if cov < 0.5:
+            if cov < 0.05:          # 합친 도로의 일부라도 따라가는 busway는 모두 근거로 (구간별 버스차로 판정에 씀)
                 continue
             bl = int(bt["lanes"]) if bt.get("lanes", "").isdigit() else (1 if bt.get("oneway") in ("yes", "1") else 2)
             bus_ev.append({"busway": bwid, "lanes": bl, "oneway": bt.get("oneway", "no"), "coverage": round(cov, 2)})
@@ -379,6 +385,49 @@ def apply_carriageway_merges(root, proj, nodes, ways, merges):
                 tags[f"bus:lanes:{d}"] = "|".join(["designated"] * b_ + ["yes"] * g)
                 tags[f"access:lanes:{d}"] = "|".join(["no"] * b_ + ["yes"] * g)
         tags.update({kk: str(v) for kk, v in (m.get("tags") or {}).items()})       # 설정에서 직접 덮어쓰기 (선택)
+
+        # 구간별 차로: 차도의 OSM lanes가 중간에 바뀌거나 busway가 끝나면 그 지점에서 끊고 조각마다 따로 정한다
+        def spans(wids):
+            out = []
+            for w in wids:
+                nds_ = ways[w][1]
+                a_, b_ = project(orig_pos[nds_[0]], center)[1], project(orig_pos[nds_[-1]], center)[1]
+                L_ = ways[w][0].get("lanes", "")
+                out.append((min(a_, b_), max(a_, b_), int(L_) if L_.isdigit() else None))
+            return out
+        sp_f, sp_b = spans(fw), spans(bw)
+        bus_lines = [busways[b["busway"]][1] for b in bus_ev]
+        cpts = densify(center, 5.0)
+        cum = [0.0]
+        for a_, b_ in zip(cpts, cpts[1:]):
+            cum.append(cum[-1] + math.dist(a_, b_))
+
+        def at(s_):
+            def pick(sp, dflt):
+                hit = [x for x in sp if x[0] - 1 <= s_ <= x[1] + 1 and x[2]]
+                return hit[0][2] if hit else dflt
+            i_ = min(range(len(cum)), key=lambda j: abs(cum[j] - s_))
+            on_bus = any(dist_to_polyline(cpts[i_], bl) < 8 for bl in bus_lines)
+            return (pick(sp_f, gen_f), pick(sp_b, gen_b), bus_f if on_bus else 0, bus_b if on_bus else 0)
+        prof = [(x, at(x)) for x in [i_ * 10.0 for i_ in range(int(L // 10) + 1)]]
+        cuts = [prof[i_][0] for i_ in range(1, len(prof)) if prof[i_][1] != prof[i_ - 1][1]]
+        inner_seq = [n for n in seq[1:-1]]
+        for c_ in cuts:
+            if inner_seq:
+                junc.add(min(inner_seq, key=lambda n: abs(s_of[n] - c_)))
+
+        def seg_tags(nds_):
+            gf, gb, bf, bb = at((s_of[nds_[0]] + s_of[nds_[-1]]) / 2)
+            t_ = dict(tags)
+            t_.update({"lanes": str(gf + bf + gb + bb), "lanes:forward": str(gf + bf), "lanes:backward": str(gb + bb)})
+            for k_ in [k_ for k_ in t_ if k_.startswith(("bus:lanes", "access:lanes"))]:
+                del t_[k_]
+            for d_, g_, b_ in (("forward", gf, bf), ("backward", gb, bb)):
+                if b_:
+                    t_[f"bus:lanes:{d_}"] = "|".join(["designated"] * b_ + ["yes"] * g_)
+                    t_[f"access:lanes:{d_}"] = "|".join(["no"] * b_ + ["yes"] * g_)
+            t_.update({kk: str(v) for kk, v in (m.get("tags") or {}).items()})
+            return t_, (gf, gb, bf, bb)
         # 교차점마다 끊어 여러 way로 (회전 제한의 from/to가 어느 쪽에서 오는지 정확히 가리키도록)
         segs, cur = [], [seq[0]]
         for n in seq[1:]:
@@ -386,13 +435,14 @@ def apply_carriageway_merges(root, proj, nodes, ways, merges):
             if n in junc:
                 segs.append(cur)
                 cur = [n]
-        seg_ids = []
+        seg_ids, seg_lanes = [], {}
         for i, nds in enumerate(segs):
             sid = f"{new_id}{i:02d}"
             nw = ET.SubElement(root, "way", {"id": sid, "version": "1"})
             for n in nds:
                 ET.SubElement(nw, "nd", {"ref": n})
-            for kk, v in tags.items():
+            t_seg, seg_lanes[sid] = seg_tags(nds)
+            for kk, v in t_seg.items():
                 ET.SubElement(nw, "tag", {"k": kk, "v": v})
             seg_ids.append((sid, nds))
         merged_nds = {wid: ways[wid][1] for wid in merged_ids}
@@ -437,7 +487,7 @@ def apply_carriageway_merges(root, proj, nodes, ways, merges):
                         nn.append(n)
                 ways[wid] = (t, nn)
         for sid, nds in seg_ids:
-            ways[sid] = (tags, nds)
+            ways[sid] = (seg_tags(nds)[0], nds)
 
         def heading(a, b):
             return math.degrees(math.atan2(b[0] - a[0], b[1] - a[1])) % 360
@@ -500,11 +550,42 @@ def apply_carriageway_merges(root, proj, nodes, ways, merges):
                 root.remove(rel)
                 removed_rels.append(rel.get("id"))
         done.append({"label": m.get("label", name), "new_id": new_id, "merged": sorted(merged_ids),
-                     "absorbed_nodes": sorted(rename), "dropped_ways": sorted(dropped),
-                     "lanes": {"general_per_dir": [gen_f, gen_b], "bus_per_dir": [bus_f, bus_b], "busway_evidence": bus_ev},
+                     "absorbed_nodes": sorted(rename), "rename": dict(rename), "dropped_ways": sorted(dropped),
+                     "one_side_nodes": one_side,
+                     "lanes": {"general_per_dir": [gen_f, gen_b], "bus_per_dir": [bus_f, bus_b], "busway_evidence": bus_ev,
+                               "segments": {k_: list(v) for k_, v in seg_lanes.items()},
+                               "segment_src": {"정방향 차도(나감)": [[round(a_), round(b_), L_] for a_, b_, L_ in sp_f],
+                                               "역방향 차도(들어옴)": [[round(a_), round(b_), L_] for a_, b_, L_ in sp_b]}},
                      "segments": [sid for sid, _ in seg_ids], "removed_restrictions": removed_rels,
                      "length_m": round(L), "junctions": len(groups)})
     return done
+
+
+def median_deletes(net, merges_done):
+    """합친 도로에서 원래 한쪽 차도에만 붙어 있던 교차점(골목길·연결로)은 가운데 분리대(BRT)를 건너는 연결을 지운다.
+    "out" 쪽(합친 way 방향 = 시작 교차로에서 멀어지는 쪽, 엣지 id에 '-' 없음)에 붙었던 도로는
+    '-' 엣지(들어오는 방향)와 서로 오갈 수 없다 — 실제로는 분리대 때문에 우회전으로만 드나든다.
+    반환: [(from, to, fromLane, toLane)] (<delete>용)"""
+    out = []
+    for md in merges_done:
+        pre = md["new_id"]
+        for rep, side in md.get("one_side_nodes", {}).items():
+            nd = next((n for n in net.getNodes() if n.getID() == rep or rep in n.getID().split("_")), None)
+            if nd is None:
+                continue
+            def merged(e):
+                return e.getID().lstrip("-").startswith(pre)
+            def far_dir(e):          # 분리대 건너편 방향의 합친 도로 엣지인가
+                return merged(e) and (e.getID().startswith("-") == (side == "out"))
+            for e in nd.getIncoming():
+                for to, cl in e.getOutgoing().items():
+                    if to.getToNode() is None:
+                        continue
+                    bad = (not merged(e) and far_dir(to)) or (far_dir(e) and not merged(to))
+                    if bad:
+                        for c in cl:
+                            out.append((e.getID(), to.getID(), c.getFromLane().getIndex(), c.getToLane().getIndex()))
+    return sorted(set(out))
 
 
 def ntags_of(el):
@@ -874,14 +955,37 @@ def build(cfg_path):
             if len(names) >= 2 and not rb:
                 tls_set.append(nd.getID())
         tls_set += [str(x) for x in cfg.get("extra_signals", [])]
+        # OSM 신호 중 아직 신호가 아닌 곳 (교차로에서 먼 신호 횡단보도 등, env/signals.py)
+        from env.signals import osm_signal_nodes, missing_osm_signals
+        rename_all = {}
+        for md in merges_done:
+            rename_all.update(md.get("rename", {}))
+        sig_add, sig_skip = missing_osm_signals(net0, osm_signal_nodes(osm_f), rename=rename_all)
+        tls_set += [n for n in sig_add if n not in tls_set]
+        print(f"[signals] 가정 신호 {len(tls_set) - len(sig_add)}곳 + 빠졌던 OSM 신호 {sig_add} | 넣지 않은 OSM 신호 {sig_skip}")
     if tls_set:
         # --tls.join: 가까운 신호들(예: 연산교차로를 이루는 노드 4개)을 하나의 신호로 묶는다
         subprocess.run([sumolib.checkBinary("netconvert"), "-s", raw0_f, "--tls.set", ",".join(tls_set),
                         "--tls.join", "--tls.default-type", "static", "--tls.layout", tls_layout,
+                        "--tls.allred.time", str(int(cfg.get("tls_allred", 2))),     # 황색 뒤 전적색
                         "--output.street-names", "-o", raw_f],
                        check=True, capture_output=True)
     else:
         raw_f = raw0_f
+
+    # 합친 도로: 한쪽 차도에만 붙어 있던 교차점에서 가운데 분리대(BRT)를 건너는 연결 지우기
+    med_del = median_deletes(sumolib.net.readNet(raw_f), merges_done)
+    if med_del:
+        md_f = os.path.join(tmp, "median.con.xml")
+        with open(md_f, "w") as f:
+            f.write("<connections>\n" + "".join(
+                f'    <delete from="{a}" to="{b}" fromLane="{fl}" toLane="{tl}"/>\n' for a, b, fl, tl in med_del)
+                    + "</connections>\n")
+        med_f = os.path.join(tmp, "raw_median.net.xml")
+        subprocess.run([sumolib.checkBinary("netconvert"), "-s", raw_f, "--connection-files", md_f,
+                        "--output.street-names", "-o", med_f], check=True, capture_output=True)
+        raw_f = med_f
+    print(f"[median] 분리대를 건너는 연결 지움 {len(med_del)}개: {med_del[:6]}")
 
     # 갈 곳 없는 차로(차로 수가 줄어드는 곳, 예: 2차로 진입로 → 1차로 회전교차로) → 옆 차로와 같은 곳으로 합류.
     # netconvert는 차로가 줄면 남는 차로의 연결을 만들지 않아 그 차로 끝에서 차가 멈춘다.
@@ -1006,37 +1110,61 @@ def build(cfg_path):
     nod_by_id = {n.get("id"): n for n in nod_t.getroot().iter("node")}
     edg_t = ET.parse(f"{plain}.edg.xml")
     moved = {}
+    edg_all = list(edg_t.getroot().iter("edge"))
+
+    def node_xy(n):
+        return (float(nod_by_id[n].get("x")), float(nod_by_id[n].get("y")))
+
+    def centerline(ed):
+        if ed.get("shape"):
+            pts = [tuple(map(float, p.split(",")[:2])) for p in ed.get("shape").split()]
+        else:
+            pts = [node_xy(ed.get("from")), node_xy(ed.get("to"))]
+        return pts
     for eid, (outer, want) in stubs.items():
-        if not cnet.hasEdge(eid) or outer in moved:
+        if not cnet.hasEdge(eid) or outer in moved or outer not in nod_by_id:
             continue
-        e = cnet.getEdge(eid)
-        sh = e.getShape() if e.getToNode().getID() == outer else e.getShape()[::-1]   # 순환 쪽 → 바깥 끝
-        acc, cut = 0.0, None
-        for p, q in zip(sh, sh[1:]):
-            seg = math.dist(p, q)
+        ce = cnet.getEdge(eid)
+        core = ce.getFromNode().getID() if ce.getToNode().getID() == outer else ce.getToNode().getID()
+        E = [ed for ed in edg_all if {ed.get("from"), ed.get("to")} == {core, outer}]
+        if not E or core not in nod_by_id:
+            continue
+        pl = centerline(E[0])
+        if E[0].get("from") != core:
+            pl = pl[::-1]                                   # 순환 쪽 → 바깥 끝
+        acc, cut, keep_pts = 0.0, None, [pl[0]]
+        for p_, q in zip(pl, pl[1:]):
+            seg = math.dist(p_, q)
             if acc + seg >= want:
                 f = (want - acc) / seg
-                cut = (p[0] + (q[0] - p[0]) * f, p[1] + (q[1] - p[1]) * f)
+                cut = (p_[0] + (q[0] - p_[0]) * f, p_[1] + (q[1] - p_[1]) * f)
+                keep_pts.append(cut)
                 break
             acc += seg
-        if cut is None or outer not in nod_by_id:
+            keep_pts.append(q)
+        if cut is None:
             continue                                   # 이미 stub_m보다 짧음
         nod_by_id[outer].set("x", f"{cut[0]:.2f}")
         nod_by_id[outer].set("y", f"{cut[1]:.2f}")
         moved[outer] = cut
-    if moved:
-        # 바깥 끝 노드에 닿는 도로들의 모양(shape)은 직선 근사로 다시 계산되게 지운다
-        for ed in edg_t.getroot().iter("edge"):
-            if ed.get("from") in moved or ed.get("to") in moved:
-                if "shape" in ed.attrib:
-                    del ed.attrib["shape"]
-                for ln in ed.iter("lane"):
-                    if "shape" in ln.attrib:
-                        del ln.attrib["shape"]
+        # OSM 모양 그대로 잘라 붙인다 (직선으로 다시 그리지 않음)
+        for ed in E:
+            pts = keep_pts if ed.get("from") == core else keep_pts[::-1]
+            ed.set("shape", " ".join(f"{x:.2f},{y:.2f}" for x, y in pts))
+            for ln in ed.iter("lane"):
+                ln.attrib.pop("shape", None)
     if moved:
         nod_t.write(f"{plain}.nod.xml", encoding="UTF-8", xml_declaration=True)
         edg_t.write(f"{plain}.edg.xml", encoding="UTF-8", xml_declaration=True)
     _run(_plain_args(_files(plain)) + ["--output.street-names", "-o", net_f])
+    # 단일로 신호(신호 횡단보도 등): 양방향 함께 녹색 → 황색 → 보행 적색 (env/signals.py)
+    from env.signals import fix_midblock_programs, fix_joined_programs, korean_phase_programs
+    print(f"[signals] 축별 직진 → 보호 좌회전 현시: {korean_phase_programs(net_f)}")
+    from env.signals import brt_split_programs
+    print(f"[signals] BRT 구간 분리: {brt_split_programs(net_f)}")
+    midblock = fix_midblock_programs(net_f)
+    print(f"[signals] 묶인 신호의 내부 정지선 항상 녹색: {fix_joined_programs(net_f)}")
+    print(f"[signals] 단일로 신호 현시 고침: {midblock}")
     # 합치기용 plain XML
     export(net_f, os.path.join(out_dir, name))
     # 생성 파일 머리 주석(빌드 컴퓨터의 임시 경로가 들어감)과 .netccfg는 지운다 (저장소에 올리기 위해)
@@ -1055,6 +1183,7 @@ def build(cfg_path):
     meta = {"name": name, "ring_ways": ring_ways, "selected_ways": {w: why[w] for w in sorted(sel)},
             "lane_overrides": len(overrides), "carriageway_merges": merges_done,
             "lane_merge_connections": merge_cons, "bus_tag_changes": bus_changed, "brt_deleted_connections": brt_del,
+            "median_deleted_connections": med_del,
             "lane_assumptions": cfg.get("lane_assumptions", {}),
             "restrictions_kept": len(rels_keep), "tls_assumed": tls_set, "lat0": lat0, "lon0": lon0}
     json.dump(meta, open(os.path.join(out_dir, f"{name}.meta.json"), "w", encoding="utf-8"),

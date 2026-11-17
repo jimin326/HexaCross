@@ -70,7 +70,8 @@ def main(cfg_path):
         src = [tags[w] for w in md["merged"] if w in tags]
         bus = md["lanes"]["busway_evidence"]
         merged[md["new_id"]] = {"src_lanes": sorted({t.get("lanes") for t in src}), "busway": bus,
-                                "gen": md["lanes"]["general_per_dir"], "bus": md["lanes"]["bus_per_dir"]}
+                                "gen": md["lanes"]["general_per_dir"], "bus": md["lanes"]["bus_per_dir"],
+                                "segments": md["lanes"].get("segments"), "spans": md["lanes"].get("segment_src", {})}
     rows = []
     for e in net.getEdges():
         eid = e.getID()
@@ -83,11 +84,14 @@ def main(cfg_path):
                "도로망_차로": n_net, "도로망_버스전용": n_bus}
         m = next((k for k in merged if wid.startswith(k)), None)
         if m:
-            g, b = merged[m]["gen"][d], merged[m]["bus"][d]
-            # 원본 근거 다시 확인: 차도 lanes가 하나의 값이고, busway lanes가 2(양방향 1+1)
-            src_ok = merged[m]["src_lanes"] == [str(g)]
-            bw_ok = all(x["lanes"] == 2 * b for x in merged[m]["busway"]) if b else not merged[m]["busway"]
-            row.update({"OSM_근거": f"차도 lanes={merged[m]['src_lanes']} + busway {[(x['busway'], x['lanes']) for x in merged[m]['busway']]}",
+            seg = (merged[m].get("segments") or {}).get(wid)
+            g, b = ((seg[0], seg[2]) if d == 0 else (seg[1], seg[3])) if seg else (merged[m]["gen"][d], merged[m]["bus"][d])
+            # 원본 근거: 같은 방향 원래 차도들의 OSM lanes (합친 구간 안에 걸친 것), busway lanes = 방향별 2배
+            spans = merged[m]["spans"].get("정방향 차도(나감)" if d == 0 else "역방향 차도(들어옴)", [])
+            src_l = sorted({L for a, b_, L in spans if b_ - a > 1})
+            src_ok = src_l == [g] or not spans
+            bw_ok = all(x["lanes"] == 2 * b for x in merged[m]["busway"]) if b else True
+            row.update({"OSM_근거": f"차도 lanes={src_l} + busway {[(x['busway'], x['lanes']) for x in merged[m]['busway']]}",
                         "기대_차로": g + b, "기대_버스전용": b})
             ok = n_net == g + b and n_bus == b and src_ok and bw_ok
             row["판정"] = "일치(합친 도로)" if ok else "불일치"
