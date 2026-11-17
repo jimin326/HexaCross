@@ -175,6 +175,9 @@ def main():
     rou = open(os.path.join(NET_DIR, "highway.rou.xml"), encoding="utf-8").read()
     routes = dict(re.findall(r'<route id="(bg_\d+)" edges="([^"]+)"', rou))
     rates = {r: float(v) for r, v in re.findall(r'route="(bg_\d+)"[^>]*vehsPerHour="([\d.]+)"', rou)}
+    # 포아송 도착 flow: period="exp(λ)", λ = 초당 대수
+    rates.update({r: float(v) * 3600.0 for r, v in
+                  re.findall(r'route="(bg_\d+)"[^>]*period="exp\(([\d.]+)\)"', rou)})
     cid = center.getID()
     twice, via_fake = [], []
     for rid, edges in routes.items():
