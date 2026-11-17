@@ -115,15 +115,15 @@ ROAD = {
     # lanes_in / lanes_out : 교차로로 들어오는(정지선 앞 일반 차로) / 나가는 방향 차로 수.
     #          OSM 모드에서는 실제 차로를 env/osm/yeonsan_fix.*.xml이 정하고, lanes_in은
     #          단순화 모드(junction_builder)와 화면 표시용, lanes_out은 배경 교통
-    #          배분 비율로 쓰인다. 진출 차로 수는 아직 OSM 그대로
-    #          (조사: W·NE 진출은 실제 3차로인데 도로는 2차로 → HANDOFF 7번).
+    #          배분 비율로 쓰인다. lanes_out은 교차로를 나온 직후의 진출 차로 수
+    #          (조사: W·NE·S 3, N·E 2, SW는 조사 없음 → OSM 2).
     # green  : 이 도로 진입 차량의 녹색 신호 시간 (s). 근거는 아래 1-1) 신호 설명
     # inflow : 이 도로로 들어오는 배경 교통량 (대/시간)
     "legs": [
         dict(id="N", road="중앙대로",  name="중앙대로 (동래 방면)", bearing=348.0, length=300.0,
              lanes_in=4, lanes_out=2, green=13.0, inflow=420),
         dict(id="NE", road="반송로", name="반송로",               bearing=46.0,  length=250.0,
-             lanes_in=4, lanes_out=2, green=13.0, inflow=220),
+             lanes_in=4, lanes_out=3, green=13.0, inflow=220),
         dict(id="E", road="고분로",  name="고분로",               bearing=100.0, length=250.0,
              lanes_in=4, lanes_out=2, green=12.0, inflow=220),
         dict(id="S", road="월드컵대로",  name="월드컵대로 (남쪽)",    bearing=158.0, length=300.0,
