@@ -584,11 +584,20 @@ def build_osm(road: dict, ego: dict, traffic: dict, signal: dict,
             center_tl = c.get("tl")
             break
     if center_tl and signal.get("enabled", True):
+        # 교차로를 이루는 노드들과 그 사이 내부 도로 (연산교차로는 노드 4개)
+        tl_nodes = {cn[0].getEdge().getToNode().getID()
+                    for cn in net.getTLS(center_tl).getConnections()}
         group = {}
         for c in root.iter("connection"):
             if c.get("tl") != center_tl:
                 continue
             e = net.getEdge(c.get("from"))
+            # 교차로 내부 도로의 링크(두 번째 정지선)는 항상 녹색: 진입 정지선을
+            # 녹색에 통과한 차가 8m 뒤 내부 정지선의 적색에 갇히지 않게 한다.
+            if (e.getFromNode().getID() in tl_nodes
+                    and e.getToNode().getID() in tl_nodes):
+                group[int(c.get("linkIndex"))] = None
+                continue
             # 엣지 시작점(교차점에서 먼 쪽)의 방위각으로 간선 판정
             sx, sy = e.getShape()[0]
             b = _bearing(sx - cx, sy - cy)

@@ -1135,6 +1135,21 @@ class SumoHighwayEnv(gym.Env):
                     if ttc < th:
                         reward -= tp * (1.0 - ttc / th)
 
+            # ---- 신호 제동 감점: 내 신호가 녹색이 아닌데 정지선에 서기엔 너무 빠름 ----
+            # 정지선에서 서려면 필요한 감속도 a = v² / (2·거리). 이게 comfort_decel
+            # 보다 크면(=지금 브레이크를 밟아도 급제동) 초과분에 비례해 감점
+            # (최대 signal_brake_penalty). 드문 신호위반 감점보다 먼저, 촘촘하게
+            # "적색/황색이면 미리 감속"을 가르친다.
+            sbp = float(self.rw.get("signal_brake_penalty", 0.0))
+            if sbp > 0.0 and self.tl_obs and ego_speed > 0.5:
+                nxt = self._next_approach_signal()
+                if (nxt is not None and nxt[2] <= self.tl_range
+                        and self._signal_code(nxt[3]) < 1.0):
+                    a_req = ego_speed ** 2 / (2.0 * max(nxt[2] - 1.0, 0.5))
+                    a_c = float(self.rw.get("comfort_decel", 3.0))
+                    if a_req > a_c:
+                        reward -= sbp * min((a_req - a_c) / a_c, 1.0)
+
             # ---- 목표 진행 보상: 이번 스텝에 경로를 따라 목표 쪽으로 간 거리 ----
             # (vmax로 달렸을 때 스텝당 goal_progress_weight)
             odo = traci.vehicle.getDistance(self.ego_id)

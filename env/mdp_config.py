@@ -255,6 +255,11 @@ REWARD = {
     # 스텝당 최대 ttc_penalty 감점. 0이면 비활성.
     "ttc_penalty": 0.0,
     "ttc_threshold": 3.0,
+    # ---- 신호 제동 감점 (신호위반 예방) ----
+    # 내 신호가 녹색이 아닐 때, 정지선에 서는 데 필요한 감속도 v²/(2·거리)가
+    # comfort_decel을 넘으면 초과 비율만큼 스텝당 최대 signal_brake_penalty 감점.
+    "signal_brake_penalty": 0.0,
+    "comfort_decel": 3.0,        # m/s². ego 최대 감속 5.0보다 여유 있게
     "goal_progress_weight": 0.0,
     "goal_lane_weight": 0.0,
 
