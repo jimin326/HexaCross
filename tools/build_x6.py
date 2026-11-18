@@ -484,17 +484,17 @@ def _apply_once(net_in, net_out, spec, tmp, stop_r):
 def leg_slot(g, Y, AR, lanes, wl=None):
     """한 진입로 차례(녹색 g + 황색 Y + 전적색 AR)의 현시들. lanes = {링크 번호: 차로 id(1 = 중앙선 쪽)}.
     wl (자료의 진입로 안 차이, signal_plan_assumed.within_leg):
-      lead_lanes / lead_s           : 이 차로들이 먼저 켜지고 나머지는 lead_s 뒤에 켜짐
-      early_end_lanes / early_end_s : 이 차로들이 early_end_s 먼저 꺼짐
+      lead_lanes / lead_frac(또는 lead_s)                : 이 차로들이 먼저 켜지고 나머지는 녹색의 lead_frac 뒤에 켜짐
+      early_end_lanes / early_end_frac(또는 early_end_s) : 이 차로들이 녹색의 early_end_frac만큼 먼저 꺼짐
     반환 [(시간, {링크 번호: 'G'|'y'|'r'})]"""
     wl = wl or {}
     win = {}
     for i, lid in lanes.items():
         on, off = 0.0, g
         if wl.get("lead_lanes") and lid not in wl["lead_lanes"]:
-            on = min(float(wl["lead_s"]), g)
+            on = min(round(float(wl["lead_frac"]) * g) if "lead_frac" in wl else float(wl["lead_s"]), g - 1.0)
         if wl.get("early_end_lanes") and lid in wl["early_end_lanes"]:
-            off = max(g - float(wl["early_end_s"]), 1.0)
+            off = max(g - (round(float(wl["early_end_frac"]) * g) if "early_end_frac" in wl else float(wl["early_end_s"])), 1.0)
         win[i] = (on, off)
     slot = g + Y + AR
     cuts = sorted({0.0, slot} | {t for on, off in win.values() for t in (on, off, off + Y)})

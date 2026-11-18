@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    연산교차로 노드 보정 파일 (netconvert node 파일)
+
+    OSM 원본(yeonsan_cityhall.osm)은 고치지 않는다.
+    osm_builder.build_osm()이 netconvert의 node-files 옵션으로 넘긴다
+    (road_config.ROAD["osm"]["fix_nodes"]).
+
+    정지선 앞 신호 지점 해제:
+    OSM에는 SW·N·W 진입부의 정지선(횡단보도 앞) 자리에 신호 노드
+    (highway=traffic_signals)가 따로 찍혀 있다. netconvert의 tls.guess-signals
+    옵션이 이 노드를 교차로 중심 신호와 하나로 묶으면서, 한 진입부에 신호가
+    두 곳(이 노드 + 교차로 입구)에 생겨 정지선이 두 줄이 된다.
+    문제: 두 줄 사이 짧은 구간(N 5.8m, SW 0.3m)에서 차로를 잘못 고른 차가
+    차로를 못 바꿔 갇히고, 두 줄이 같은 신호 id라 ego의 정지선 통과·신호위반
+    판정이 두 번째 줄에서야 된다.
+    해결: 이 노드를 신호 없는 일반 지점(priority)으로 바꾼다. 앞뒤 도로 조각이
+    하나로 합쳐지고, S·E·NE처럼 교차로 입구 한 곳에서만 신호를 받는다.
+    정지선은 OSM 신호 노드 위치보다 교차로 쪽으로 SW 약 0.3m, N 약 6m,
+    W 약 14m 옮겨진다.
+
+    tls.unset 옵션으로는 안 됨: 교차로 신호에서는 빠지지만 각자 따로 도는
+    신호로 남는다.
+-->
+<nodes>
+    <node id="12791011266" type="priority"/>  <!-- SW 중앙대로 서면 진입 -->
+    <node id="13277693701" type="priority"/>  <!-- N 중앙대로 동래 진입 -->
+    <node id="4958136019"  type="priority"/>  <!-- W 월드컵대로 사직 진입 -->
+</nodes>

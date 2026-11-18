@@ -367,6 +367,15 @@ def build_osm(road: dict, ego: dict, traffic: dict, signal: dict,
         keep_merged = [f"{d}{sid}{('#' + str(k)) if k >= 0 else ''}" for m in merges_done
                        for sid in m.get("segments", []) for d in ("", "-") for k in range(-1, 80)]
         keep_args = ["--keep-edges.explicit", ",".join(keep_merged)] if keep_merged else []
+        # 보정 파일 (ROAD["osm"]의 fix_nodes / fix_edges / fix_connections): OSM과 같은 netconvert 실행에 넣어야
+        # 바뀐 차로의 연결이 다시 계산된다. 연산교차로는 지금 x6_spec 정밀 모델이 대신하므로 기본은 꺼 둔다.
+        fix_args = []
+        if cfg.get("fix_nodes"):
+            fix_args += ["--node-files", os.path.join(BASE, cfg["fix_nodes"])]
+        if cfg.get("fix_edges"):
+            fix_args += ["--edge-files", os.path.join(BASE, cfg["fix_edges"])]
+        if cfg.get("fix_connections"):
+            fix_args += ["--connection-files", os.path.join(BASE, cfg["fix_connections"])]
         subprocess.run(
             [checkBinary("netconvert"),
              "--osm-files", osm_in, "--type-files", types_path,
@@ -377,6 +386,7 @@ def build_osm(road: dict, ego: dict, traffic: dict, signal: dict,
              "--no-turnarounds.except-deadend", "--output.street-names",
              "--osm.lane-access", "true",                     # 버스전용차로 → 그 차로 allow="bus"
              "--keep-edges.in-geo-boundary", f"{minlon},{minlat},{maxlon},{maxlat}", *keep_args,
+             *fix_args,
              "-o", raw0],
             check=True, capture_output=True)
         # 1-3) 신호 배치 (env/signals.py): 중심·extra + 빠진 OSM 신호(신호 횡단보도 등) + 간선끼리 만나는 교차로
@@ -559,11 +569,28 @@ def build_osm(road: dict, ego: dict, traffic: dict, signal: dict,
     side_in = [c[0] for c in entries if c[0].getID() not in used]
     side_out = [c[0] for c in exits if c[0].getID() not in used]
 
+    # 금지 이동이 정말 지워졌는지 확인. 없는 edge id는 netconvert가 에러로
+    # 멈추지만, OSM을 다시 받아 조각이 바뀌면 id는 있어도 엉뚱한 연결을 지울 수
+    # 있으므로 결과를 직접 확인한다.
+    banned = {tuple(t) for t in cfg.get("banned_turns", [])}
+    for a, b in sorted(banned):
+        left = [f"{ln.getID()}→{c.getToLane().getID()}"
+                for ln in near_in[a].getLanes() for c in ln.getOutgoing()
+                if c.getTo().getID() == near_out[b].getID()]
+        if left:
+            raise RuntimeError(f"금지 이동 {a}→{b} 연결이 남아 있습니다: {left}. "
+                               f"fix_connections 파일의 edge id를 확인하세요.")
+
     # ──────────────────────────────────────────────────────
     # 3) 교통 수요
-    #    · 간선 → 간선: 도로별 inflow를 다른 간선으로 배분 (진출 차로 수 비율)
-    #      + 그중 side_share만큼은 골목길로 빠짐
-    #    · 골목길 → 간선: 입구마다 side_inflow 대/시간
+    #    · 간선 → 간선
+    #      - 실측 OD(TRAFFIC["demand"], 부산시 2025 교통조사)가 켜져 있으면
+    #        방향별 실측 교통량 그대로. 연산교차로를 지나는 교통량 = 실측.
+    #        간선 → 골목길은 그 간선 실측 합의 side_share만큼 따로 더한다.
+    #      - 꺼져 있으면 도로별 inflow(가정값)를 다른 간선으로 배분
+    #        (진출 차로 수 비율) + 그중 side_share만큼은 골목길로 빠짐.
+    #        금지 이동(banned_turns)은 빼고 나머지 방향에 다시 나눈다.
+    #    · 골목길 → 간선: 입구마다 side_inflow 대/시간 (실측 수요가 켜져 있으면 × scale)
     #    경로는 sumolib 최단경로 (실제 연결/회전 금지를 따름)
     # ──────────────────────────────────────────────────────
     path_cache = {}
@@ -575,45 +602,154 @@ def build_osm(road: dict, ego: dict, traffic: dict, signal: dict,
             path_cache[key] = [e.getID() for e in p] if p else None
         return path_cache[key]
 
+    # 간선 → 간선 경로: 그냥 최단거리로 찾으면 일부 방향(예: SW→E, E→S, W→SW)이
+    # 큰 교차로 대신 이면도로나 다른 도로로 질러간다. 실제 간선 교통은 간선을
+    # 타고 연산교차로를 지나므로, "출발 간선 도로 → 교차로 또는 우회전 연결로 →
+    # 도착 간선 도로"에 속한 edge만 써서 경로를 찾는다.
+    def corridor(lg, outgoing):
+        """교차점에 붙은 edge에서 같은 이름 도로를 따라 도로망 끝까지 (trace_leg와 같은 규칙)."""
+        e = near_edge(lg, outgoing)
+        out = [e.getID()]
+        for _ in range(200):
+            nxt = list(e.getOutgoing().keys()) if outgoing else list(e.getIncoming().keys())
+            nxt = [n for n in nxt if n.getID() not in out and n.allows("passenger")
+                   and n.getName() == e.getName()
+                   and n.getID().lstrip("-") != e.getID().lstrip("-")]
+            if not nxt:
+                break
+            h = heading(e, at_end=outgoing)
+            e = min(nxt, key=lambda n: _angle_diff(heading(n, at_end=not outgoing), h))
+            out.append(e.getID())
+        return set(out)
+
+    corr_in = {lg["id"]: corridor(lg, outgoing=False) for lg in legs}
+    corr_out = {lg["id"]: corridor(lg, outgoing=True) for lg in legs}
+    slip_edges = {e.getID() for e in net.getEdges()
+                  if "_link" in (e.getType() or "") and min(
+                      math.hypot(x - cx, y - cy) for x, y in e.getShape()) < 150.0}
+
+    def through_path(a_id, b_id):
+        """leg a 진입 끝 → leg b 진출 끝, 두 간선 도로와 연산교차로·연결로만 쓰는 경로."""
+        import heapq
+        key = ("through", a_id, b_id)
+        if key in path_cache:
+            return path_cache[key]
+        allowed = corr_in[a_id] | corr_out[b_id] | slip_edges
+        src, dst = leg_in[a_id].getID(), leg_out[b_id].getID()
+        dist, prev, heap = {src: 0.0}, {}, [(0.0, src)]
+        out = None
+        while heap:
+            d, eid = heapq.heappop(heap)
+            if eid == dst:
+                out = [eid]
+                while out[-1] in prev:
+                    out.append(prev[out[-1]])
+                out.reverse()
+                break
+            if d > dist.get(eid, 1e18):
+                continue
+            for n in net.getEdge(eid).getOutgoing():
+                nid = n.getID()
+                if nid not in allowed or not n.allows("passenger"):
+                    continue
+                if d + n.getLength() < dist.get(nid, 1e18):
+                    dist[nid], prev[nid] = d + n.getLength(), eid
+                    heapq.heappush(heap, (d + n.getLength(), nid))
+        path_cache[key] = out
+        return out
+
+    def passes_center(edges):
+        """경로가 연산교차로를 지나는가 (교차로 안 통과 또는 우회전 연결로)."""
+        for eid in edges:
+            e = net.getEdge(eid)
+            if e.getToNode().getID() == center_id:
+                return True
+            if "_link" in (e.getType() or "") and min(
+                    math.hypot(x - cx, y - cy) for x, y in e.getShape()) < 150.0:
+                return True
+        return False
+
     vtypes_block, flow_type = make_vtypes_block(traffic, keep_strategic=True)
     route_lines, flow_lines = [], []
     meta = {"layout": "osm", "center": center_id, "center_xy": [cx, cy],
             "ego_routes": [], "ego_depart_pos": {}, "bg_routes": {}, "in_edges": {}}
     side_share = float(cfg.get("side_share", 0.1))
     side_inflow = float(cfg.get("side_inflow", 40.0))
+    demand = traffic.get("demand") or {}
+    od_legs = {name: lg for name, lg in (demand.get("legs") or {}).items() if lg}
+    use_od = bool(od_legs)
+    poisson = use_od and demand.get("poisson", True)
     k = 0
 
-    def add_flow(src, dst, rate):
+    def add_flow(src, dst, rate, finder=None):
         nonlocal k
-        p = path(src, dst)
+        p = (finder or path)(src, dst)
         if p is None or rate <= 0:
             return
         rid = f"bg_{k}"
         k += 1
         route_lines.append(f'    <route id="{rid}" edges="{" ".join(p)}"/>')
+        # 포아송 도착: 초당 λ대 (등간격보다 실제 도착 패턴에 가깝다)
+        arrival = (f'period="exp({rate / 3600.0:.6f})"' if poisson
+                   else f'vehsPerHour="{rate:.1f}"')
         flow_lines.append(
             f'    <flow id="f_{rid}" type="{flow_type}" route="{rid}" begin="0" '
-            f'end="100000" vehsPerHour="{rate:.1f}" departLane="best" '
+            f'end="100000" {arrival} departLane="best" '
             f'departSpeed="{traffic.get("depart_speed", "max")}"/>')
         meta["bg_routes"][rid] = {"first_edge": src.getID(), "rate": rate}
+        # lanes: 일반 차량이 다닐 수 있는 차로 수 (BRT 버스 전용 차로 제외).
+        # 버스 차로는 맨 왼쪽(가장 큰 번호)이라 0 ~ lanes-1이 일반 차로다.
+        # sumo_env의 prefill이 이 범위에만 배경차를 놓는다.
         meta["in_edges"].setdefault(src.getID(), {
-            "lanes": src.getLaneNumber(), "length": src.getLength(), "inflow": 0.0})
+            "lanes": sum(1 for ln in src.getLanes() if ln.allows("passenger")),
+            "length": src.getLength(), "inflow": 0.0})
         meta["in_edges"][src.getID()]["inflow"] += rate
 
     by_id = {lg["id"]: lg for lg in legs}
+    if use_od:
+        from env.road_builder import load_od_demand   # 순환 import 방지
+        missing = [name for name in demand["legs"] if not demand["legs"][name]]
+        if missing:
+            raise ValueError(f"demand.legs에 leg가 비어 있는 방면이 있습니다: {missing}")
+        unknown = sorted(set(od_legs.values()) - set(by_id))
+        if unknown:
+            raise ValueError(f"demand.legs의 leg id가 ROAD['legs']에 없습니다: {unknown}")
+        od = load_od_demand(demand)
+        leg_total = {a: 0.0 for a in by_id}
+        for (o, d), vph in od.items():
+            if o not in od_legs or d not in od_legs:
+                raise ValueError(f"CSV의 방면 '{o}' 또는 '{d}'가 demand.legs에 없습니다.")
+            a, b = od_legs[o], od_legs[d]
+            if (a, b) in banned or a == b:
+                continue      # 금지 이동 (실측에도 없음)
+            p = through_path(a, b)
+            if p is None or not passes_center(p):
+                raise RuntimeError(f"실측 OD {o}→{d} ({a}→{b}): 두 간선 도로와 연산교차로만으로 "
+                                   f"가는 경로가 없습니다 (연결·금지 회전 확인).")
+            add_flow(leg_in[a], leg_out[b], vph, finder=lambda s_, t_, a=a, b=b: through_path(a, b))
+            leg_total[a] += vph
+        meta["demand"] = {"scenario": demand.get("scenario"),
+                          "veh_per_hour": round(sum(leg_total.values()), 1)}
+    else:
+        leg_total = {a: float(by_id[a]["inflow"]) for a in by_id}
+        for a in by_id:
+            dests = [b for b in by_id if b != a and (a, b) not in banned]
+            wsum = sum(by_id[b]["lanes_out"] for b in dests)
+            main = leg_total[a] * (1.0 - side_share)
+            for b in dests:
+                add_flow(leg_in[a], leg_out[b], main * by_id[b]["lanes_out"] / wsum,
+                         finder=lambda s_, t_, a=a, b=b: through_path(a, b))
     for a in by_id:
-        dests = [b for b in by_id if b != a]
-        wsum = sum(by_id[b]["lanes_out"] for b in dests)
-        main = float(by_id[a]["inflow"]) * (1.0 - side_share)
-        for b in dests:
-            add_flow(leg_in[a], leg_out[b], main * by_id[b]["lanes_out"] / wsum)
         if side_out:
-            side_rate = float(by_id[a]["inflow"]) * side_share / len(side_out)
+            side_rate = leg_total[a] * side_share / len(side_out)
             for s in side_out:
                 add_flow(leg_in[a], s, side_rate)
+    # 골목 → 간선: 실측 수요가 켜져 있으면 실측 배율(scale)도 같이 적용한다
+    # (골목에서 들어온 차도 연산교차로 실측 통과량에 포함되기 때문)
+    side_rate_in = side_inflow * (float(demand.get("scale", 1.0)) if use_od else 1.0)
     for s in side_in:
         for b in by_id:
-            add_flow(s, leg_out[b], side_inflow / len(by_id))
+            add_flow(s, leg_out[b], side_rate_in / len(by_id))
 
     # ego 경로: 출발 간선 끝점 → 도착 간선 끝점. 출발 위치는 교차점에서
     # ego_approach(m) 떨어진 지점 (긴 도로 끝에서 출발하면 에피소드가 너무 길어짐)
@@ -755,6 +891,12 @@ def build_osm(road: dict, ego: dict, traffic: dict, signal: dict,
         n = max(group) + 1
         yellow = float(signal.get("yellow", 3.0))
         all_red = float(signal.get("all_red", 2.0))
+        # 녹색 시간: 실측 수요가 켜져 있으면 그 시나리오의 값(SIGNAL["green_by_scenario"]),
+        # 없으면 ROAD["legs"]의 green
+        by_scn = ((signal.get("green_by_scenario") or {}).get(demand.get("scenario"))
+                  if use_od else None) or {}
+        green = {lg["id"]: float(by_scn.get(lg["id"], lg.get("green", 20.0))) for lg in legs}
+        meta["signal_green_s"] = green
         plans = signal.get("plans") or {}
         lines = []
         if plans:
@@ -784,7 +926,7 @@ def build_osm(road: dict, ego: dict, traffic: dict, signal: dict,
             x6_lanes = link_lane_ids(net_path, center_tl)
         for lg in ([] if plans else legs):
             lanes = {i: x6_lanes.get(i, (None, 0))[1] for i, g_ in group.items() if g_ == lg["id"]}
-            for dur, st in leg_slot(float(lg.get("green", 20.0)), yellow, all_red, lanes, x6_within.get(lg["id"])):
+            for dur, st in leg_slot(green[lg["id"]], yellow, all_red, lanes, x6_within.get(lg["id"])):
                 state = "".join("G" if group.get(i) is None else st.get(i, "r") for i in range(n))
                 lines.append(f'        <phase duration="{dur:g}" state="{state}"/>')
         if not plans:
