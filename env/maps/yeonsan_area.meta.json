@@ -586,21 +586,23 @@
  "x6": {
   "center_signal": {
    "tls": "414663644",
-   "links": 35,
+   "links": 37,
    "cycle_s": 190.0,
    "phases": 21
   },
-  "warnings": [],
+  "warnings": [
+   "NE 진출: 경계 밖 도로 2차로, 자료 3차로 → 경계에서 맞춤"
+  ],
   "stop_line_r": {
    "N": 29.6,
-   "NE": 24.1,
+   "NE": 26.1,
    "E": 25.6,
-   "S": 31.4,
-   "SW": 26.7,
+   "S": 34.9,
+   "SW": 28.8,
    "W": 33.1
   },
-  "lanes_checked": 33,
-  "ok": 33,
+  "lanes_checked": 34,
+  "ok": 34,
   "rows": [
    {
     "leg": "N",
@@ -859,9 +861,11 @@
     "lane": 4,
     "kind": "gen",
     "want": [
+     "N",
      "NE"
     ],
     "got": [
+     "N",
      "NE"
     ],
     "bus_only": false,
@@ -895,14 +899,14 @@
    {
     "leg": "SW",
     "lane": 2,
-    "kind": "gen",
+    "kind": "brt",
     "want": [
-     "N"
+     "NE"
     ],
     "got": [
-     "N"
+     "NE"
     ],
-    "bus_only": false,
+    "bus_only": true,
     "ok": true
    },
    {
@@ -923,6 +927,19 @@
     "lane": 4,
     "kind": "gen",
     "want": [
+     "N"
+    ],
+    "got": [
+     "N"
+    ],
+    "bus_only": false,
+    "ok": true
+   },
+   {
+    "leg": "SW",
+    "lane": 5,
+    "kind": "gen",
+    "want": [
      "NE"
     ],
     "got": [
@@ -933,7 +950,7 @@
    },
    {
     "leg": "SW",
-    "lane": 5,
+    "lane": 6,
     "kind": "gen",
     "want": [
      "E",
@@ -948,7 +965,7 @@
    },
    {
     "leg": "SW",
-    "lane": 6,
+    "lane": 7,
     "kind": "gen",
     "want": [
      "E"

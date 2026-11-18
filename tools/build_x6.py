@@ -56,10 +56,12 @@ def exit_map(spec, o, d):
     BRT는 BRT로, 일반 차로는 우회전 성격(+25° 넘게 꺾음)이면 바깥 차로부터, 아니면 안쪽부터 순서대로."""
     L = [l for l in spec["legs"][o]["lanes"] if d in l["to"]]
     res, first, last = {}, (2 if spec["legs"][d].get("brt") else 1), n_out(spec, d)
+    dbrt = bool(spec["legs"][d].get("brt"))
     for l in L:
-        if l["kind"] == "brt":
-            res[l["id"]] = 1
-    g = [l for l in L if l["kind"] != "brt"]
+        if l["kind"] == "brt" and dbrt:
+            res[l["id"]] = 1                      # BRT → 진출로 BRT
+    # BRT가 없는 진출로로 가는 BRT 차로(예: SW BRT2 → 안락)는 일반 차로처럼 순서대로
+    g = [l for l in L if not (l["kind"] == "brt" and dbrt)]
     right = _turn(spec, o, d) > 25
     for k, l in enumerate(g):
         j = last - (len(g) - 1 - k) if right else first + k
@@ -113,12 +115,37 @@ def _gen_at(lg, dist_from_stop, gen_outside):
     return gen_outside if v is None else v
 
 
-def _map_lanes(nu, nd, brt):
-    """차로 수가 바뀌는 지점의 연결 (위 차로 → 아래 차로). BRT(맨 왼쪽)는 BRT끼리."""
-    gu, gd = nu - (1 if brt else 0), nd - (1 if brt else 0)
+def _spread(nu, nd):
+    """nu개 차로 → nd개 차로를 고르게 잇는 (위, 아래) 쌍"""
     pairs = []
-    if brt:
-        pairs.append((nu - 1, nd - 1))
+    if nd >= nu:
+        for j in range(nd):
+            pairs.append((0 if nu == 1 else round(j * (nu - 1) / (nd - 1)), j))
+    else:
+        for i in range(nu):
+            pairs.append((i, 0 if nd == 1 else round(i * (nd - 1) / (nu - 1))))
+    return pairs
+
+
+def _brt_at(lg, dist_from_stop):
+    """정지선에서 dist m 떨어진 곳의 BRT 차로 수. brt_profile [[거리, 수], ...]가 있으면 그것, 없으면 BRT면 1"""
+    if not lg.get("brt"):
+        return 0
+    v = None
+    for d, n in lg.get("brt_profile", []):
+        if dist_from_stop >= d:
+            v = n
+    return 1 if v is None else int(v)
+
+
+def _map_lanes(nu, nd, bu, bd=None):
+    """차로 수가 바뀌는 지점의 연결 (위 차로 → 아래 차로). bu/bd = 위/아래의 BRT 차로 수 (맨 왼쪽).
+    BRT는 BRT끼리 (BRT 1 → 2처럼 늘어나면 고르게), 일반 차로는 일반 차로끼리."""
+    bu = int(bu); bd = bu if bd is None else int(bd)
+    gu, gd = nu - bu, nd - bd
+    pairs = []
+    if bu and bd:
+        pairs += [(gu + i, gd + j) for i, j in _spread(bu, bd)]
     if gd >= gu:
         for j in range(gd):
             i = 0 if gd == 1 else round(j * (gu - 1) / (gd - 1))
@@ -273,8 +300,8 @@ def _apply_once(net_in, net_out, spec, tmp, stop_r):
         if shape:
             attrs["shape"] = " ".join(f"{x:.2f},{y:.2f}" for x, y in shape)
         el = ET.SubElement(eroot, "edge", attrs)
-        if brt:
-            ET.SubElement(el, "lane", {"index": str(n - 1), "allow": "bus"})
+        for k in range(int(brt)):                 # 맨 왼쪽 brt개 차로 = 버스전용
+            ET.SubElement(el, "lane", {"index": str(n - 1 - k), "allow": "bus"})
         eel[eid] = el
         return eid
 
@@ -315,6 +342,9 @@ def _apply_once(net_in, net_out, spec, tmp, stop_r):
         if _lanes_of(proto) > m:      # 경계 밖이 더 넓으면 바깥쪽 차로를 맨 오른쪽에서 이어 줌
             for i in range(m, _lanes_of(proto)):
                 add_con(prev, eid, m - 1, i)
+        elif _lanes_of(proto) < m:    # 경계 밖이 더 좁으면 남는 왼쪽 차로를 맨 왼쪽 차로로 합류 (막다른 차로 방지)
+            for i in range(_lanes_of(proto), m):
+                add_con(prev, eid, i, _lanes_of(proto) - 1)
         merge_info.setdefault(d, None)
         report["legs"].setdefault(d, {})["out"] = {"lanes": m, "edges": [f"x6_{d}_out{k}" for k in range(len(chain) - 1)]}
 
@@ -363,14 +393,15 @@ def _apply_once(net_in, net_out, spec, tmp, stop_r):
         for k, (a, b) in enumerate(zip(chain, chain[1:])):
             rmid = (radii[k] + max(radii[k + 1], stop)) / 2
             g = _gen_at(lg, max(rmid - stop, 0.0), gen_out)
-            n = g + (1 if brt else 0)
+            nb = _brt_at(lg, max(rmid - stop, 0.0))
+            n = g + nb
             shp = None
             if k == 0 and proto.get("spreadType") == "center":
                 # 경계 밖 도로가 가운데 기준 차로 배치면, 첫 조각 시작을 옮겨 맨 오른쪽 차로 가장자리가 그대로 이어지게
                 shp = [_left_shift(nodes[a], nodes[b], nodes[a], (n - n_side / 2) * LANE_W), nodes[b]]
-            sid = new_edge(f"x6_{o}_in{k}", a, b, n, proto, brt=brt, shape=shp)
-            segs.append((sid, n, b))
-        if segs[-1][1] != n_main(spec, o):
+            sid = new_edge(f"x6_{o}_in{k}", a, b, n, proto, brt=nb, shape=shp)
+            segs.append((sid, n, b, nb))
+        if segs[-1][1] != n_main(spec, o) or segs[-1][3] != sum(1 for l in lg["lanes"] if l["kind"] == "brt"):
             raise RuntimeError(f"{o}: 정지선 차로 {segs[-1][1]} ≠ 자료 {n_main(spec, o)}")
         final_in[o] = segs[-1][0]
         fe = eel[segs[-1][0]]
@@ -382,14 +413,14 @@ def _apply_once(net_in, net_out, spec, tmp, stop_r):
                     le = ET.SubElement(fe, "lane", {"index": idx})
                 ET.SubElement(le, "stopOffset", {"value": f'{float(l["stop_offset_m"]):g}'})
         # 경계 → 첫 조각
-        for i, j in _map_lanes(n_side, segs[0][1], brt):
+        for i, j in _map_lanes(n_side, segs[0][1], 1 if brt else 0, segs[0][3]):
             add_con(eid, segs[0][0], i, j)
-        for (s1, n1, nd), (s2, n2, _) in zip(segs, segs[1:]):
-            for i, j in _map_lanes(n1, n2, brt):
+        for (s1, n1, nd, b1), (s2, n2, _, b2) in zip(segs, segs[1:]):
+            for i, j in _map_lanes(n1, n2, b1, b2):
                 add_con(s1, s2, i, j)
             if nd in chain and kinds[chain.index(nd)] == "split":
                 split_info[o] = (nd, s1)
-        report["legs"].setdefault(o, {})["in"] = {"segments": [(s, n) for s, n, _ in segs], "boundary_lanes": n_side}
+        report["legs"].setdefault(o, {})["in"] = {"segments": [(s_[0], s_[1]) for s_ in segs], "boundary_lanes": n_side}
 
     # 분리 우회전 차로
     for o, lg in legs.items():
@@ -630,12 +661,20 @@ def green_conflicts(net_path, tls_id, phases):
     root = ET.parse(net_path).getroot()
     J = next(j for j in root.iter("junction") if j.get("id") == tls_id)
     foes = {int(r.get("index")): r.get("foes")[::-1] for r in J.iter("request")}
+    # 같은 진입 도로에서 같은 진출 차로로 합류하는 링크끼리는 빼고 본다 (진입로 안의 합류는 SUMO가 양보 규칙으로 처리.
+    # 예: 신리 3·4차로가 둘 다 교대로 → 교대 진출 일반 2차로로 합류)
+    same = {}
+    for c in root.iter("connection"):
+        if c.get("tl") == tls_id and c.get("linkIndex") is not None:
+            same[int(c.get("linkIndex"))] = (c.get("from"), c.get("to"), c.get("toLane"))
     bad = []
     for k, (_, st) in enumerate(phases):
         on = [i for i, c in enumerate(st) if c in "Gg" and i in foes]
         for a in on:
             for b in on:
                 if a < b and ((b < len(foes[a]) and foes[a][b] == "1") or (a < len(foes[b]) and foes[b][a] == "1")):
+                    if a in same and b in same and same[a] == same[b]:
+                        continue
                     bad.append((k, a, b))
     return bad
 

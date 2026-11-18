@@ -438,9 +438,11 @@
 
     <connection from="x6_NE_out0" to="x6_NE_out1" fromLane="0" toLane="0"/>
     <connection from="x6_NE_out0" to="x6_NE_out1" fromLane="1" toLane="1"/>
+    <connection from="x6_NE_out0" to="x6_NE_out1" fromLane="2" toLane="2"/>
 
     <connection from="x6_NE_out1" to="37400617#1" fromLane="0" toLane="0"/>
     <connection from="x6_NE_out1" to="37400617#1" fromLane="1" toLane="1"/>
+    <connection from="x6_NE_out1" to="37400617#1" fromLane="2" toLane="1"/>
 
     <connection from="x6_N_in0" to="x6_slip_N_W" fromLane="0" toLane="0"/>
     <connection from="x6_N_in0" to="x6_N_in1" fromLane="0" toLane="0"/>
@@ -469,6 +471,7 @@
     <connection from="x6_SW_in0" to="x6_SW_in1" fromLane="2" toLane="3"/>
     <connection from="x6_SW_in0" to="x6_SW_in1" fromLane="2" toLane="4"/>
     <connection from="x6_SW_in0" to="x6_SW_in1" fromLane="3" toLane="5"/>
+    <connection from="x6_SW_in0" to="x6_SW_in1" fromLane="3" toLane="6"/>
 
     <connection from="x6_SW_in1" to="x6_slip_SW_S" fromLane="0" toLane="0"/>
     <connection from="x6_SW_in1" to="x6_SW_in2" fromLane="0" toLane="0"/>
@@ -477,6 +480,7 @@
     <connection from="x6_SW_in1" to="x6_SW_in2" fromLane="3" toLane="3"/>
     <connection from="x6_SW_in1" to="x6_SW_in2" fromLane="4" toLane="4"/>
     <connection from="x6_SW_in1" to="x6_SW_in2" fromLane="5" toLane="5"/>
+    <connection from="x6_SW_in1" to="x6_SW_in2" fromLane="6" toLane="6"/>
 
     <connection from="x6_SW_in2" to="x6_E_out0" fromLane="0" toLane="0"/>
     <connection from="x6_SW_in2" to="x6_E_out0" fromLane="1" toLane="1"/>
@@ -484,7 +488,8 @@
     <connection from="x6_SW_in2" to="x6_NE_out0" fromLane="2" toLane="1"/>
     <connection from="x6_SW_in2" to="x6_N_out0" fromLane="3" toLane="0"/>
     <connection from="x6_SW_in2" to="x6_N_out0" fromLane="4" toLane="1"/>
-    <connection from="x6_SW_in2" to="x6_N_out0" fromLane="5" toLane="2"/>
+    <connection from="x6_SW_in2" to="x6_NE_out0" fromLane="5" toLane="2"/>
+    <connection from="x6_SW_in2" to="x6_N_out0" fromLane="6" toLane="2"/>
 
     <connection from="x6_SW_out0" to="x6_SW_out1" fromLane="0" toLane="0"/>
     <connection from="x6_SW_out0" to="x6_SW_out1" fromLane="1" toLane="1"/>
@@ -505,6 +510,7 @@
     <connection from="x6_S_in1" to="x6_S_in2" fromLane="2" toLane="3"/>
 
     <connection from="x6_S_in2" to="x6_NE_out0" fromLane="0" toLane="0"/>
+    <connection from="x6_S_in2" to="x6_N_out0" fromLane="0" toLane="0"/>
     <connection from="x6_S_in2" to="x6_N_out0" fromLane="1" toLane="0"/>
     <connection from="x6_S_in2" to="x6_N_out0" fromLane="2" toLane="1"/>
     <connection from="x6_S_in2" to="x6_W_out0" fromLane="2" toLane="2"/>
@@ -528,8 +534,8 @@
     <connection from="x6_W_in1" to="x6_S_out0" fromLane="1" toLane="1"/>
     <connection from="x6_W_in1" to="x6_E_out0" fromLane="1" toLane="0"/>
     <connection from="x6_W_in1" to="x6_E_out0" fromLane="2" toLane="1"/>
-    <connection from="x6_W_in1" to="x6_NE_out0" fromLane="2" toLane="0"/>
-    <connection from="x6_W_in1" to="x6_NE_out0" fromLane="3" toLane="1"/>
+    <connection from="x6_W_in1" to="x6_NE_out0" fromLane="2" toLane="1"/>
+    <connection from="x6_W_in1" to="x6_NE_out0" fromLane="3" toLane="2"/>
     <connection from="x6_W_in1" to="x6_N_out0" fromLane="3" toLane="1"/>
 
     <connection from="x6_W_out0" to="x6_W_out1" fromLane="0" toLane="0"/>

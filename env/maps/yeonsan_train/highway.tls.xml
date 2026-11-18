@@ -1,0 +1,33 @@
+<additional>
+    <tlLogic id="414663644" type="static" programID="custom" offset="0">
+        <phase duration="14" state="rrrrrrrrrrrrrrrrrGGGGGGrGrrrrrrrGGrrG"/>
+        <phase duration="3" state="rrrrrrrrrrrrrrrrrGGGGyyryrrrrrrryyrry"/>
+        <phase duration="2" state="rrrrrrrrrrrrrrrrrGGGGrrrrrrrrrrrrrrrr"/>
+        <phase duration="17" state="GGGGrrrrrrrrrrrrrGGGGrrGrrrrrrrrrrrrr"/>
+        <phase duration="3" state="yyyyrrrrrrrrrrrrryyyyrryrrrrrrrrrrrrr"/>
+        <phase duration="2" state="rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr"/>
+        <phase duration="19" state="rrrrrrrrrrrGGGGGGrrrrrrrrrrrrrrrrrrrr"/>
+        <phase duration="3" state="rrrrrrrrrrrGGGyyyrrrrrrrrrrrrrrrrrrrr"/>
+        <phase duration="2" state="rrrrrrrrrrrGGGrrrrrrrrrrrrrrrrrrrrrrr"/>
+        <phase duration="8" state="rrrrrrrrrrrGGGrrrrrrrrrrrrrrrrrrrrGGr"/>
+        <phase duration="3" state="rrrrrrrrrrryyyrrrrrrrrrrrrrrrrrrrryyr"/>
+        <phase duration="2" state="rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr"/>
+        <phase duration="16" state="rrrrGGGGGGGrrrrrrrrrrrrrrrrrrrrrrrrrr"/>
+        <phase duration="3" state="rrrryyyyyyyrrrrrrrrrrrrrrrrrrrrrrrrrr"/>
+        <phase duration="2" state="rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr"/>
+        <phase duration="16" state="rrrrrrrrrrrrrrrrrrrrrrrrrGGGGGGGrrrrr"/>
+        <phase duration="3" state="rrrrrrrrrrrrrrrrrrrrrrrrryyyyyyyrrrrr"/>
+        <phase duration="2" state="rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr"/>
+    </tlLogic>
+    <tlLogic id="6612040590" type="static" programID="custom" offset="0">
+        <phase duration="30" state="GGGGrrrrrrr"/>
+        <phase duration="3" state="yyyyrrrrrrr"/>
+        <phase duration="2" state="rrrrrrrrrrr"/>
+        <phase duration="30" state="rrrrGGGGrrr"/>
+        <phase duration="3" state="rrrryyyyrrr"/>
+        <phase duration="2" state="rrrrrrrrrrr"/>
+        <phase duration="20" state="rrrrrrrrGGG"/>
+        <phase duration="3" state="rrrrrrrryyy"/>
+        <phase duration="2" state="rrrrrrrrrrr"/>
+    </tlLogic>
+</additional>
