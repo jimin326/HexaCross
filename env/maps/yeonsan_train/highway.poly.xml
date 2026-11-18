@@ -1,5 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<!-- generated on 2026-11-18T15:46:46.565458+00:00 by Eclipse SUMO polyconvert 1.28.0
+<polyconvertConfiguration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/polyconvertConfiguration.xsd">
+
+    <input>
+        <net-file value="../train_straight/highway.net.xml"/>
+        <osm-files value="/tmp/claude-0/-home-user-HexaCross/24027832-5621-5d90-929a-fa67f688310f/scratchpad/ymerge/env/osm/yeonsan_cityhall.osm"/>
+        <type-file value="/usr/local/lib/python3.13/site-packages/sumo/data/typemap/osmPolyconvert.typ.xml"/>
+    </input>
+
+    <output>
+        <output-file value="../train_straight/highway.poly.xml"/>
+    </output>
+
+</polyconvertConfiguration>
+-->
 
 <additional xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/additional_file.xsd">
     <location netOffset="-506535.64,-3892310.12" convBoundary="-54.41,-91.76,1645.63,2103.87" origBoundary="129.071176,35.172889,129.089859,35.192682" projParameter="+proj=utm +zone=52 +ellps=WGS84 +datum=WGS84 +units=m +no_defs"/>

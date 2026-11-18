@@ -285,7 +285,11 @@ def _apply_once(net_in, net_out, spec, tmp, stop_r):
         cons.append((a, b, int(fl), int(tl)))
 
     def new_node(nid, P, typ="priority"):
-        el = ET.SubElement(nroot, "node", {"id": nid, "x": f"{P[0]:.2f}", "y": f"{P[1]:.2f}", "type": typ})
+        attrs = {"id": nid, "x": f"{P[0]:.2f}", "y": f"{P[1]:.2f}", "type": typ}
+        if spec.get("node_radius") is not None:
+            # 분기·합류 노드의 회전 반경을 작게 → 교차로 면(차선이 안 그려지는 검은 영역)이 짧아져 차선 실선이 이어져 보임
+            attrs["radius"] = f'{float(spec["node_radius"]):g}'
+        el = ET.SubElement(nroot, "node", attrs)
         nel[nid] = el
         nodes[nid] = P
         return nid
@@ -358,9 +362,10 @@ def _apply_once(net_in, net_out, spec, tmp, stop_r):
         rb = math.dist(P, C)
         stop = stop_r[o]
         brk = {}
+        straight = bool(spec.get("straight_approach"))
         for dprof, _ in lg["general_profile"]:
             r = stop + float(dprof)
-            if dprof > 0 and r < rb - 3:
+            if dprof > 0 and r < rb - 3 and not straight:
                 brk[round(r, 1)] = "taper"
         if lg.get("slip"):
             rs = stop + float(lg["slip"]["split_m"])
@@ -392,8 +397,10 @@ def _apply_once(net_in, net_out, spec, tmp, stop_r):
         segs = []
         for k, (a, b) in enumerate(zip(chain, chain[1:])):
             rmid = (radii[k] + max(radii[k + 1], stop)) / 2
-            g = _gen_at(lg, max(rmid - stop, 0.0), gen_out)
-            nb = _brt_at(lg, max(rmid - stop, 0.0))
+            # straight_approach: 진입로 전체를 정지선 차로 수로 곧게 (차로 수는 경계 노드에서 바뀜, 중간 노드 없음)
+            dq = 0.0 if straight else max(rmid - stop, 0.0)
+            g = _gen_at(lg, dq, gen_out)
+            nb = _brt_at(lg, dq)
             n = g + nb
             shp = None
             if k == 0 and proto.get("spreadType") == "center":

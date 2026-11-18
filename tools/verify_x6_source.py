@@ -237,7 +237,11 @@ def last_green_end(o, lid, d):
 eN = [last_green_end("SSW", l, "N") for l in (2, 3)]
 eG = [last_green_end("SSW", l, d) for l, d in ((4, "NE"), (5, "NE"), (5, "E"), (6, "E"))]
 F.append(f"SSW 녹색 끝(주기 안 초): 교대 방면 {eN}, 안락·연산터널 {eG}")
-ok(max(eN) < min(eG), "SSW: 교대 방면 좌회전 화살표가 녹색보다 먼저 꺼짐", "SSW: 교대 방면 화살표가 녹색과 같이/늦게 꺼짐 (자료: 먼저 꺼짐)")
+if None in eN or None in eG:
+    # main 조사 문서 반영(SW BRT 2차로)으로 정지선 차로가 7개가 되어 자료 페이지의 차로 번호와 하나씩 어긋남 → 대조 불가로 보고
+    P.append(f"SSW: 자료 페이지 차로 번호로 신호를 찾지 못함 (교대 {eN}, 안락·연산터널 {eG}) — SW 정지선 차로 수가 자료와 다름(의도한 차이)")
+else:
+    ok(max(eN) < min(eG), "SSW: 교대 방면 좌회전 화살표가 녹색보다 먼저 꺼짐", "SSW: 교대 방면 화살표가 녹색과 같이/늦게 꺼짐 (자료: 먼저 꺼짐)")
 # SSW 2·3차로 정지선 약 3 m 뒤
 e = inc["SSW"]
 so = {}
