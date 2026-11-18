@@ -113,6 +113,9 @@ SIMULATION = {
 OBSERVATION = {
     "visibility": 50.0,          # 관측 가능 거리 W (m). 앞뒤 차량 감지와
                                  # 상대거리/연결성/밀도 정규화의 기준.
+    "internal_lane_obs": True,   # 교차로 내부 연결 차로 위에서도 "곧 들어갈 도로"의 차로 기준으로 관측.
+                                 # False(예전)면 교차로 안에서 차로 유무 전부 1, 밀도 전부 0, 옆 차 안 보임
+                                 # → 교차로를 지날 때마다 몇 스텝씩 엉뚱한 관측 (사각지대)
     "density_veh_length": 7.5,   # 밀도 계산 시 차량 1대의 점유 길이 (m)
                                  # = 차체(~5m) + 최소 안전간격(~2.5m).
                                  # 최대 수용 대수 = W / 이 값
@@ -271,6 +274,10 @@ REWARD = {
     "idle_speed": 1.0,
     "idle_gap": 30.0,
     "idle_stopline": 15.0,
+    # idle_mode "free": 위 판정 대신 "앞에 비어 있는 거리"(앞차 또는 적·황색 정지선까지, idle_gap까지 봄)에 비례해 감점.
+    #   idle_free_min(m) 이내로 붙어 서 있으면 0, 그보다 50 m 이상 비워 두고 서 있으면 idle_penalty.
+    "idle_mode": "",
+    "idle_free_min": 10.0,
     "red_light_terminate": True,  # True면 위반 즉시 에피소드 종료
 
     # ---- 목표 도로로 가게 만드는 항 ----

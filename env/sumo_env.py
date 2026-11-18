@@ -160,6 +160,8 @@ class SumoHighwayEnv(gym.Env):
         self.warmup_steps = int(mdp_sim["warmup_steps"])
         self.warmup_seconds = tuple(mdp_sim.get("warmup_seconds", (150.0, 300.0)))
         self.visibility = float(mdp_obs["visibility"])   # 관측 거리 W
+        # 교차로 내부 연결 차로 위에서도 곧 들어갈 일반 차로 기준으로 관측 (False면 예전: 차로 유무 전부 1, 밀도 전부 0)
+        self.internal_obs = bool(mdp_obs.get("internal_lane_obs", True))
         # 밀도 정규화용 "차량 1대가 점유하는 길이" (차체 + 최소 간격)
         self.density_veh_len = float(mdp_obs.get("density_veh_length", 7.5))
         # 차선 연결성 정규화 거리: "이 차선으로 경로를 따라 계속 갈 수 있는 거리"를
@@ -483,6 +485,30 @@ class SumoHighwayEnv(gym.Env):
                 best = (float(ego_d), float(dt))
         return best
 
+    def _ref_lane(self):
+        """관측 기준 차로 (edge, 차로 index, 위치 m).
+        일반 도로 위면 지금 차로 그대로. 교차로 내부 연결 차로(':' 로 시작) 위면 곧 들어갈 일반 차로이고,
+        위치는 그 차로 시작점 기준 음수(= 남은 연결 차로 길이만큼 뒤). 못 찾으면 None."""
+        edge = traci.vehicle.getRoadID(self.ego_id)
+        li = traci.vehicle.getLaneIndex(self.ego_id)
+        pos = traci.vehicle.getLanePosition(self.ego_id)
+        if not edge.startswith(":"):
+            return edge, li, pos
+        if not self.internal_obs:
+            return None
+        lane = traci.vehicle.getLaneID(self.ego_id)
+        back = traci.lane.getLength(lane) - pos
+        for _ in range(4):
+            links = traci.lane.getLinks(lane)
+            if not links:
+                return None
+            lane = links[0][0]
+            if not lane.startswith(":"):
+                e, i = lane.rsplit("_", 1)
+                return e, int(i), -back
+            back += traci.lane.getLength(lane)
+        return None
+
     def _ego_lane_ok(self, edge, li):
         """edge의 li번 차로가 있고 ego(승용차)가 달릴 수 있는가.
         중앙대로 BRT 버스전용차로처럼 승용차가 못 쓰는 차로는 "없는 차로"로 본다."""
@@ -774,6 +800,13 @@ class SumoHighwayEnv(gym.Env):
             mode_leader, mode_follower = self._NEIGHBOR_MODES[offset]
             pairs = traci.vehicle.getNeighbors(
                 self.ego_id, mode_leader if leader else mode_follower)
+            if self.internal_obs and traci.vehicle.getRoadID(self.ego_id).startswith(":"):
+                # 교차로 안: getNeighbors가 비는 경우가 많아 곧 들어갈 도로의 옆 차로도 훑는다
+                front, rear = self._scan_lane_neighbors(offset)
+                res = front if leader else rear
+                if res is not None and res[0] <= self.visibility and (
+                        not pairs or res[0] < min(p[1] for p in pairs)):
+                    return max(float(res[0]), 0.0), float(res[1])
             if not pairs:
                 return None
             vid, gap = min(pairs, key=lambda p: p[1])   # 가장 가까운 차량
@@ -797,10 +830,11 @@ class SumoHighwayEnv(gym.Env):
         같은 신호로 잡힌다.
         """
         try:
-            edge = traci.vehicle.getRoadID(self.ego_id)
-            if edge.startswith(":"):          # 교차로(junction) 내부 통과 중
+            ref = self._ref_lane()
+            if ref is None:                   # 교차로 내부(예전 방식) 또는 다음 차로 못 찾음
                 return 1.0
-            lane_index = traci.vehicle.getLaneIndex(self.ego_id) + offset
+            edge = ref[0]
+            lane_index = ref[1] + offset
             if not self._ego_lane_ok(edge, lane_index):
                 return -1.0                   # 그런 차선이 없음 (버스전용차로 포함)
             if not self.lane_route_info:
@@ -835,14 +869,13 @@ class SumoHighwayEnv(gym.Env):
         같은 대수여도 밀도가 높게 나온다 → "끊기는 차선에 차가 몰려있음" 신호.
         """
         try:
-            edge = traci.vehicle.getRoadID(self.ego_id)
-            if edge.startswith(":"):          # 교차로 내부: 중립값
+            ref = self._ref_lane()
+            if ref is None:                   # 교차로 내부(예전 방식): 중립값
                 return 0.0
-            lane_index = traci.vehicle.getLaneIndex(self.ego_id) + offset
+            edge, lane_index, ego_pos = ref[0], ref[1] + offset, ref[2]
             if lane_index < 0 or lane_index >= traci.edge.getLaneNumber(edge):
                 return 1.0                    # 차선 없음 = 꽉 참 취급
             lane_id = f"{edge}_{lane_index}"
-            ego_pos = traci.vehicle.getLanePosition(self.ego_id)
             remaining = traci.lane.getLength(lane_id) - ego_pos
             links = traci.lane.getLinks(lane_id)
 
@@ -1045,15 +1078,16 @@ class SumoHighwayEnv(gym.Env):
         훑으면 이미 삽입된 차량은 전부 잡힌다.
         """
         try:
-            edge = traci.vehicle.getRoadID(self.ego_id)
-            li = traci.vehicle.getLaneIndex(self.ego_id) + direction
+            ref = self._ref_lane()            # 교차로 안이면 곧 들어갈 도로 기준
+            if ref is None:
+                return None, None
+            edge, li, my_pos = ref[0], ref[1] + direction, ref[2]
             # 존재하지 않는 차선이면 조회하지 않는다.
             # (없는 lane id를 traci.lane.*로 조회하면 SUMO가 매번
             #  에러 로그를 찍으므로, 범위 검사를 먼저 해서 조용히 건너뛴다)
-            if edge.startswith(":") or not self._ego_lane_ok(edge, li):
+            if not self._ego_lane_ok(edge, li):
                 return None, None
             lane_id = f"{edge}_{li}"
-            my_pos = traci.vehicle.getLanePosition(self.ego_id)
             front, rear = None, None
             for vid in traci.lane.getLastStepVehicleIDs(lane_id):
                 d = traci.vehicle.getLanePosition(vid) - my_pos
@@ -1560,7 +1594,18 @@ class SumoHighwayEnv(gym.Env):
                 lead = traci.vehicle.getLeader(self.ego_id, float(self.rw.get("idle_gap", 30.0)))
                 at_line = (signal_after is not None and signal_after[3] not in "Gg"
                            and signal_after[2] <= float(self.rw.get("idle_stopline", 15.0)))
-                if lead is None and not at_line:
+                if self.rw.get("idle_mode") == "free":
+                    # 앞에 비어 있는 거리(정지선 또는 앞차까지)에 비례해 감점.
+                    # 정지선·앞차 바로 뒤(idle_free_min 이내)에 서 있으면 0, 50 m 이상 비워 두고 서 있으면 ip.
+                    g = float(self.rw.get("idle_gap", 100.0))
+                    lead = traci.vehicle.getLeader(self.ego_id, g)
+                    free = g if lead is None else max(float(lead[1]), 0.0)
+                    if signal_after is not None and signal_after[3] not in "Gg":
+                        free = min(free, max(float(signal_after[2]), 0.0))
+                    fm = float(self.rw.get("idle_free_min", 10.0))
+                    if free > fm:
+                        reward -= ip * min((free - fm) / 50.0, 1.0)
+                elif lead is None and not at_line:
                     reward -= ip
 
             # ---- 차선변경 보상 항 ----
