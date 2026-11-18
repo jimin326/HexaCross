@@ -179,6 +179,16 @@ class SumoHighwayEnv(gym.Env):
         self._lane_ok = {}             # 차로 id -> 승용차가 달릴 수 있는가 (버스전용차로 = False, 캐시)
         # ---- 목표(경로 끝 도로) 진행 관련 ----
         self.goal_obs = bool(mdp_obs.get("goal_distance", True))
+        # 차로 관측에 "그 차로로 경로를 따라 갈 수 있는 거리"(차로 단위 경로 안내)를 넣을지.
+        # 프로젝트 공지: 어떤 차선으로 주행해야 하는지 같은 세밀한 정보는 주면 안 됨 → 기본 False
+        #   False: [21..25] = 차로가 있고 달릴 수 있으면 1, 없거나 버스전용이면 -1 (눈으로 보이는 정보)
+        self.lane_route_info = bool(mdp_obs.get("lane_route_info", False))
+        # 큰 틀의 경로 안내 (내비게이션 "300 m 앞 좌회전"): 다음 교차로의 회전 각도 + 거리
+        rt = (mdp_obs.get("route_turn") or {})
+        self.route_turn_obs = bool(rt.get("enabled", False))
+        self.route_turn_range = float(rt.get("range", 300.0))
+        self.route_turn_min_deg = float(rt.get("min_turn_deg", 20.0))
+        self._turn_cache = {}
         # ---- 교차로 상충 차량 (내 경로와 교차로 안에서 엇갈리는 차) ----
         jf = (mdp_obs.get("junction_foes") or {})
         self.foe_obs = bool(jf.get("enabled", False))
@@ -233,6 +243,8 @@ class SumoHighwayEnv(gym.Env):
             self.obs_dim += 1          # 목표(경로 끝)까지 남은 거리
         if self.foe_obs:
             self.obs_dim += 2          # 상충 지점까지 거리, 도착 시간차
+        if self.route_turn_obs:
+            self.obs_dim += 2          # 다음 교차로 회전 각도, 거리
         self.observation_space = spaces.Box(-1.0, 1.0, shape=(self.obs_dim,),
                                             dtype=np.float32)
 
@@ -786,6 +798,8 @@ class SumoHighwayEnv(gym.Env):
             lane_index = traci.vehicle.getLaneIndex(self.ego_id) + offset
             if not self._ego_lane_ok(edge, lane_index):
                 return -1.0                   # 그런 차선이 없음 (버스전용차로 포함)
+            if not self.lane_route_info:
+                return 1.0                    # 차로가 있음 (경로 안내 없이)
             remaining = self._route_remaining(f"{edge}_{lane_index}")
             if remaining is None:
                 return 1.0
@@ -942,7 +956,64 @@ class SumoHighwayEnv(gym.Env):
                 obs += [min(foe[0] / self.foe_range, 1.0),
                         float(np.clip(foe[1] / self.foe_time, -1.0, 1.0))]
 
+        if self.route_turn_obs:
+            obs += self._route_turn()
+
         return np.clip(np.array(obs, dtype=np.float32), -1.0, 1.0)
+
+    def _edge_turn(self, a, b):
+        """엣지 a 끝 → 엣지 b 시작의 회전 각도 (도, + = 오른쪽, - = 왼쪽)"""
+        key = (a, b)
+        if key not in self._turn_cache:
+            import math
+            sa, sb = traci.lane.getShape(f"{a}_0"), traci.lane.getShape(f"{b}_0")
+            ha = math.degrees(math.atan2(sa[-1][0] - sa[-2][0], sa[-1][1] - sa[-2][1]))
+            hb = math.degrees(math.atan2(sb[1][0] - sb[0][0], sb[1][1] - sb[0][1]))
+            self._turn_cache[key] = ((hb - ha + 540.0) % 360.0) - 180.0
+        return self._turn_cache[key]
+
+    def _route_turn(self):
+        """큰 틀의 경로 안내: 앞으로 지날 교차로 중 경로가 꺾이는 곳(|각도| >= min_turn_deg)
+        또는 신호 교차로까지, range(m) 안에서 가장 가까운 곳의 [회전 각도/180, 거리/range].
+        차로는 알려 주지 않는다 (몇 도로 꺾는지만). 없으면 [0, 1]."""
+        try:
+            route = traci.vehicle.getRoute(self.ego_id)
+            ri = traci.vehicle.getRouteIndex(self.ego_id)
+            e = traci.vehicle.getRoadID(self.ego_id)
+            if e.startswith(":"):
+                ri += 1                           # 교차로 안: 다음 엣지 기준
+                d = 0.0
+                if ri >= len(route):
+                    return [0.0, 1.0]
+                cur = route[ri]
+            else:
+                cur = e
+                d = traci.lane.getLength(traci.vehicle.getLaneID(self.ego_id)) - traci.vehicle.getLanePosition(self.ego_id)
+            for k in range(ri, len(route) - 1):
+                a, b = route[k], route[k + 1]
+                if k > ri:
+                    d += traci.lane.getLength(f"{a}_0")
+                if d > self.route_turn_range:
+                    break
+                ang = self._edge_turn(a, b)
+                node = traci.edge.getToJunction(a)
+                tls = node in self._tls_nodes()
+                if abs(ang) >= self.route_turn_min_deg or tls:
+                    return [float(np.clip(ang / 180.0, -1.0, 1.0)), float(np.clip(d / self.route_turn_range, 0.0, 1.0))]
+            return [0.0, 1.0]
+        except traci.TraCIException:
+            return [0.0, 1.0]
+
+    def _tls_nodes(self):
+        if not hasattr(self, "_tls_node_set"):
+            nodes = set()
+            for t in traci.trafficlight.getIDList():
+                for lk in traci.trafficlight.getControlledLinks(t):
+                    for l in lk:
+                        if l:
+                            nodes.add(traci.edge.getToJunction(traci.lane.getEdgeID(l[0])))
+            self._tls_node_set = nodes
+        return self._tls_node_set
 
     # ==================================================================
     # 1 스텝 진행: 행동 적용 → 시뮬레이션 1스텝 → 보상/종료 판정
