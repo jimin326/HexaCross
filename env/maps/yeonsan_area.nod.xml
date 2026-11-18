@@ -53,24 +53,18 @@
     <node id="cluster_14158297261_14158297263" x="1269.62" y="1853.77" type="traffic_light" tl="cluster_14158297261_14158297263"/>
     <node id="cluster_1772229542_7222328581" x="989.54" y="153.50" type="traffic_light" tl="cluster_1772229542_7222328581"/>
     <node id="cluster_3131958161_4958136016_4958136222" x="343.60" y="1555.82" type="traffic_light" tl="cluster_3131958161_4958136016_4958136222"/>
-    <node id="x6_E_in_46" x="803.03" y="1369.23" type="priority"/>
-    <node id="x6_E_in_55" x="811.84" y="1367.38" type="priority"/>
-    <node id="x6_E_in_65" x="821.63" y="1365.33" type="priority"/>
-    <node id="x6_E_merge" x="821.63" y="1365.33" type="priority"/>
-    <node id="x6_NE_in_66" x="803.55" y="1426.12" type="priority"/>
-    <node id="x6_NE_in_71" x="807.04" y="1429.70" type="priority"/>
-    <node id="x6_NE_in_81" x="814.02" y="1436.86" type="priority"/>
-    <node id="x6_NE_merge" x="807.04" y="1429.70" type="priority"/>
-    <node id="x6_N_in_74" x="736.66" y="1450.43" type="priority"/>
-    <node id="x6_N_merge" x="736.66" y="1450.43" type="priority"/>
-    <node id="x6_SW_in_73" x="712.69" y="1320.08" type="priority"/>
-    <node id="x6_SW_in_88" x="703.60" y="1308.15" type="priority"/>
-    <node id="x6_SW_merge" x="721.78" y="1332.01" type="priority"/>
-    <node id="x6_S_in_77" x="790.43" y="1308.22" type="priority"/>
-    <node id="x6_S_in_84" x="793.39" y="1301.88" type="priority"/>
-    <node id="x6_S_merge" x="791.28" y="1306.41" type="priority"/>
-    <node id="x6_W_in_53" x="706.17" y="1392.67" type="priority"/>
-    <node id="x6_W_merge" x="680.14" y="1409.33" type="priority"/>
+    <node id="x6_E_in_55" x="811.84" y="1367.38" type="priority" radius="0.50"/>
+    <node id="x6_E_merge" x="821.63" y="1365.33" type="priority" radius="0.50"/>
+    <node id="x6_NE_in_71" x="807.04" y="1429.70" type="priority" radius="0.50"/>
+    <node id="x6_NE_merge" x="807.04" y="1429.70" type="priority" radius="0.50"/>
+    <node id="x6_N_in_74" x="736.66" y="1450.43" type="priority" radius="0.50"/>
+    <node id="x6_N_merge" x="736.66" y="1450.43" type="priority" radius="0.50"/>
+    <node id="x6_SW_in_73" x="712.69" y="1320.08" type="priority" radius="0.50"/>
+    <node id="x6_SW_merge" x="721.78" y="1332.01" type="priority" radius="0.50"/>
+    <node id="x6_S_in_84" x="793.39" y="1301.88" type="priority" radius="0.50"/>
+    <node id="x6_S_merge" x="791.28" y="1306.41" type="priority" radius="0.50"/>
+    <node id="x6_W_in_53" x="706.17" y="1392.67" type="priority" radius="0.50"/>
+    <node id="x6_W_merge" x="680.14" y="1409.33" type="priority" radius="0.50"/>
     <node id="x6b_0" x="799.79" y="1288.20" type="priority"/>
     <node id="x6b_1" x="827.21" y="1450.40" type="priority"/>
     <node id="x6b_2" x="855.30" y="1358.28" type="priority"/>
