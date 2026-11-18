@@ -1,0 +1,41 @@
+{
+ "S→W→회전교차로→W→E": {
+  "episodes": 10,
+  "insert_fail": 0,
+  "wrong_lane": 6,
+  "arrival": 4
+ },
+ "N→S": {
+  "episodes": 10,
+  "insert_fail": 0,
+  "arrival": 9,
+  "red_light": 1
+ },
+ "NE→SW": {
+  "episodes": 10,
+  "insert_fail": 0,
+  "arrival": 9,
+  "red_light": 1
+ },
+ "E→W": {
+  "episodes": 10,
+  "insert_fail": 0,
+  "wrong_lane": 10
+ },
+ "S→N": {
+  "episodes": 10,
+  "insert_fail": 0,
+  "arrival": 10
+ },
+ "SW→N": {
+  "episodes": 10,
+  "insert_fail": 0,
+  "arrival": 10
+ },
+ "W→E": {
+  "episodes": 10,
+  "insert_fail": 0,
+  "arrival": 9,
+  "collision": 1
+ }
+}
