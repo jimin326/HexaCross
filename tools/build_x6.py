@@ -606,6 +606,40 @@ def print_check(rep):
         print("   ", p)
 
 
+def concurrent_phases(plan, greens, lane_of, n, yellow=3.0, all_red=2.0):
+    """동시 녹색 현시표(spec['signal_plan_concurrent']) → SUMO 현시 [(초, 상태)].
+    lane_of[i] = (진입로, 차로 id) (정밀 모델 링크만), 그 밖의 링크(교차로 내부)는 항상 녹색.
+    다음 현시에도 녹색인 링크는 황색·전적색 동안 녹색을 이어 간다."""
+    sets = [{i for i, (lg, lid) in lane_of.items() if lid in ph["lanes"].get(lg, [])} for ph in plan["phases"]]
+    inner = set(range(n)) - set(lane_of)
+    out = []
+    for k, ph in enumerate(plan["phases"]):
+        cur, nxt = sets[k], sets[(k + 1) % len(sets)]
+        g = float(greens[ph["name"]])
+        for dur, end in ((g, "G"), (yellow, "y"), (all_red, "r")):
+            st = "".join("G" if (i in inner or i in (cur & nxt) or (end == "G" and i in cur)) else (end if i in cur else "r")
+                         for i in range(n))
+            if dur > 0:
+                out.append((dur, st))
+    return out
+
+
+def green_conflicts(net_path, tls_id, phases):
+    """동시에 녹색(G/g)인 링크 중 교차로 foes(엇갈림·합류)가 있는 쌍 → [(현시 번호, i, j)]"""
+    import xml.etree.ElementTree as ET
+    root = ET.parse(net_path).getroot()
+    J = next(j for j in root.iter("junction") if j.get("id") == tls_id)
+    foes = {int(r.get("index")): r.get("foes")[::-1] for r in J.iter("request")}
+    bad = []
+    for k, (_, st) in enumerate(phases):
+        on = [i for i, c in enumerate(st) if c in "Gg" and i in foes]
+        for a in on:
+            for b in on:
+                if a < b and ((b < len(foes[a]) and foes[a][b] == "1") or (a < len(foes[b]) and foes[b][a] == "1")):
+                    bad.append((k, a, b))
+    return bad
+
+
 if __name__ == "__main__":
     if sys.argv[1] == "--check":
         print_check(check_x6(sys.argv[2], *(sys.argv[3:4])))

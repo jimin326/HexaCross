@@ -212,9 +212,13 @@ for o in ORDER:
     ok(all(v for v in ks.values()), f"{o} 모든 차로-방면에 녹색 있음", f"{o} 녹색 없는 차로 {[k for k, v in ks.items() if not v]}")
     other = [k for k, (_, s) in enumerate(phases)]
 # E·SSE·WNW: 녹색+좌회전 화살표 함께 = 접근로 모든 방향 한 번에
+def green_starts(o, lid, d):
+    """녹색이 켜지는 현시 번호들 (앞 현시에서 녹색이 아니다가 녹색이 되는 곳)"""
+    gs = set(greens(o, lid, d)); n = len(phases)
+    return tuple(sorted(k for k in gs if (k - 1) % n not in gs))
 for o in ("E", "SSE", "WNW"):
-    sets = {tuple(greens(o, int(l["id"]), d)) for l in A[o]["lanes"] if l["kind"] != "slip" for d in l["to"]}
-    ok(len(sets) == 1, f"{o}: 모든 방향 같은 현시 (자료: 녹색과 좌회전 화살표 함께)", f"{o}: 방향마다 현시 다름 {sets}")
+    sets = {green_starts(o, int(l["id"]), d) for l in A[o]["lanes"] if l["kind"] != "slip" for d in l["to"]}
+    ok(len(sets) == 1, f"{o}: 모든 방향 녹색이 함께 켜짐 (자료: 녹색과 좌회전 화살표가 함께 켜짐)", f"{o}: 방향마다 녹색 켜지는 때가 다름 {sets}")
 # N: 수영 방면 차로(2,3)와 시청 방면 차로(4,5) 신호가 따로 켜짐
 nS = {tuple(greens("N", l, "SSE")) for l in (2, 3)}
 nW = {tuple(greens("N", l, "SSW")) for l in (4, 5)}

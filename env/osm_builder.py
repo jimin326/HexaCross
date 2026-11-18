@@ -858,6 +858,15 @@ def build_osm(road: dict, ego: dict, traffic: dict, signal: dict,
         while k < len(edges) - 1 and acc + edges[k].getLength() <= d0:
             acc += edges[k].getLength()
             k += 1
+        # 도로망 끝(dead_end)에서 바로 출발하면 그 자리가 배경 차량 투입 지점과 겹쳐, 교통이 많은 도로(W 등)에서는
+        # 입구가 늘 막혀 ego를 넣지 못한다 → 다음 엣지에서 출발 (교차로 쪽으로 그 길이만큼 가까워짐)
+        if (d0 - acc) <= 0.0 and k + 1 < len(edges) and edges[k].getFromNode().getType() == "dead_end" \
+                and edges[k].getToNode().getID() != center_id:
+            k += 1
+            acc = d0
+            # 너무 짧은 엣지(교차로 사이 조각)에서 출발하면 곧바로 정지선에 서서 "차로 갇힘"으로 잘못 끝날 수 있음
+            while k + 1 < len(edges) and edges[k].getLength() < 60.0 and edges[k].getToNode().getID() != center_id:
+                k += 1
         p = p[k:]
         route_lines.append(f'    <route id="{rid}" edges="{" ".join(p)}"/>')
         meta[key].append(rid)
@@ -934,16 +943,38 @@ def build_osm(road: dict, ego: dict, traffic: dict, signal: dict,
         else:
             lines.append(f'    <tlLogic id="{center_tl}" type="static" programID="custom" offset="0">')
         # 연산교차로 정밀 모델이면 자료의 진입로 안 차이(N 방면별 신호 따로 켜짐, SW 교대 방면 화살표 먼저 꺼짐)를 넣는다
+        import json as _json
         x6_within, x6_lanes = {}, {}
         if cfg.get("x6_spec") and not plans:
-            import json as _json
             import sys as _sys
             if BASE not in _sys.path:
                 _sys.path.insert(0, BASE)
             from tools.build_x6 import leg_slot, link_lane_ids
             x6_within = _json.load(open(os.path.join(BASE, cfg["x6_spec"]), encoding="utf-8"))["signal_plan_assumed"].get("within_leg") or {}
             x6_lanes = link_lane_ids(net_path, center_tl)
-        for lg in ([] if plans else legs):
+        # 연산교차로 정밀 모델에 동시 녹색 현시표(yeonsan_x6.json signal_plan_concurrent)가 있으면 그것을 쓴다
+        #   (서로 안 엇갈리는 차로끼리 함께 녹색 — 진입로 하나씩만 녹색인 6현시보다 처리 능력이 큼).
+        #   SIGNAL["concurrent"] = False면 예전 진입로별 동시신호.
+        conc = None
+        if cfg.get("x6_spec") and not plans and signal.get("concurrent", True):
+            conc = _json.load(open(os.path.join(BASE, cfg["x6_spec"]), encoding="utf-8")).get("signal_plan_concurrent")
+        if conc and conc.get("green"):
+            from tools.build_x6 import concurrent_phases, green_conflicts
+            scn = demand.get("scenario") if use_od else None
+            cg = conc["green"].get(scn) or conc["green"].get("normal")
+            cph = concurrent_phases(conc, cg, x6_lanes, n, float(conc.get("yellow", yellow)), float(conc.get("all_red", all_red)))
+            bad = green_conflicts(net_path, center_tl, cph)
+            if bad:
+                raise RuntimeError(f"동시 녹색 현시에 엇갈리는 링크가 있음: {bad[:5]}")
+            for dur, st in cph:
+                lines.append(f'        <phase duration="{dur:g}" state="{st}"/>')
+            meta["signal_green_s"] = cg
+            meta["signal_structure"] = {"type": "concurrent", "phases": [p["name"] for p in conc["phases"]],
+                                        "cycle_s": sum(d for d, _ in cph), "scenario": scn or "normal"}
+            legs_loop = []
+        else:
+            legs_loop = [] if plans else legs
+        for lg in legs_loop:
             lanes = {i: x6_lanes.get(i, (None, 0))[1] for i, g_ in group.items() if g_ == lg["id"]}
             for dur, st in leg_slot(green[lg["id"]], yellow, all_red, lanes, x6_within.get(lg["id"])):
                 state = "".join("G" if group.get(i) is None else st.get(i, "r") for i in range(n))
