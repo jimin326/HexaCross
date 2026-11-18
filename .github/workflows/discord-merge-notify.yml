@@ -1,0 +1,27 @@
+name: Discord 머지 알림
+on:
+  # fork에서 온 PR이 머지돼도 시크릿을 쓸 수 있게 pull_request_target을 쓴다.
+  # PR 코드를 체크아웃하거나 실행하지 않으니 안전하다.
+  pull_request_target:
+    types: [closed]
+jobs:
+  notify:
+    if: github.event.pull_request.merged == true   # 머지 없이 닫힌 PR은 알리지 않는다
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: 디스코드로 알림 보내기
+        # PR 제목은 셸에 직접 넣지 않고 env로 넘겨 jq로 JSON을 만든다 (명령 주입 방지)
+        env:
+          WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          NUM: ${{ github.event.pull_request.number }}
+          TITLE: ${{ github.event.pull_request.title }}
+          URL: ${{ github.event.pull_request.html_url }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+          MERGER: ${{ github.event.pull_request.merged_by.login }}
+        run: |
+          jq -n --arg t "PR #$NUM 머지: $TITLE" --arg u "$URL" \
+                --arg d "작성 $AUTHOR · 머지 $MERGER" \
+                '{embeds: [{title: ($t | .[0:256]), url: $u, description: $d, color: 5763719}]}' |
+          curl -fsS -H "Content-Type: application/json" -d @- "$WEBHOOK"
