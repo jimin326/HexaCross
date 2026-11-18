@@ -797,7 +797,24 @@ def build_osm(road: dict, ego: dict, traffic: dict, signal: dict,
                     heapq.heappush(heap, (nd, nid))
         return None
 
+    def via_path(s, t, via):
+        """s → via 엣지들 → t (연산교차로를 거치지 않는 최단경로를 이어 붙임). 회전교차로 등을 들르는 경로용."""
+        out, cur = [s.getID()], s
+        for v in [net.getEdge(x) for x in via] + [t]:
+            p, _ = net.getShortestPath(cur, v, vClass="passenger")
+            if not p:
+                return None
+            ids = [e.getID() for e in p]
+            if any(net.getEdge(e).getToNode().getID() == center_id for e in ids[:-1]):
+                return None
+            out += ids[1:]
+            cur = v
+        return out
+
     def ego_path(spec):
+        via = None
+        if isinstance(spec, dict):       # {"legs": (진입, 진출, 진입, 진출), "via": [엣지...]} — 재진입 전에 들를 엣지
+            via, spec = spec.get("via"), tuple(spec["legs"])
         if len(spec) < 2 or len(spec) % 2:
             raise RuntimeError(f"ego 경로 {spec}: (진입, 진출) 쌍으로 적어야 합니다.")
         pairs = [(spec[j], spec[j + 1]) for j in range(0, len(spec), 2)]
@@ -805,7 +822,9 @@ def build_osm(road: dict, ego: dict, traffic: dict, signal: dict,
         prev_exit = None
         for j, (a, b) in enumerate(pairs):
             steps = []
-            if j > 0:   # 주변 이면도로를 돌아 a 방향에서 재진입
+            if j > 0 and via:   # 지정한 엣지(예: 회전교차로)를 들러 a 방향에서 재진입
+                steps.append((near_in[a], lambda s, t, v=via: via_path(s, t, v)))
+            elif j > 0:   # 주변 이면도로를 돌아 a 방향에서 재진입
                 names = {by_id[prev_exit]["road"], by_id[a]["road"]}
                 steps.append((near_in[a], lambda s, t, nm=names: loop_path(s, t, nm)))
             steps.append((leg_out[b] if j == len(pairs) - 1 else near_out[b], path))
