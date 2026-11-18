@@ -75,6 +75,11 @@ def main(cfg_path):
     rows = []
     for e in net.getEdges():
         eid = e.getID()
+        if eid.startswith("x6_"):        # 연산교차로 정밀 모델: 차로 조사 자료와 대조 (tools/build_x6.check_x6)
+            rows.append({"edge": eid, "도로명": e.getName(), "way": "", "방향": "", "길이_m": round(e.getLength()),
+                         "도로망_차로": e.getLaneNumber(), "판정": "정밀 모델(차로 조사 자료)",
+                         "OSM_근거": "env/maps/yeonsan_x6.json"})
+            continue
         rev = eid.startswith("-")
         d = 1 if rev else 0
         wid = eid.lstrip("-").split("#")[0]

@@ -411,7 +411,21 @@ def build_osm(road: dict, ego: dict, traffic: dict, signal: dict,
                      if float(signal.get("bus_green", 0.0)) > 0 else [])
         midblock = fix_midblock_programs(net_path)
         joined_inner = fix_joined_programs(net_path)
-        signal_build = {"osm_signals_added": sig_add, "osm_signals_skipped": sig_skip,
+        # 1-4) 연산교차로 정밀 모델 (차로 조사 자료, tools/build_x6.py)
+        x6 = None
+        if cfg.get("x6_spec"):
+            import sys
+            if BASE not in sys.path:
+                sys.path.insert(0, BASE)
+            from tools.build_x6 import apply_x6, check_x6
+            spec_path = os.path.join(BASE, cfg["x6_spec"])
+            x6 = apply_x6(net_path, net_path, spec_path, workdir=os.path.join(out_dir, "x6"))
+            chk = check_x6(net_path, spec_path)
+            if chk["problems"]:
+                raise RuntimeError(f"연산교차로 정밀 모델이 자료와 다름: {chk['problems']}")
+            x6 = {"center_signal": x6["center_signal"], "lanes_checked": chk["lanes_checked"], "ok": chk["ok"],
+                  "warnings": x6.get("warnings", [])}
+        signal_build = {"x6": x6, "osm_signals_added": sig_add, "osm_signals_skipped": sig_skip,
                         "assumed_major": major_add, "phase_programs": phased, "brt_split": brt_split, "midblock_programs": midblock,
                         "joined_inner_green": joined_inner,
                         "carriageway_merges": [{k: v for k, v in m.items() if k != "rename"} for m in merges_done]}

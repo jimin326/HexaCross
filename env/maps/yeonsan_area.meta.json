@@ -583,6 +583,457 @@
    0
   ]
  ],
+ "x6": {
+  "center_signal": {
+   "tls": "414663644",
+   "links": 35,
+   "cycle_s": 190
+  },
+  "warnings": [],
+  "lanes_checked": 33,
+  "ok": 33,
+  "rows": [
+   {
+    "leg": "N",
+    "lane": 1,
+    "kind": "brt",
+    "want": [
+     "SW"
+    ],
+    "got": [
+     "SW"
+    ],
+    "bus_only": true,
+    "ok": true
+   },
+   {
+    "leg": "N",
+    "lane": 2,
+    "kind": "gen",
+    "want": [
+     "S"
+    ],
+    "got": [
+     "S"
+    ],
+    "bus_only": false,
+    "ok": true
+   },
+   {
+    "leg": "N",
+    "lane": 3,
+    "kind": "gen",
+    "want": [
+     "S"
+    ],
+    "got": [
+     "S"
+    ],
+    "bus_only": false,
+    "ok": true
+   },
+   {
+    "leg": "N",
+    "lane": 4,
+    "kind": "gen",
+    "want": [
+     "SW"
+    ],
+    "got": [
+     "SW"
+    ],
+    "bus_only": false,
+    "ok": true
+   },
+   {
+    "leg": "N",
+    "lane": 5,
+    "kind": "gen",
+    "want": [
+     "SW"
+    ],
+    "got": [
+     "SW"
+    ],
+    "bus_only": false,
+    "ok": true
+   },
+   {
+    "leg": "N",
+    "lane": "분리",
+    "kind": "slip",
+    "want": [
+     "W"
+    ],
+    "got": [
+     "W"
+    ],
+    "ok": true
+   },
+   {
+    "leg": "NE",
+    "lane": 1,
+    "kind": "gen",
+    "want": [
+     "SW"
+    ],
+    "got": [
+     "SW"
+    ],
+    "bus_only": false,
+    "ok": true
+   },
+   {
+    "leg": "NE",
+    "lane": 2,
+    "kind": "gen",
+    "want": [
+     "SW"
+    ],
+    "got": [
+     "SW"
+    ],
+    "bus_only": false,
+    "ok": true
+   },
+   {
+    "leg": "NE",
+    "lane": 3,
+    "kind": "gen",
+    "want": [
+     "W"
+    ],
+    "got": [
+     "W"
+    ],
+    "bus_only": false,
+    "ok": true
+   },
+   {
+    "leg": "NE",
+    "lane": 4,
+    "kind": "gen",
+    "want": [
+     "W"
+    ],
+    "got": [
+     "W"
+    ],
+    "bus_only": false,
+    "ok": true
+   },
+   {
+    "leg": "NE",
+    "lane": "분리",
+    "kind": "slip",
+    "want": [
+     "N"
+    ],
+    "got": [
+     "N"
+    ],
+    "ok": true
+   },
+   {
+    "leg": "E",
+    "lane": 1,
+    "kind": "gen",
+    "want": [
+     "S",
+     "SW"
+    ],
+    "got": [
+     "S",
+     "SW"
+    ],
+    "bus_only": false,
+    "ok": true
+   },
+   {
+    "leg": "E",
+    "lane": 2,
+    "kind": "gen",
+    "want": [
+     "SW",
+     "W"
+    ],
+    "got": [
+     "SW",
+     "W"
+    ],
+    "bus_only": false,
+    "ok": true
+   },
+   {
+    "leg": "E",
+    "lane": 3,
+    "kind": "gen",
+    "want": [
+     "N",
+     "W"
+    ],
+    "got": [
+     "N",
+     "W"
+    ],
+    "bus_only": false,
+    "ok": true
+   },
+   {
+    "leg": "E",
+    "lane": 4,
+    "kind": "gen",
+    "want": [
+     "N"
+    ],
+    "got": [
+     "N"
+    ],
+    "bus_only": false,
+    "ok": true
+   },
+   {
+    "leg": "E",
+    "lane": "분리",
+    "kind": "slip",
+    "want": [
+     "NE"
+    ],
+    "got": [
+     "NE"
+    ],
+    "ok": true
+   },
+   {
+    "leg": "S",
+    "lane": 1,
+    "kind": "gen",
+    "want": [
+     "SW"
+    ],
+    "got": [
+     "SW"
+    ],
+    "bus_only": false,
+    "ok": true
+   },
+   {
+    "leg": "S",
+    "lane": 2,
+    "kind": "gen",
+    "want": [
+     "N",
+     "W"
+    ],
+    "got": [
+     "N",
+     "W"
+    ],
+    "bus_only": false,
+    "ok": true
+   },
+   {
+    "leg": "S",
+    "lane": 3,
+    "kind": "gen",
+    "want": [
+     "N"
+    ],
+    "got": [
+     "N"
+    ],
+    "bus_only": false,
+    "ok": true
+   },
+   {
+    "leg": "S",
+    "lane": 4,
+    "kind": "gen",
+    "want": [
+     "NE"
+    ],
+    "got": [
+     "NE"
+    ],
+    "bus_only": false,
+    "ok": true
+   },
+   {
+    "leg": "S",
+    "lane": "분리",
+    "kind": "slip",
+    "want": [
+     "E"
+    ],
+    "got": [
+     "E"
+    ],
+    "ok": true
+   },
+   {
+    "leg": "SW",
+    "lane": 1,
+    "kind": "brt",
+    "want": [
+     "N"
+    ],
+    "got": [
+     "N"
+    ],
+    "bus_only": true,
+    "ok": true
+   },
+   {
+    "leg": "SW",
+    "lane": 2,
+    "kind": "gen",
+    "want": [
+     "N"
+    ],
+    "got": [
+     "N"
+    ],
+    "bus_only": false,
+    "ok": true
+   },
+   {
+    "leg": "SW",
+    "lane": 3,
+    "kind": "gen",
+    "want": [
+     "N"
+    ],
+    "got": [
+     "N"
+    ],
+    "bus_only": false,
+    "ok": true
+   },
+   {
+    "leg": "SW",
+    "lane": 4,
+    "kind": "gen",
+    "want": [
+     "NE"
+    ],
+    "got": [
+     "NE"
+    ],
+    "bus_only": false,
+    "ok": true
+   },
+   {
+    "leg": "SW",
+    "lane": 5,
+    "kind": "gen",
+    "want": [
+     "E",
+     "NE"
+    ],
+    "got": [
+     "E",
+     "NE"
+    ],
+    "bus_only": false,
+    "ok": true
+   },
+   {
+    "leg": "SW",
+    "lane": 6,
+    "kind": "gen",
+    "want": [
+     "E"
+    ],
+    "got": [
+     "E"
+    ],
+    "bus_only": false,
+    "ok": true
+   },
+   {
+    "leg": "SW",
+    "lane": "분리",
+    "kind": "slip",
+    "want": [
+     "S"
+    ],
+    "got": [
+     "S"
+    ],
+    "ok": true
+   },
+   {
+    "leg": "W",
+    "lane": 1,
+    "kind": "gen",
+    "want": [
+     "N",
+     "NE"
+    ],
+    "got": [
+     "N",
+     "NE"
+    ],
+    "bus_only": false,
+    "ok": true
+   },
+   {
+    "leg": "W",
+    "lane": 2,
+    "kind": "gen",
+    "want": [
+     "E",
+     "NE"
+    ],
+    "got": [
+     "E",
+     "NE"
+    ],
+    "bus_only": false,
+    "ok": true
+   },
+   {
+    "leg": "W",
+    "lane": 3,
+    "kind": "gen",
+    "want": [
+     "E",
+     "S"
+    ],
+    "got": [
+     "E",
+     "S"
+    ],
+    "bus_only": false,
+    "ok": true
+   },
+   {
+    "leg": "W",
+    "lane": 4,
+    "kind": "gen",
+    "want": [
+     "S"
+    ],
+    "got": [
+     "S"
+    ],
+    "bus_only": false,
+    "ok": true
+   },
+   {
+    "leg": "W",
+    "lane": "분리",
+    "kind": "slip",
+    "want": [
+     "SW"
+    ],
+    "got": [
+     "SW"
+    ],
+    "ok": true
+   }
+  ]
+ },
  "lane_assumptions": {
   "1214651036": {
    "lanes": 1,

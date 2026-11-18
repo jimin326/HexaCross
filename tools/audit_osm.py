@@ -106,6 +106,15 @@ def main(which, net_path=None):
         region_buf = 0.0
     net = sumolib.net.readNet(net_path, withInternal=False)
     inet = sumolib.net.readNet(net_path, withInternal=True)
+    # 연산교차로 정밀 모델 구역 (차로 조사 자료로 다시 지은 곳 — OSM 대신 자료와 대조: tools/build_x6.check_x6)
+    x6_spec_rel = (cfg.get("x6_spec") if which == "area" else ROAD["osm"].get("x6_spec"))
+    x6 = None
+    if x6_spec_rel and any(e.getID().startswith("x6_") for e in net.getEdges()):
+        from tools.build_x6 import check_x6
+        x6_spec_path = os.path.join(BASE, x6_spec_rel)
+        x6_spec = json.load(open(x6_spec_path, encoding="utf-8"))
+        x6 = {"R": float(x6_spec["rebuild_radius_m"]), "center": str(x6_spec["center_node"]),
+              "check": check_x6(net_path, x6_spec_path)}
     nodes, ntags, ways, rels = load(osm_path)
     lat0 = sum(v[0] for v in nodes.values()) / len(nodes)
     kx, ky = 111320 * math.cos(math.radians(lat0)), 110574
@@ -118,6 +127,10 @@ def main(which, net_path=None):
         return en(lat, lon)
 
     region = [en(*p) for p in region_ll]
+    x6c = en(*nodes[x6["center"]]) if x6 else None
+
+    def in_x6(p, pad=5.0):
+        return x6 is not None and math.dist(p, x6c) <= x6["R"] + pad
 
     def in_region(p):
         inside = False
@@ -155,6 +168,8 @@ def main(which, net_path=None):
     # ── 엣지 → OSM way 짝짓기
     edge_info = {}
     for e in edges:
+        if e.getID().startswith("x6_"):
+            continue
         half = sum(ln.getWidth() for ln in e.getLanes()) / 2
         is_m = e.getID().lstrip("-").startswith(merged_prefix) if merged_prefix else False
         ix = idx_m if is_m else idx
@@ -217,7 +232,7 @@ def main(which, net_path=None):
             sv = ((b[0] - a[0]) * d, (b[1] - a[1]) * d)
             for k in range(n):
                 p = (a[0] + (b[0] - a[0]) * k / n, a[1] + (b[1] - a[1]) * k / n)
-                if not in_region(p):
+                if not in_region(p) or in_x6(p):
                     continue
                 tot += 3
                 near = cov_idx.near(p, 9.0)
@@ -231,7 +246,8 @@ def main(which, net_path=None):
 
     # ── B 모양
     bad = [{"edge": e, "name": net.getEdge(e).getName(), "off_m": inf["off"] * 3, "len_m": round(net.getEdge(e).getLength())}
-           for e, inf in edge_info.items() if inf["off"] * 3 > 12 and inf["off"] > 0.15 * inf["n"]]
+           for e, inf in edge_info.items() if inf["off"] * 3 > 12 and inf["off"] > 0.15 * inf["n"]
+           and not in_x6(xy_en(*net.getEdge(e).getShape()[len(net.getEdge(e).getShape()) // 2]), 15)]
     rep["B_shape"] = {"edges": len(edges), "off_line": bad}
 
     # ── C 방향
@@ -251,6 +267,9 @@ def main(which, net_path=None):
     # ── D 차로 수
     cnt, mism, unk = collections.Counter(), [], collections.defaultdict(float)
     for e in edges:
+        if e.getID().startswith("x6_"):
+            cnt["정밀 모델(차로 조사 자료와 대조)"] += 1
+            continue
         inf = edge_info[e.getID()]
         n_net = e.getLaneNumber()
         n_bus = sum(1 for ln in e.getLanes() if ln.allows("bus") and not ln.allows("passenger"))
@@ -351,6 +370,9 @@ def main(which, net_path=None):
             res["via가 way(검사 생략)"] += 1
             continue
         vp = en(*nodes[via])
+        if in_x6(vp):
+            res["정밀 모델 구역(차로별 금지·허용은 자료로 대조)"] += 1
+            continue
         fe = [net.getEdge(x) for x in way_edges.get(fr, [])
               if math.dist(xy_en(*net.getEdge(x).getToNode().getCoord()), vp) < 25]
         te = {x for x in way_edges.get(to, []) if math.dist(xy_en(*net.getEdge(x).getFromNode().getCoord()), vp) < 25}
@@ -383,7 +405,8 @@ def main(which, net_path=None):
         x, y = net.convertLonLat2XY(nodes[nid][1], nodes[nid][0])
         nd = min(net.getNodes(), key=lambda n: math.dist(n.getCoord(), (x, y)))
         dn = math.dist(nd.getCoord(), (x, y))
-        where = ("영역 밖/경계" if not in_region(p) or dn > 15 or nd.getType() == "dead_end" else "")
+        where = ("영역 밖/경계" if not in_region(p) or dn > 15 or nd.getType() == "dead_end" else
+                 ("정밀 모델 교차로 신호" if in_x6(p) else ""))
         sig.append({"node": nid, "kind": "신호 횡단보도" if tg.get("highway") == "crossing" else "신호등",
                     "nearest_tls_m": round(dmin), "ok": dmin <= 30 or bool(where), "note": where})
     juncs = []
@@ -392,6 +415,8 @@ def main(which, net_path=None):
         if n.getID() in tls_nodes or n.getType() in ("dead_end",):
             continue
         es = n.getIncoming() + n.getOutgoing()
+        if any(e.getID().startswith("x6_") for e in es):
+            continue                            # 정밀 모델의 차로 변화·분기·합류 지점
         nb = {(e.getToNode() if e.getFromNode() == n else e.getFromNode()).getID() for e in es}
         if len(nb) < 3:
             continue
@@ -403,6 +428,9 @@ def main(which, net_path=None):
                 cls.add(ways[w][0].get("highway", "busway") if w in ways else "?")
         juncs.append({"node": n.getID(), "type": n.getType(), "legs": len(nb),
                       "roads": sorted({e.getName() or "(이름없음)" for e in es}), "classes": sorted(cls)})
+    if x6:
+        rep["X6_precise"] = {"lanes_checked": x6["check"]["lanes_checked"], "ok": x6["check"]["ok"],
+                             "problems": x6["check"]["problems"], "radius_m": x6["R"]}
     rep["F_signals"] = {"tls_in_net": len(net.getTrafficLights()), "osm_signals_on_roads": sig,
                         "unsignalized_junctions": juncs}
     return rep
@@ -428,6 +456,9 @@ def print_rep(rep):
     print(f"E 회전 제한: {e['count']}")
     for x in e["violations"][:10]:
         print("     위반:", x)
+    if rep.get("X6_precise"):
+        x = rep["X6_precise"]
+        print(f"X6 연산교차로 정밀 모델(중심 {x['radius_m']:.0f} m): 차로 {x['lanes_checked']}개 중 차로 조사 자료와 일치 {x['ok']}, 문제 {x['problems']}")
     f = rep["F_signals"]
     miss = [s for s in f["osm_signals_on_roads"] if not s["ok"]]
     edge_ = [s["node"] for s in f["osm_signals_on_roads"] if s.get("note")]

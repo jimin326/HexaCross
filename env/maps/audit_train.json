@@ -6,7 +6,7 @@
   "missing": []
  },
  "B_shape": {
-  "edges": 893,
+  "edges": 897,
   "off_line": []
  },
  "C_direction": {
@@ -15,11 +15,12 @@
  },
  "D_lanes": {
   "count": {
-   "OSM에 차로 수 없음": 675,
-   "일치": 147,
-   "짝 없음(교차로 안 짧은 엣지)": 13,
+   "OSM에 차로 수 없음": 668,
+   "일치": 139,
+   "짝 없음(교차로 안 짧은 엣지)": 11,
    "OSM 모호(양방향 홀수)": 2,
-   "일치(합친 도로: 차도 lanes + busway/2)": 56
+   "일치(합친 도로: 차도 lanes + busway/2)": 46,
+   "정밀 모델(차로 조사 자료와 대조)": 31
   },
   "mismatch": [],
   "no_osm_value": [
@@ -27,13 +28,13 @@
     "도로": "(이름없음)",
     "사유": "OSM에 차로 수 없음",
     "도로망_차로": 1,
-    "길이_m": 2446
+    "길이_m": 2363
    },
    {
     "도로": "반송로",
     "사유": "OSM에 차로 수 없음",
     "도로망_차로": 2,
-    "길이_m": 1634
+    "길이_m": 1498
    },
    {
     "도로": "거제천로",
@@ -45,7 +46,7 @@
     "도로": "고분로",
     "사유": "OSM에 차로 수 없음",
     "도로망_차로": 2,
-    "길이_m": 1284
+    "길이_m": 1147
    },
    {
     "도로": "중앙천로25번길",
@@ -630,12 +631,6 @@
     "길이_m": 184
    },
    {
-    "도로": "월드컵대로",
-    "사유": "OSM에 차로 수 없음",
-    "도로망_차로": 2,
-    "길이_m": 179
-   },
-   {
     "도로": "중앙대로979번길",
     "사유": "OSM에 차로 수 없음",
     "도로망_차로": 1,
@@ -650,6 +645,12 @@
    {
     "도로": "중앙대로1043번길",
     "사유": "OSM 모호(양방향 홀수)",
+    "도로망_차로": 2,
+    "길이_m": 171
+   },
+   {
+    "도로": "월드컵대로",
+    "사유": "OSM에 차로 수 없음",
     "도로망_차로": 2,
     "길이_m": 171
    },
@@ -717,11 +718,16 @@
  },
  "E_restrictions": {
   "count": {
-   "도로망 밖": 9,
-   "유턴 제한(도로망에 유턴 없음)": 1,
-   "OK": 4
+   "정밀 모델 구역(차로별 금지·허용은 자료로 대조)": 13,
+   "도로망 밖": 1
   },
   "violations": []
+ },
+ "X6_precise": {
+  "lanes_checked": 33,
+  "ok": 33,
+  "problems": [],
+  "radius_m": 100.0
  },
  "F_signals": {
   "tls_in_net": 13,
@@ -778,9 +784,9 @@
    {
     "node": "4958136019",
     "kind": "신호등",
-    "nearest_tls_m": 0,
+    "nearest_tls_m": 39,
     "ok": true,
-    "note": ""
+    "note": "정밀 모델 교차로 신호"
    },
    {
     "node": "5920187786",
@@ -1339,7 +1345,6 @@
      "중앙대로"
     ],
     "classes": [
-     "busway",
      "residential",
      "secondary"
     ]
@@ -3196,19 +3201,6 @@
     ]
    },
    {
-    "node": "1768492964",
-    "type": "priority",
-    "legs": 4,
-    "roads": [
-     "(이름없음)",
-     "월드컵대로"
-    ],
-    "classes": [
-     "secondary",
-     "secondary_link"
-    ]
-   },
-   {
     "node": "cluster_1772223717_2860431553",
     "type": "priority",
     "legs": 4,
@@ -3294,19 +3286,6 @@
     ],
     "classes": [
      "tertiary"
-    ]
-   },
-   {
-    "node": "1768493018",
-    "type": "priority",
-    "legs": 4,
-    "roads": [
-     "(이름없음)",
-     "반송로"
-    ],
-    "classes": [
-     "secondary",
-     "secondary_link"
     ]
    },
    {
@@ -3515,19 +3494,6 @@
     ]
    },
    {
-    "node": "436818093",
-    "type": "priority",
-    "legs": 4,
-    "roads": [
-     "(이름없음)",
-     "고분로"
-    ],
-    "classes": [
-     "secondary",
-     "secondary_link"
-    ]
-   },
-   {
     "node": "12791011285",
     "type": "priority",
     "legs": 3,
@@ -3575,34 +3541,6 @@
     ],
     "classes": [
      "secondary"
-    ]
-   },
-   {
-    "node": "1768492949",
-    "type": "priority",
-    "legs": 4,
-    "roads": [
-     "(이름없음)",
-     "중앙대로"
-    ],
-    "classes": [
-     "busway",
-     "secondary",
-     "secondary_link"
-    ]
-   },
-   {
-    "node": "12791011265",
-    "type": "priority",
-    "legs": 4,
-    "roads": [
-     "(이름없음)",
-     "중앙대로"
-    ],
-    "classes": [
-     "busway",
-     "secondary",
-     "secondary_link"
     ]
    },
    {
@@ -3693,32 +3631,6 @@
     ],
     "classes": [
      "primary",
-     "secondary_link"
-    ]
-   },
-   {
-    "node": "4958136009",
-    "type": "priority",
-    "legs": 3,
-    "roads": [
-     "(이름없음)",
-     "월드컵대로"
-    ],
-    "classes": [
-     "secondary",
-     "secondary_link"
-    ]
-   },
-   {
-    "node": "4958136221",
-    "type": "priority",
-    "legs": 3,
-    "roads": [
-     "(이름없음)",
-     "월드컵대로"
-    ],
-    "classes": [
-     "secondary",
      "secondary_link"
     ]
    }

@@ -1164,6 +1164,18 @@ def build(cfg_path):
     print(f"[signals] BRT 구간 분리: {brt_split_programs(net_f)}")
     midblock = fix_midblock_programs(net_f)
     print(f"[signals] 묶인 신호의 내부 정지선 항상 녹색: {fix_joined_programs(net_f)}")
+    # 연산교차로 정밀 모델 (차로 조사 자료, tools/build_x6.py)
+    x6_rep = None
+    if cfg.get("x6_spec"):
+        from tools.build_x6 import apply_x6, check_x6, print_check
+        spec_path = os.path.join(BASE, cfg["x6_spec"])
+        x6_rep = apply_x6(net_f, net_f, spec_path, workdir=os.path.join(tmp, "x6"))
+        chk = check_x6(net_f, spec_path)
+        print_check(chk)
+        if chk["problems"]:
+            raise RuntimeError(f"연산교차로 정밀 모델이 자료와 다름: {chk['problems']}")
+        x6_rep = {"center_signal": x6_rep["center_signal"], "warnings": x6_rep.get("warnings", []),
+                  "lanes_checked": chk["lanes_checked"], "ok": chk["ok"], "rows": chk["rows"]}
     print(f"[signals] 단일로 신호 현시 고침: {midblock}")
     # 합치기용 plain XML
     export(net_f, os.path.join(out_dir, name))
@@ -1183,7 +1195,7 @@ def build(cfg_path):
     meta = {"name": name, "ring_ways": ring_ways, "selected_ways": {w: why[w] for w in sorted(sel)},
             "lane_overrides": len(overrides), "carriageway_merges": merges_done,
             "lane_merge_connections": merge_cons, "bus_tag_changes": bus_changed, "brt_deleted_connections": brt_del,
-            "median_deleted_connections": med_del,
+            "median_deleted_connections": med_del, "x6": x6_rep,
             "lane_assumptions": cfg.get("lane_assumptions", {}),
             "restrictions_kept": len(rels_keep), "tls_assumed": tls_set, "lat0": lat0, "lon0": lon0}
     json.dump(meta, open(os.path.join(out_dir, f"{name}.meta.json"), "w", encoding="utf-8"),

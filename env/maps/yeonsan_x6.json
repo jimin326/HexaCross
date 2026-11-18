@@ -1,0 +1,104 @@
+{
+ "_source": "연산교차로 차로 지도 (claude.ai artifact SFnYno31fjkBr4jm2MxhbK) — 2025-11-09~13 카카오 로드뷰 노면 화살표·글자·금지 표지·신호등, 2025-12-04 연제구청 영상 발광형 차로 표지로 대조. 좌회전 금지 5개 방향은 2015·2025 부산시 교통조사 표와 일치.",
+ "_lane_numbering": "차로 id 1 = 중앙선 쪽(맨 왼쪽). SUMO 차로 번호(0 = 맨 오른쪽)로는 n - id.",
+ "_leg_ids": "자료의 N/NE/E/SSE/SSW/WNW = 이 저장소 ROAD['legs']의 N/NE/E/S/SW/W",
+ "_assumed": "자료에 없는 값(가정): 정지선의 중심 거리 stop_r, 상류 차로 수 변화 지점 중 자료에 없는 것(N 3차로 구간, SW 확장 구간), 분리 우회전 분기·합류 위치(OSM 연결로 위치에서 가져옴), 신호 시간",
+ "center_node": "414663644",
+ "rebuild_radius_m": 100,
+ "_radius_note": "중심 100 m 안의 6개 대로·연결로를 지우고 이 자료대로 다시 짓는다. 학습 지도는 123 m부터 골목길이 붙어 있어 100 m로 둔다. 상류 차로 변화가 100 m 밖이면 경계에서 맞춘다.",
+ "legs": {
+  "N": {
+   "src_id": "N", "name": "부산교대", "road": "중앙대로", "bearing": 349, "brt": true, "out_general": 2, "stop_r": 25,
+   "lanes": [
+    {"id": 1, "kind": "brt", "arrows": ["오른쪽 비스듬"], "text": "경찰청/시청", "to": ["SW"]},
+    {"id": 2, "kind": "gen", "arrows": ["직진"], "text": "수영/망미동", "to": ["S"], "note": "정지선 60~85 m 앞에서 새로 생기는 차로"},
+    {"id": 3, "kind": "gen", "arrows": ["직진"], "text": "수영/망미동", "to": ["S"]},
+    {"id": 4, "kind": "gen", "arrows": ["직진"], "text": "경찰청/시청", "to": ["SW"]},
+    {"id": 5, "kind": "gen", "arrows": ["직진"], "text": "경찰청/시청", "to": ["SW"], "note": "분리 우회전 차로가 이 차로에서 갈라짐"}
+   ],
+   "slip": {"to": "W", "text": "거제", "from_lane": 5, "split_m": 45, "merge_m": 50},
+   "ban": ["E", "NE"],
+   "general_profile": [[0, 4], [70, 3], [110, null]],
+   "signal": "3색 신호등 5기(버스 1, 수영 방면 차로 2, 시청 방면 차로 2), 좌회전 화살표 없음. 수영 방면·시청 방면 차로 신호가 따로 켜짐",
+   "notes": ["중앙에 BRT와 펜스 — 유턴 불가", "3차로 구간(정지선 70~110 m)은 가정: 상류 OSM 2차로 → 정지선 4차로 사이"]
+  },
+  "NE": {
+   "src_id": "NE", "name": "안락교차로", "road": "반송로", "bearing": 48, "brt": false, "out_general": 2, "stop_r": 25,
+   "lanes": [
+    {"id": 1, "kind": "gen", "arrows": ["직진"], "text": "시청", "to": ["SW"]},
+    {"id": 2, "kind": "gen", "arrows": ["직진"], "text": "시청", "to": ["SW"]},
+    {"id": 3, "kind": "gen", "arrows": ["오른쪽 비스듬"], "text": "거제", "to": ["W"]},
+    {"id": 4, "kind": "gen", "arrows": ["오른쪽 비스듬"], "text": "거제", "to": ["W"]}
+   ],
+   "slip": {"to": "N", "text": "교대·울산", "from_lane": 4, "split_m": 45, "merge_m": 45},
+   "ban": ["S", "E"],
+   "general_profile": [[0, 4], [40, 3], [55, null]],
+   "signal": "3색 신호등 4기, 좌회전 화살표 없음",
+   "notes": ["중심에서 80 m 바깥은 2차로, 정지선 앞 40 m 사이에 4차로로 넓어짐 (40 m 바깥 3차로 구간은 넓어지는 중간)"]
+  },
+  "E": {
+   "src_id": "E", "name": "연산터널", "road": "고분로", "bearing": 103, "brt": false, "out_general": 2, "stop_r": 25,
+   "lanes": [
+    {"id": 1, "kind": "gen", "arrows": ["좌회전", "급좌회전"], "text": "시청/수영", "to": ["SW", "S"]},
+    {"id": 2, "kind": "gen", "arrows": ["직진", "좌회전"], "text": "거제/시청", "to": ["W", "SW"]},
+    {"id": 3, "kind": "gen", "arrows": ["직진", "오른쪽 비스듬"], "text": "교대/거제", "to": ["W", "N"]},
+    {"id": 4, "kind": "gen", "arrows": ["오른쪽 비스듬"], "text": "교대", "to": ["N"]}
+   ],
+   "slip": {"to": "NE", "text": "안락", "from_lane": 4, "split_m": 30, "merge_m": 45},
+   "ban": [],
+   "general_profile": [[0, 4], [21, 3], [40, null]],
+   "signal": "4색 신호등 4기, 녹색과 좌회전 화살표가 함께 — 이 접근로의 모든 방향이 한 번에",
+   "notes": ["정지선 21 m 앞은 3차로, 동쪽 횡단보도(약 40 m) 너머는 2차로"]
+  },
+  "S": {
+   "src_id": "SSE", "name": "신리삼거리", "road": "월드컵대로", "bearing": 159, "brt": false, "out_general": 3, "stop_r": 25,
+   "lanes": [
+    {"id": 1, "kind": "gen", "arrows": ["급좌회전"], "text": "시청", "to": ["SW"]},
+    {"id": 2, "kind": "gen", "arrows": ["직진", "왼쪽 비스듬"], "text": "거제/교대", "to": ["W", "N"]},
+    {"id": 3, "kind": "gen", "arrows": ["직진"], "text": "교대", "to": ["N"]},
+    {"id": 4, "kind": "gen", "arrows": ["오른쪽 비스듬"], "text": "안락/동래", "to": ["NE"]}
+   ],
+   "slip": {"to": "E", "text": "연산터널", "from_lane": 4, "split_m": 50, "merge_m": 40},
+   "ban": [],
+   "general_profile": [[0, 4], [43, null]],
+   "signal": "4색 신호등 2기, 녹색과 좌회전 화살표가 함께",
+   "notes": ["정지선 앞 40~46 m 횡단보도 뒤는 3차로", "유턴은 횡단보도 앞 유턴구역(정지선 앞 약 62~77 m)에서 보행신호 때만 — 이 지도에는 넣지 않음"]
+  },
+  "SW": {
+   "src_id": "SSW", "name": "부산시청", "road": "중앙대로", "bearing": 212, "brt": true, "out_general": 2, "stop_r": 25,
+   "lanes": [
+    {"id": 1, "kind": "brt", "arrows": [], "text": null, "to": ["N"], "estimated": true, "note": "버스에 가려 노면을 보지 못함 — 상류 표지로 추정"},
+    {"id": 2, "kind": "gen", "arrows": ["왼쪽 비스듬"], "text": "교대", "to": ["N"], "note": "분홍 유도선"},
+    {"id": 3, "kind": "gen", "arrows": ["왼쪽 비스듬"], "text": "교대", "to": ["N"], "note": "분홍 유도선"},
+    {"id": 4, "kind": "gen", "arrows": ["직진"], "text": "안락", "to": ["NE"]},
+    {"id": 5, "kind": "gen", "arrows": ["직진", "오른쪽 비스듬"], "text": "안락/연산터널", "to": ["NE", "E"]},
+    {"id": 6, "kind": "gen", "arrows": ["오른쪽 비스듬"], "text": "연산터널", "to": ["E"], "note": "'연산터널 방향은 직진신호시' 표지"}
+   ],
+   "slip": {"to": "S", "text": "수영", "from_lane": 6, "split_m": 45, "merge_m": 45},
+   "ban": ["W"],
+   "general_profile": [[0, 5], [60, 3], [100, null]],
+   "signal": "4색 신호등(일반 3기, BRT 1기). 좌회전 화살표는 교대 방면 차로용이고 녹색보다 먼저 꺼짐",
+   "notes": ["전방 150 m 발광형 표지: BRT 교대 · BRT 안락 · 교대 · 교대 · 안락 · 안락(직진·우측) · 연산터널", "2·3차로 정지선은 4~6차로보다 약 3 m 뒤", "5차로가 되는 지점(정지선 60 m)과 3차로 구간은 가정"]
+  },
+  "W": {
+   "src_id": "WNW", "name": "종합운동장", "road": "월드컵대로", "bearing": 291, "brt": false, "out_general": 3, "stop_r": 25,
+   "lanes": [
+    {"id": 1, "kind": "gen", "arrows": ["왼쪽 비스듬", "급좌회전"], "text": "교대/안락", "to": ["N", "NE"]},
+    {"id": 2, "kind": "gen", "arrows": ["직진", "왼쪽 비스듬"], "text": "안락/연산터널", "to": ["NE", "E"]},
+    {"id": 3, "kind": "gen", "arrows": ["직진", "오른쪽 비스듬"], "text": "연산터널/수영", "to": ["E", "S"]},
+    {"id": 4, "kind": "gen", "arrows": ["오른쪽 비스듬"], "text": "수영", "to": ["S"]}
+   ],
+   "slip": {"to": "SW", "text": "시청", "from_lane": 4, "split_m": 20, "merge_m": 30},
+   "ban": [],
+   "general_profile": [[0, 4], [20, null]],
+   "signal": "4색 신호등 2기, 녹색과 좌회전 화살표가 함께",
+   "notes": ["분리 우회전 차로는 정지선 약 20 m 앞에서 갈라짐"]
+  }
+ },
+ "signal_plan_assumed": {
+  "_note": "신호 주기·현시 순서는 공개 자료가 없음 (자료 원문). E·S·W는 '녹색+좌회전 화살표 함께 = 접근로 모든 방향 한 번에'라 진입로별 동시신호로 둔다. 시간은 가정값 (road_config SIGNAL_PLANS_EXAMPLE normal과 같음).",
+  "order": ["N", "NE", "E", "S", "SW", "W"],
+  "green": {"N": 30, "NE": 20, "E": 20, "S": 30, "SW": 30, "W": 30},
+  "yellow": 3, "all_red": 2
+ }
+}
