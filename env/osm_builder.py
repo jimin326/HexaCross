@@ -1078,7 +1078,11 @@ def build_osm(road: dict, ego: dict, traffic: dict, signal: dict,
     view_width = float(SIMULATION.get("gui_view_width", 350.0))
     with open(os.path.join(out_dir, "highway.gui.xml"), "w") as f:
         f.write(f"""<viewsettings>
-    <scheme name="real world"/>
+    <scheme name="real world">
+        <!-- realisticLinkRules: 실제로 서거나 양보해야 하는 곳(신호·양보·일시정지)에만 정지선을 그린다.
+             끄면 우선 도로가 지나가기만 하는 모든 노드(차로 수 바뀌는 곳, 옆길 붙는 곳)에도 흰 선이 그려진다. -->
+        <edges showLinkRules="1" realisticLinkRules="1"/>
+    </scheme>
     <viewport zoom="{extent / view_width * 100.0:.0f}" x="{cx:.1f}" y="{cy:.1f}" angle="0"/>
     <delay value="{float(SIMULATION.get("gui_delay", 100.0))}"/>
 </viewsettings>

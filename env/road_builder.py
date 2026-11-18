@@ -273,7 +273,11 @@ def _finish_straight(road, ego, traffic, out_dir, cross_x, signal_on):
     gui_settings_path = os.path.join(out_dir, "highway.gui.xml")
     with open(gui_settings_path, "w") as f:
         f.write(f"""<viewsettings>
-    <scheme name="real world"/>
+    <scheme name="real world">
+        <!-- realisticLinkRules: 실제로 서거나 양보해야 하는 곳(신호·양보·일시정지)에만 정지선을 그린다.
+             끄면 우선 도로가 지나가기만 하는 모든 노드(차로 수 바뀌는 곳, 옆길 붙는 곳)에도 흰 선이 그려진다. -->
+        <edges showLinkRules="1" realisticLinkRules="1"/>
+    </scheme>
     <viewport zoom="{zoom:.0f}" x="{center_x:.1f}" y="{center_y:.1f}" angle="0"/>
     <delay value="{gui_delay}"/>
 </viewsettings>
