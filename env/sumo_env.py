@@ -191,6 +191,9 @@ class SumoHighwayEnv(gym.Env):
         self.route_turn_obs = bool(rt.get("enabled", False))
         self.route_turn_range = float(rt.get("range", 300.0))
         self.route_turn_min_deg = float(rt.get("min_turn_deg", 20.0))
+        la = mdp_obs.get("lane_arrows", {}) or {}
+        self.lane_arrows_obs = bool(la.get("enabled", False))
+        self.lane_arrows_range = float(la.get("range", 150.0))
         self._turn_cache = {}
         # ---- 교차로 상충 차량 (내 경로와 교차로 안에서 엇갈리는 차) ----
         jf = (mdp_obs.get("junction_foes") or {})
@@ -248,6 +251,8 @@ class SumoHighwayEnv(gym.Env):
             self.obs_dim += 2          # 상충 지점까지 거리, 도착 시간차
         if self.route_turn_obs:
             self.obs_dim += 2          # 다음 교차로 회전 각도, 거리
+        if self.lane_arrows_obs:
+            self.obs_dim += n_lanes_view * 3   # 차로별 노면 화살표 (좌회전·직진·우회전 가능)
         self.observation_space = spaces.Box(-1.0, 1.0, shape=(self.obs_dim,),
                                             dtype=np.float32)
 
@@ -508,6 +513,45 @@ class SumoHighwayEnv(gym.Env):
                 return e, int(i), -back
             back += traci.lane.getLength(lane)
         return None
+
+    _TLS_STATES = set("GgrRyYu")
+
+    def _lane_arrows(self, offset):
+        """오프셋 차로의 노면 화살표: [좌회전, 직진, 우회전] 가능하면 1, 아니면 0. 차로가 없으면(버스전용 포함) 전부 -1.
+        그 차로를 직진으로 따라가 lane_arrows_range(m) 안의 첫 신호 교차로 정지선에서 갈 수 있는 방향을 본다
+        (운전자가 정지선 앞에서 보는 노면 화살표). 범위 안에 신호 교차로가 없으면 바로 다음 노드의 방향.
+        내 경로와는 무관하다 (어느 차로로 가야 하는지는 알려 주지 않음)."""
+        try:
+            ref = self._ref_lane()
+            if ref is None:
+                return [0.0, 0.0, 0.0]
+            edge, li = ref[0], ref[1] + offset
+            if not self._ego_lane_ok(edge, li):
+                return [-1.0, -1.0, -1.0]
+            lane = f"{edge}_{li}"
+            d = traci.lane.getLength(lane) - max(float(ref[2]), 0.0)
+            first = None
+            for _ in range(12):
+                links = traci.lane.getLinks(lane)   # (도착 차로, 우선, 열림, 상충, 내부 차로, 상태, 방향, 길이)
+                if not links:
+                    break
+                dirs = {l[6] for l in links}
+                if first is None:
+                    first = dirs
+                if any(l[5] in self._TLS_STATES for l in links):
+                    first = dirs
+                    break
+                straight = [l[0] for l in links if l[6] == "s" and not l[0].startswith(":")]
+                if not straight or d > self.lane_arrows_range:
+                    break
+                lane = straight[0]
+                d += traci.lane.getLength(lane)
+            dirs = first or set()
+            return [1.0 if dirs & {"l", "L"} else 0.0,
+                    1.0 if "s" in dirs else 0.0,
+                    1.0 if dirs & {"r", "R"} else 0.0]
+        except traci.TraCIException:
+            return [0.0, 0.0, 0.0]
 
     def _ego_lane_ok(self, edge, li):
         """edge의 li번 차로가 있고 ego(승용차)가 달릴 수 있는가.
@@ -996,6 +1040,9 @@ class SumoHighwayEnv(gym.Env):
 
         if self.route_turn_obs:
             obs += self._route_turn()
+        if self.lane_arrows_obs:
+            for offset in self.obs_offsets:
+                obs += self._lane_arrows(offset)
 
         return np.clip(np.array(obs, dtype=np.float32), -1.0, 1.0)
 
