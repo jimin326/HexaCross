@@ -133,6 +133,8 @@ OBSERVATION = {
                                  # 적색이 길어서(최대 ~130초) 넉넉히 잡는다.
         "approach_columns": 6,   # 진입 도로별 신호 column 수 (6지 교차로 = 6)
         "remaining_time": False, # True면 내 신호 남은 시간 1차원 추가
+        "dist_sqrt": True,       # [37] 정지선 거리를 sqrt(거리/range)로 — 정지선 가까이(몇 m) 차이를 구분하게.
+                                 # False면 거리/range (예전)
     },
     "goal_distance": True,       # 목표(경로 끝)까지 남은 거리 1차원 추가
     # 교차로 상충 차량: 앞으로 지날 교차로 안에서 내 경로와 엇갈리는 차량.
@@ -263,6 +265,12 @@ REWARD = {
     # 손해가 아니다. 반면 신호 위반은 충돌과 같은 크기로 감점해서
     # "기다리는 것"이 항상 이득이 되도록 한다.
     "red_light_penalty": 5.0,
+    # 쓸데없이 멈춤: 속도 < idle_speed, 앞 idle_gap(m) 안에 차 없음, 빨간불 정지선 idle_stopline(m) 안도 아님
+    #   → 스텝당 idle_penalty 감점. 0이면 끔.
+    "idle_penalty": 0.0,
+    "idle_speed": 1.0,
+    "idle_gap": 30.0,
+    "idle_stopline": 15.0,
     "red_light_terminate": True,  # True면 위반 즉시 에피소드 종료
 
     # ---- 목표 도로로 가게 만드는 항 ----

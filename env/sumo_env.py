@@ -172,6 +172,7 @@ class SumoHighwayEnv(gym.Env):
         self.tl_obs = bool(tl.get("enabled", False))
         self.tl_range = float(tl.get("range", 150.0))
         self.tl_max_time = float(tl.get("max_time", 30.0))
+        self.tl_dist_sqrt = bool(tl.get("dist_sqrt", False))
         # 다음 교차로의 진입 도로별 신호 column 수 (6지 교차로 = 6)
         self.tl_columns = int(tl.get("approach_columns", 6))
         self.tl_remaining = bool(tl.get("remaining_time", False))
@@ -569,7 +570,9 @@ class SumoHighwayEnv(gym.Env):
             idx = groups[(mine + k) % len(groups)][1]
             cols.append(max(self._signal_code(state[i]) for i in idx))
         cols = (cols + [-1.0] * C)[:C]
-        out = cols + [float(np.clip(dist / self.tl_range, 0.0, 1.0))]
+        dn = float(np.clip(dist / self.tl_range, 0.0, 1.0))
+        # 정지선 가까이에서 몇 m 차이를 구분할 수 있게 제곱근 눈금 (5 m = 0.18, 50 m = 0.58, 150 m = 1)
+        out = cols + [float(np.sqrt(dn)) if self.tl_dist_sqrt else dn]
         if self.tl_remaining:
             code = self._signal_code(st)
             out.append(float(np.clip(
@@ -763,9 +766,10 @@ class SumoHighwayEnv(gym.Env):
             # 훑어 가장 가까운 앞/뒤를 찾음)으로 감지한다.
             front, rear = self._scan_lane_neighbors(offset)
             res = front if leader else rear
-            if res is None or res[0] < 0 or res[0] > self.visibility:
+            if res is None or res[0] > self.visibility:
                 return None
-            return float(res[0]), float(res[1])
+            # 나란히 겹쳐 달리는 차는 간격이 음수로 나온다 → 버리지 않고 "간격 0"으로 (사각지대 방지)
+            return max(float(res[0]), 0.0), float(res[1])
         else:
             mode_leader, mode_follower = self._NEIGHBOR_MODES[offset]
             pairs = traci.vehicle.getNeighbors(
@@ -774,9 +778,10 @@ class SumoHighwayEnv(gym.Env):
                 return None
             vid, gap = min(pairs, key=lambda p: p[1])   # 가장 가까운 차량
 
-        if gap < 0 or gap > self.visibility:
+        if gap > self.visibility:
             return None
-        return float(gap), traci.vehicle.getSpeed(vid)
+        # 나란히 겹쳐 달리는 차(간격 음수)는 "간격 0" — 예전에는 버려서 바로 옆 차가 안 보였다 (사각지대)
+        return max(float(gap), 0.0), traci.vehicle.getSpeed(vid)
 
     def _lane_connectivity(self, offset: int) -> float:
         """오프셋 차선의 '경로상 연결성'을 반환.
@@ -1546,6 +1551,17 @@ class SumoHighwayEnv(gym.Env):
                     and ego_speed < float(self.rw.get("blocked_speed_frac", 0.7))
                         * self.vmax):
                 reward -= bp
+
+            # ---- 쓸데없이 멈춤: 앞이 비었는데(idle_gap m 안에 앞차 없음) 정지선 바로 앞(idle_stopline m)도
+            #      아닌 곳에 서 있으면 스텝당 감점. 빨간불을 보자마자 정지선 100 m 이상 앞에 서 버리거나
+            #      다른 교차로 안에 서는 버릇을 없앤다 (적색이면 정지선까지 다가가서 서게)
+            ip = float(self.rw.get("idle_penalty", 0.0))
+            if ip > 0.0 and ego_speed is not None and ego_speed < float(self.rw.get("idle_speed", 1.0)):
+                lead = traci.vehicle.getLeader(self.ego_id, float(self.rw.get("idle_gap", 30.0)))
+                at_line = (signal_after is not None and signal_after[3] not in "Gg"
+                           and signal_after[2] <= float(self.rw.get("idle_stopline", 15.0)))
+                if lead is None and not at_line:
+                    reward -= ip
 
             # ---- 차선변경 보상 항 ----
             # lane_change        : 이번 스텝에 policy가 낸 양자화 명령 (-1/0/+1)
