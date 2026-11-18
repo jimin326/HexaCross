@@ -1444,10 +1444,12 @@ class SumoHighwayEnv(gym.Env):
         lane_change_applied = False
         lane_before = None
         signal_before = None   # 행동 직전 ego 앞의 신호 (위반 판정용)
+        road_before = None     # 행동 직전 ego가 있던 도로 (위반 판정용)
 
         # ----- (1) 종방향 + 횡방향 행동 적용 -----
         if self.ego_id in traci.vehicle.getIDList():
             signal_before = self._next_signal()
+            road_before = traci.vehicle.getRoadID(self.ego_id)
             v = traci.vehicle.getSpeed(self.ego_id)
             lane_before = int(traci.vehicle.getLaneIndex(self.ego_id))
 
@@ -1480,6 +1482,10 @@ class SumoHighwayEnv(gym.Env):
         if alive and signal_before is not None:
             tls, link, _, st_before = signal_before
             passed = signal_after is None or signal_after[0] != tls
+            # 같은 도로에 그대로 있으면 정지선을 넘은 것이 아니다. 경로로 이어지지 않는 차로로 옮기면
+            # SUMO가 앞 신호를 돌려주지 않아(getNextTLS 빈 목록) "신호가 사라짐"으로 보이던 오판 방지
+            if passed and traci.vehicle.getRoadID(self.ego_id) == road_before:
+                passed = False
             if passed and st_before in "rR":
                 st_now = traci.trafficlight.getRedYellowGreenState(tls)[link]
                 red_light = st_now in "rR"
