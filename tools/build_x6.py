@@ -25,6 +25,7 @@ import xml.etree.ElementTree as ET
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, BASE)
 SPEC_DEFAULT = os.path.join(BASE, "env/maps/yeonsan_x6.json")
+MIN_SEG = 4.0          # 차로 수 변화·분기 지점 사이 최소 거리 (m). 더 가까우면 한 지점으로 합침
 
 
 def _ang(a, b):
@@ -91,6 +92,15 @@ def _cut_at(pts, C, R):
     return None, None
 
 
+LANE_W = 3.2           # netconvert 기본 차로 폭
+
+
+def _left_shift(a, b, p, d):
+    """a→b 진행 방향의 왼쪽으로 p를 d만큼 옮긴 점"""
+    L = math.dist(a, b)
+    return (p[0] - (b[1] - a[1]) / L * d, p[1] + (b[0] - a[0]) / L * d)
+
+
 def _lanes_of(e):
     return int(e.get("numLanes", "1"))
 
@@ -120,11 +130,46 @@ def _map_lanes(nu, nd, brt):
     return sorted(set(pairs))
 
 
-def apply_x6(net_in, net_out, spec_path=SPEC_DEFAULT, workdir=None):
+def _stop_radii(net_path, spec):
+    """지은 도로망에서 진입로별 실제 정지선(정지선 엣지 끝)의 중심 거리"""
     import sumolib
-    from tools.merge_nets import export, _plain_args, _files, _run
+    net = sumolib.net.readNet(net_path)
+    C = net.getNode(str(spec["center_node"])).getCoord()
+    out = {}
+    for o in spec["legs"]:
+        es = [e for e in net.getEdges() if re.match(rf"x6_{o}_in\d+$", e.getID()) and e.getToNode().getID() == str(spec["center_node"])]
+        if es:
+            out[o] = round(math.dist(es[0].getShape()[-1], C), 1)
+    return out
+
+
+def apply_x6(net_in, net_out, spec_path=SPEC_DEFAULT, workdir=None):
+    """두 번 짓는다: 1차로 교차로 모양(정지선 위치)을 정하고, 2차에서 자료의 거리(정지선 앞 m)를
+    실제 정지선 기준으로 맞춘다 (가정값 stop_r 대신 netconvert가 만든 정지선 위치)."""
+    import shutil
     spec = json.load(open(spec_path, encoding="utf-8"))
     tmp = workdir or tempfile.mkdtemp(prefix="x6_")
+    os.makedirs(tmp, exist_ok=True)
+    src = os.path.join(tmp, "x6_source.net.xml")
+    if os.path.abspath(net_in) != os.path.abspath(src):
+        shutil.copyfile(net_in, src)
+    stop = {o: float(lg["stop_r"]) for o, lg in spec["legs"].items()}
+    for it in range(3):
+        rep = _apply_once(src, net_out, spec, os.path.join(tmp, f"pass{it}"), stop)
+        got = _stop_radii(net_out, spec)
+        diff = max(abs(got[o] - stop[o]) for o in stop)
+        rep["stop_line_r"] = got
+        rep["stop_line_iter"] = it + 1
+        if diff <= 1.0:
+            break
+        stop = got
+    return rep
+
+
+def _apply_once(net_in, net_out, spec, tmp, stop_r):
+    import sumolib
+    from tools.merge_nets import export, _plain_args, _files, _run
+    os.makedirs(tmp, exist_ok=True)
     prefix = os.path.join(tmp, "base")
     export(net_in, prefix)
     f = _files(prefix)
@@ -244,7 +289,7 @@ def apply_x6(net_in, net_out, spec_path=SPEC_DEFAULT, workdir=None):
         if _lanes_of(proto) != m:
             report.setdefault("warnings", []).append(f"{d} 진출: 경계 밖 도로 {_lanes_of(proto)}차로, 자료 {m}차로 → 경계에서 맞춤")
         u = ((P[0] - C[0]) / math.dist(P, C), (P[1] - C[1]) / math.dist(P, C))
-        stop = float(lg["stop_r"])
+        stop = stop_r[d]
         chain = [Cid]
         if d in slip_to:
             rm = stop + float(legs[slip_to[d]]["slip"]["merge_m"])
@@ -254,7 +299,11 @@ def apply_x6(net_in, net_out, spec_path=SPEC_DEFAULT, workdir=None):
         chain.append(eel[eid].get("from"))
         prev = None
         for k, (a, b) in enumerate(zip(chain, chain[1:])):
-            sid = new_edge(f"x6_{d}_out{k}", a, b, m, proto, brt=brt)
+            shp = None
+            if k == len(chain) - 2 and proto.get("spreadType") == "center":
+                # 경계 밖 도로가 가운데 기준 차로 배치면, 마지막 조각 끝을 옮겨 맨 오른쪽 차로 가장자리가 그대로 이어지게
+                shp = [nodes[a], _left_shift(nodes[a], nodes[b], nodes[b], (m - _lanes_of(proto) / 2) * LANE_W)]
+            sid = new_edge(f"x6_{d}_out{k}", a, b, m, proto, brt=brt, shape=shp)
             if k == 0:
                 first_out[d] = sid
             if prev:
@@ -277,7 +326,7 @@ def apply_x6(net_in, net_out, spec_path=SPEC_DEFAULT, workdir=None):
         gen_out = n_side - (1 if brt else 0)
         u = ((P[0] - C[0]) / math.dist(P, C), (P[1] - C[1]) / math.dist(P, C))
         rb = math.dist(P, C)
-        stop = float(lg["stop_r"])
+        stop = stop_r[o]
         brk = {}
         for dprof, _ in lg["general_profile"]:
             r = stop + float(dprof)
@@ -288,15 +337,15 @@ def apply_x6(net_in, net_out, spec_path=SPEC_DEFAULT, workdir=None):
             if rs >= rb - 3:
                 raise RuntimeError(f"{o}: 분리 우회전 분기점({rs} m)이 반경 밖")
             brk[round(rs, 1)] = "split"
-        # 12 m 안에 붙은 지점은 하나로 (작은 교차로가 겹쳐 조각 길이가 0이 되는 것 방지). 분기점을 우선,
-        # 경계에서 12 m 안의 차로 변화는 경계에서 바로 바뀌게 둔다
+        # MIN_SEG 안에 붙은 지점만 하나로 (조각 길이가 0이 되는 것 방지). 분기점을 우선,
+        # 경계에서 MIN_SEG 안의 차로 변화는 경계에서 바로 바뀌게 둔다
         merged_brk = []
         for r in sorted(brk, reverse=True):
-            if rb - r < 12:
+            if rb - r < MIN_SEG:
                 if brk[r] == "split":
                     raise RuntimeError(f"{o}: 분리 우회전 분기점이 반경 경계와 너무 가까움")
                 continue
-            if merged_brk and merged_brk[-1][0] - r < 12:
+            if merged_brk and merged_brk[-1][0] - r < MIN_SEG:
                 pr, pk = merged_brk[-1]
                 merged_brk[-1] = (r if brk[r] == "split" else pr, "split" if "split" in (pk, brk[r]) else pk)
             else:
@@ -315,11 +364,23 @@ def apply_x6(net_in, net_out, spec_path=SPEC_DEFAULT, workdir=None):
             rmid = (radii[k] + max(radii[k + 1], stop)) / 2
             g = _gen_at(lg, max(rmid - stop, 0.0), gen_out)
             n = g + (1 if brt else 0)
-            sid = new_edge(f"x6_{o}_in{k}", a, b, n, proto, brt=brt)
+            shp = None
+            if k == 0 and proto.get("spreadType") == "center":
+                # 경계 밖 도로가 가운데 기준 차로 배치면, 첫 조각 시작을 옮겨 맨 오른쪽 차로 가장자리가 그대로 이어지게
+                shp = [_left_shift(nodes[a], nodes[b], nodes[a], (n - n_side / 2) * LANE_W), nodes[b]]
+            sid = new_edge(f"x6_{o}_in{k}", a, b, n, proto, brt=brt, shape=shp)
             segs.append((sid, n, b))
         if segs[-1][1] != n_main(spec, o):
             raise RuntimeError(f"{o}: 정지선 차로 {segs[-1][1]} ≠ 자료 {n_main(spec, o)}")
         final_in[o] = segs[-1][0]
+        fe = eel[segs[-1][0]]
+        for l in lg["lanes"]:
+            if l.get("stop_offset_m"):
+                idx = str(segs[-1][1] - l["id"])
+                le = next((x for x in fe.findall("lane") if x.get("index") == idx), None)
+                if le is None:
+                    le = ET.SubElement(fe, "lane", {"index": idx})
+                ET.SubElement(le, "stopOffset", {"value": f'{float(l["stop_offset_m"]):g}'})
         # 경계 → 첫 조각
         for i, j in _map_lanes(n_side, segs[0][1], brt):
             add_con(eid, segs[0][0], i, j)
@@ -420,8 +481,49 @@ def apply_x6(net_in, net_out, spec_path=SPEC_DEFAULT, workdir=None):
     return report
 
 
+def leg_slot(g, Y, AR, lanes, wl=None):
+    """한 진입로 차례(녹색 g + 황색 Y + 전적색 AR)의 현시들. lanes = {링크 번호: 차로 id(1 = 중앙선 쪽)}.
+    wl (자료의 진입로 안 차이, signal_plan_assumed.within_leg):
+      lead_lanes / lead_s           : 이 차로들이 먼저 켜지고 나머지는 lead_s 뒤에 켜짐
+      early_end_lanes / early_end_s : 이 차로들이 early_end_s 먼저 꺼짐
+    반환 [(시간, {링크 번호: 'G'|'y'|'r'})]"""
+    wl = wl or {}
+    win = {}
+    for i, lid in lanes.items():
+        on, off = 0.0, g
+        if wl.get("lead_lanes") and lid not in wl["lead_lanes"]:
+            on = min(float(wl["lead_s"]), g)
+        if wl.get("early_end_lanes") and lid in wl["early_end_lanes"]:
+            off = max(g - float(wl["early_end_s"]), 1.0)
+        win[i] = (on, off)
+    slot = g + Y + AR
+    cuts = sorted({0.0, slot} | {t for on, off in win.values() for t in (on, off, off + Y)})
+    out = []
+    for a, b in zip(cuts, cuts[1:]):
+        if b - a < 1e-6:
+            continue
+        out.append((b - a, {i: ("G" if on <= a < off else "y" if off <= a < off + Y else "r") for i, (on, off) in win.items()}))
+    return out
+
+
+def link_lane_ids(net_path, tl_id):
+    """신호 링크 번호 → (진입로 id, 차로 id) — 정밀 모델 진입로(x6_<leg>_in*)만"""
+    import sumolib
+    net = sumolib.net.readNet(net_path)
+    out = {}
+    for fl, _, idx in net.getTLS(tl_id).getConnections():
+        e = fl.getEdge()
+        m = re.match(r"x6_(\w+?)_in\d+$", e.getID())
+        if m:
+            out[idx] = (m.group(1), e.getLaneNumber() - fl.getIndex())
+    return out
+
+
 def write_center_program(net_path, spec):
-    """교차로 신호 현시: 진입로별 동시신호 (자료에 주기 없음 → spec['signal_plan_assumed'])."""
+    """교차로 신호 현시: 진입로별 동시신호 (자료에 주기 없음 → spec['signal_plan_assumed']).
+    진입로 안에서 자료가 말한 차로 묶음별 차이를 넣는다:
+      within_leg[o].lead_lanes / lead_s        : 이 차로들이 먼저 켜지고 나머지는 lead_s 뒤에 켜짐 (N: 방면별 신호 따로)
+      within_leg[o].early_end_lanes / early_end_s : 이 차로들이 녹색보다 early_end_s 먼저 꺼짐 (SW: 교대 방면 화살표)"""
     import sumolib
     net = sumolib.net.readNet(net_path)
     Cid = str(spec["center_node"])
@@ -430,23 +532,25 @@ def write_center_program(net_path, spec):
     if tl is None:
         raise RuntimeError("교차로 신호가 만들어지지 않음")
     plan = spec["signal_plan_assumed"]
+    Y, AR = float(plan["yellow"]), float(plan["all_red"])
     conns = tl.getConnections()
     n = 1 + max(c[2] for c in conns)
     group = {}
     for fl, _, idx in conns:
-        eid = fl.getEdge().getID()
-        m = re.match(r"x6_(\w+?)_in\d+$", eid)
-        group[idx] = m.group(1) if m else None
+        e = fl.getEdge()
+        m = re.match(r"x6_(\w+?)_in\d+$", e.getID())
+        group[idx] = (m.group(1), e.getLaneNumber() - fl.getIndex()) if m else (None, None)
     phases = []
     for leg in plan["order"]:
-        for dur, ch in ((plan["green"][leg], "G"), (plan["yellow"], "y"), (plan["all_red"], "r")):
-            phases.append((dur, "".join(ch if group.get(i) == leg else "r" for i in range(n))))
+        lanes = {i: lid for i, (lg_, lid) in group.items() if lg_ == leg}
+        for dur, st in leg_slot(float(plan["green"][leg]), Y, AR, lanes, (plan.get("within_leg") or {}).get(leg)):
+            phases.append((dur, "".join(st.get(i, "r") for i in range(n))))
     txt = open(net_path, encoding="utf-8").read()
     pat = re.compile(r'(<tlLogic id="' + re.escape(tl.getID()) + r'"[^>]*>)(.*?)(</tlLogic>)', re.S)
     body = "".join(f'\n        <phase duration="{d:g}" state="{s}"/>' for d, s in phases) + "\n    "
     txt = pat.sub(lambda mm: mm.group(1) + body + mm.group(3), txt, count=1)
     open(net_path, "w", encoding="utf-8").write(txt)
-    return {"tls": tl.getID(), "links": n, "cycle_s": sum(d for d, _ in phases)}
+    return {"tls": tl.getID(), "links": n, "cycle_s": sum(d for d, _ in phases), "phases": len(phases)}
 
 
 def check_x6(net_path, spec_path=SPEC_DEFAULT):

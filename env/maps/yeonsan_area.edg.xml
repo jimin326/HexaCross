@@ -152,22 +152,26 @@
         <lane index="1"/>
         <lane index="2" allow="bus"/>
     </edge>
-    <edge id="x6_E_in0" from="x6b_2" to="x6_E_in_55" name="고분로" priority="11" type="highway.secondary" numLanes="2" speed="13.89"/>
-    <edge id="x6_E_in1" from="x6_E_in_55" to="414663644" name="고분로" priority="11" type="highway.secondary" numLanes="4" speed="13.89"/>
+    <edge id="x6_E_in0" from="x6b_2" to="x6_E_in_65" name="고분로" priority="11" type="highway.secondary" numLanes="2" speed="13.89"/>
+    <edge id="x6_E_in1" from="x6_E_in_65" to="x6_E_in_55" name="고분로" priority="11" type="highway.secondary" numLanes="3" speed="13.89"/>
+    <edge id="x6_E_in2" from="x6_E_in_55" to="x6_E_in_46" name="고분로" priority="11" type="highway.secondary" numLanes="3" speed="13.89"/>
+    <edge id="x6_E_in3" from="x6_E_in_46" to="414663644" name="고분로" priority="11" type="highway.secondary" numLanes="4" speed="13.89"/>
     <edge id="x6_E_out0" from="414663644" to="x6_E_merge" name="고분로" priority="11" type="highway.secondary" numLanes="2" speed="13.89"/>
     <edge id="x6_E_out1" from="x6_E_merge" to="x6b_2" name="고분로" priority="11" type="highway.secondary" numLanes="2" speed="13.89"/>
-    <edge id="x6_NE_in0" from="x6b_1" to="x6_NE_in_70" name="반송로" priority="11" type="highway.secondary" numLanes="2" speed="13.89"/>
-    <edge id="x6_NE_in1" from="x6_NE_in_70" to="414663644" name="반송로" priority="11" type="highway.secondary" numLanes="4" speed="13.89"/>
+    <edge id="x6_NE_in0" from="x6b_1" to="x6_NE_in_79" name="반송로" priority="11" type="highway.secondary" numLanes="2" speed="13.89"/>
+    <edge id="x6_NE_in1" from="x6_NE_in_79" to="x6_NE_in_69" name="반송로" priority="11" type="highway.secondary" numLanes="3" speed="13.89"/>
+    <edge id="x6_NE_in2" from="x6_NE_in_69" to="x6_NE_in_64" name="반송로" priority="11" type="highway.secondary" numLanes="3" speed="13.89"/>
+    <edge id="x6_NE_in3" from="x6_NE_in_64" to="414663644" name="반송로" priority="11" type="highway.secondary" numLanes="4" speed="13.89"/>
     <edge id="x6_NE_out0" from="414663644" to="x6_NE_merge" name="반송로" priority="11" type="highway.secondary" numLanes="2" speed="13.89"/>
     <edge id="x6_NE_out1" from="x6_NE_merge" to="x6b_1" name="반송로" priority="11" type="highway.secondary" numLanes="2" speed="13.89"/>
-    <edge id="x6_N_in0" from="x6b_3" to="x6_N_in_70" name="중앙대로" priority="11" type="highway.secondary" numLanes="5" speed="13.89">
+    <edge id="x6_N_in0" from="x6b_3" to="x6_N_in_74" name="중앙대로" priority="11" type="highway.secondary" numLanes="5" speed="13.89">
         <lane index="0"/>
         <lane index="1"/>
         <lane index="2"/>
         <lane index="3"/>
         <lane index="4" allow="bus"/>
     </edge>
-    <edge id="x6_N_in1" from="x6_N_in_70" to="414663644" name="중앙대로" priority="11" type="highway.secondary" numLanes="5" speed="13.89">
+    <edge id="x6_N_in1" from="x6_N_in_74" to="414663644" name="중앙대로" priority="11" type="highway.secondary" numLanes="5" speed="13.89">
         <lane index="0"/>
         <lane index="1"/>
         <lane index="2"/>
@@ -184,13 +188,13 @@
         <lane index="1"/>
         <lane index="2" allow="bus"/>
     </edge>
-    <edge id="x6_SW_in0" from="x6b_4" to="x6_SW_in_85" name="중앙대로" priority="11" type="highway.secondary" numLanes="4" speed="13.89">
+    <edge id="x6_SW_in0" from="x6b_4" to="x6_SW_in_86" name="중앙대로" priority="11" type="highway.secondary" numLanes="4" speed="13.89">
         <lane index="0"/>
         <lane index="1"/>
         <lane index="2"/>
         <lane index="3" allow="bus"/>
     </edge>
-    <edge id="x6_SW_in1" from="x6_SW_in_85" to="x6_SW_in_70" name="중앙대로" priority="11" type="highway.secondary" numLanes="6" speed="13.89">
+    <edge id="x6_SW_in1" from="x6_SW_in_86" to="x6_SW_in_71" name="중앙대로" priority="11" type="highway.secondary" numLanes="6" speed="13.89">
         <lane index="0"/>
         <lane index="1"/>
         <lane index="2"/>
@@ -198,12 +202,16 @@
         <lane index="4"/>
         <lane index="5" allow="bus"/>
     </edge>
-    <edge id="x6_SW_in2" from="x6_SW_in_70" to="414663644" name="중앙대로" priority="11" type="highway.secondary" numLanes="6" speed="13.89">
+    <edge id="x6_SW_in2" from="x6_SW_in_71" to="414663644" name="중앙대로" priority="11" type="highway.secondary" numLanes="6" speed="13.89">
         <lane index="0"/>
         <lane index="1"/>
         <lane index="2"/>
-        <lane index="3"/>
-        <lane index="4"/>
+        <lane index="3">
+            <stopOffset vClasses="all" value="3.00"/>
+        </lane>
+        <lane index="4">
+            <stopOffset vClasses="all" value="3.00"/>
+        </lane>
         <lane index="5" allow="bus"/>
     </edge>
     <edge id="x6_SW_out0" from="414663644" to="x6_SW_merge" name="중앙대로" priority="11" type="highway.secondary" numLanes="3" speed="13.89">
@@ -216,20 +224,21 @@
         <lane index="1"/>
         <lane index="2" allow="bus"/>
     </edge>
-    <edge id="x6_S_in0" from="x6b_0" to="x6_S_in_75" name="월드컵대로" priority="11" type="highway.secondary" numLanes="3" speed="13.89"/>
-    <edge id="x6_S_in1" from="x6_S_in_75" to="414663644" name="월드컵대로" priority="11" type="highway.secondary" numLanes="4" speed="13.89"/>
+    <edge id="x6_S_in0" from="x6b_0" to="x6_S_in_81" name="월드컵대로" priority="11" type="highway.secondary" numLanes="3" speed="13.89"/>
+    <edge id="x6_S_in1" from="x6_S_in_81" to="x6_S_in_74" name="월드컵대로" priority="11" type="highway.secondary" numLanes="3" speed="13.89"/>
+    <edge id="x6_S_in2" from="x6_S_in_74" to="414663644" name="월드컵대로" priority="11" type="highway.secondary" numLanes="4" speed="13.89"/>
     <edge id="x6_S_out0" from="414663644" to="x6_S_merge" name="월드컵대로" priority="11" type="highway.secondary" numLanes="3" speed="13.89"/>
     <edge id="x6_S_out1" from="x6_S_merge" to="x6b_0" name="월드컵대로" priority="11" type="highway.secondary" numLanes="3" speed="13.89"/>
-    <edge id="x6_W_in0" from="x6b_6" to="x6_W_in_45" name="월드컵대로" priority="11" type="highway.secondary" numLanes="4" speed="13.89"/>
-    <edge id="x6_W_in1" from="x6_W_in_45" to="414663644" name="월드컵대로" priority="11" type="highway.secondary" numLanes="4" speed="13.89"/>
+    <edge id="x6_W_in0" from="x6b_6" to="x6_W_in_53" name="월드컵대로" priority="11" type="highway.secondary" numLanes="4" speed="13.89" shape="662.58,1411.12 706.17,1392.67"/>
+    <edge id="x6_W_in1" from="x6_W_in_53" to="414663644" name="월드컵대로" priority="11" type="highway.secondary" numLanes="4" speed="13.89"/>
     <edge id="x6_W_out0" from="414663644" to="x6_W_merge" name="월드컵대로" priority="11" type="highway.secondary" numLanes="3" speed="13.89"/>
-    <edge id="x6_W_out1" from="x6_W_merge" to="x6b_5" name="월드컵대로" priority="11" type="highway.secondary" numLanes="3" speed="13.89"/>
-    <edge id="x6_slip_E_NE" from="x6_E_in_55" to="x6_NE_merge" priority="9" type="highway.secondary_link" numLanes="1" speed="8.33" shape="811.25,1367.51 810.63,1371.98 810.04,1376.58 809.50,1381.29 808.99,1386.11 808.51,1391.06 808.08,1396.11 807.68,1401.29 807.33,1406.58 807.01,1411.99 806.72,1417.51 806.48,1423.16 806.27,1428.91"/>
-    <edge id="x6_slip_NE_N" from="x6_NE_in_70" to="x6_N_merge" priority="9" type="highway.secondary_link" numLanes="1" speed="8.33" shape="806.27,1428.91 800.80,1431.23 795.29,1433.38 789.74,1435.37 784.14,1437.20 778.51,1438.87 772.83,1440.38 767.12,1441.72 761.36,1442.90 755.57,1443.92 749.73,1444.78 743.85,1445.48 737.94,1446.01"/>
-    <edge id="x6_slip_N_W" from="x6_N_in_70" to="x6_W_merge" priority="9" type="highway.secondary_link" numLanes="1" speed="8.33" shape="737.94,1446.01 733.73,1442.98 729.52,1439.90 725.32,1436.77 721.12,1433.59 716.93,1430.36 712.74,1427.08 708.55,1423.75 704.37,1420.37 700.19,1416.94 696.01,1413.46 691.84,1409.93 687.67,1406.36"/>
-    <edge id="x6_slip_SW_S" from="x6_SW_in_70" to="x6_S_merge" priority="9" type="highway.secondary_link" numLanes="1" speed="8.33" shape="714.99,1323.10 720.89,1321.45 726.81,1319.99 732.75,1318.70 738.71,1317.60 744.69,1316.68 750.68,1315.95 756.70,1315.40 762.74,1315.03 768.79,1314.84 774.87,1314.84 780.97,1315.01 787.08,1315.37"/>
-    <edge id="x6_slip_S_E" from="x6_S_in_75" to="x6_E_merge" priority="9" type="highway.secondary_link" numLanes="1" speed="8.33" shape="789.20,1310.85 791.96,1315.75 794.70,1320.58 797.43,1325.36 800.13,1330.07 802.81,1334.71 805.47,1339.30 808.12,1343.82 810.74,1348.27 813.35,1352.66 815.93,1356.99 818.49,1361.26 821.04,1365.46"/>
-    <edge id="x6_slip_W_SW" from="x6_W_in_45" to="x6_SW_merge" priority="9" type="highway.secondary_link" numLanes="1" speed="8.33" shape="713.99,1390.55 714.51,1386.27 715.09,1381.92 715.73,1377.51 716.42,1373.04 717.18,1368.51 717.99,1363.91 718.86,1359.25 719.79,1354.53 720.77,1349.75 721.82,1344.91 722.92,1340.00 724.08,1335.03"/>
+    <edge id="x6_W_out1" from="x6_W_merge" to="x6b_5" name="월드컵대로" priority="11" type="highway.secondary" numLanes="3" speed="13.89" shape="680.14,1409.33 662.66,1411.08"/>
+    <edge id="x6_slip_E_NE" from="x6_E_in_55" to="x6_NE_merge" priority="9" type="highway.secondary_link" numLanes="1" speed="8.33" shape="811.84,1367.38 811.20,1371.90 810.59,1376.52 809.99,1381.24 809.42,1386.06 808.87,1390.98 808.34,1396.01 807.84,1401.13 807.35,1406.36 806.89,1411.68 806.46,1417.11 806.04,1422.64 805.64,1428.27"/>
+    <edge id="x6_slip_NE_N" from="x6_NE_in_69" to="x6_N_merge" priority="9" type="highway.secondary_link" numLanes="1" speed="8.33" shape="805.64,1428.27 800.23,1430.59 794.76,1432.83 789.22,1434.98 783.63,1437.04 777.97,1439.02 772.25,1440.91 766.47,1442.71 760.63,1444.43 754.73,1446.06 748.77,1447.60 742.74,1449.06 736.66,1450.43"/>
+    <edge id="x6_slip_N_W" from="x6_N_in_74" to="x6_W_merge" priority="9" type="highway.secondary_link" numLanes="1" speed="8.33" shape="736.66,1450.43 732.15,1447.21 727.61,1443.95 723.03,1440.65 718.41,1437.32 713.75,1433.95 709.06,1430.54 704.34,1427.10 699.57,1423.62 694.77,1420.10 689.93,1416.55 685.05,1412.96 680.14,1409.33"/>
+    <edge id="x6_slip_SW_S" from="x6_SW_in_71" to="x6_S_merge" priority="9" type="highway.secondary_link" numLanes="1" speed="8.33" shape="713.96,1321.75 720.02,1320.03 726.12,1318.44 732.28,1316.98 738.48,1315.64 744.72,1314.44 751.02,1313.36 757.36,1312.41 763.75,1311.59 770.19,1310.89 776.68,1310.33 783.21,1309.89 789.79,1309.58"/>
+    <edge id="x6_slip_S_E" from="x6_S_in_81" to="x6_E_merge" priority="9" type="highway.secondary_link" numLanes="1" speed="8.33" shape="791.91,1305.05 794.31,1310.82 796.73,1316.46 799.15,1321.96 801.60,1327.32 804.05,1332.55 806.52,1337.64 809.00,1342.60 811.50,1347.41 814.01,1352.10 816.54,1356.65 819.08,1361.06 821.63,1365.33"/>
+    <edge id="x6_slip_W_SW" from="x6_W_in_53" to="x6_SW_merge" priority="9" type="highway.secondary_link" numLanes="1" speed="8.33" shape="706.17,1392.67 706.82,1387.66 707.61,1382.67 708.53,1377.69 709.59,1372.73 710.80,1367.79 712.13,1362.87 713.61,1357.96 715.22,1353.07 716.97,1348.20 718.86,1343.34 720.89,1338.50 723.05,1333.68"/>
 
     <roundabout nodes="11253909049 11253909054 11253909057 436815483" edges="1214651036#0 1214651036#1 1214651036#2 1214651036#3"/>
 

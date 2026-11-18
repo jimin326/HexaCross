@@ -424,7 +424,7 @@ def build_osm(road: dict, ego: dict, traffic: dict, signal: dict,
             if chk["problems"]:
                 raise RuntimeError(f"연산교차로 정밀 모델이 자료와 다름: {chk['problems']}")
             x6 = {"center_signal": x6["center_signal"], "lanes_checked": chk["lanes_checked"], "ok": chk["ok"],
-                  "warnings": x6.get("warnings", [])}
+                  "warnings": x6.get("warnings", []), "stop_line_r": x6.get("stop_line_r")}
         signal_build = {"x6": x6, "osm_signals_added": sig_add, "osm_signals_skipped": sig_skip,
                         "assumed_major": major_add, "phase_programs": phased, "brt_split": brt_split, "midblock_programs": midblock,
                         "joined_inner_green": joined_inner,
@@ -772,14 +772,20 @@ def build_osm(road: dict, ego: dict, traffic: dict, signal: dict,
                 "tod": signal.get("tod") or []}
         else:
             lines.append(f'    <tlLogic id="{center_tl}" type="static" programID="custom" offset="0">')
+        # 연산교차로 정밀 모델이면 자료의 진입로 안 차이(N 방면별 신호 따로 켜짐, SW 교대 방면 화살표 먼저 꺼짐)를 넣는다
+        x6_within, x6_lanes = {}, {}
+        if cfg.get("x6_spec") and not plans:
+            import json as _json
+            import sys as _sys
+            if BASE not in _sys.path:
+                _sys.path.insert(0, BASE)
+            from tools.build_x6 import leg_slot, link_lane_ids
+            x6_within = _json.load(open(os.path.join(BASE, cfg["x6_spec"]), encoding="utf-8"))["signal_plan_assumed"].get("within_leg") or {}
+            x6_lanes = link_lane_ids(net_path, center_tl)
         for lg in ([] if plans else legs):
-            for dur, ch in ((float(lg.get("green", 20.0)), "G"), (yellow, "y"),
-                            (all_red, "r")):
-                if dur <= 0:
-                    continue
-                state = "".join(
-                    "G" if group.get(i) is None else (ch if group.get(i) == lg["id"] else "r")
-                    for i in range(n))
+            lanes = {i: x6_lanes.get(i, (None, 0))[1] for i, g_ in group.items() if g_ == lg["id"]}
+            for dur, st in leg_slot(float(lg.get("green", 20.0)), yellow, all_red, lanes, x6_within.get(lg["id"])):
+                state = "".join("G" if group.get(i) is None else st.get(i, "r") for i in range(n))
                 lines.append(f'        <phase duration="{dur:g}" state="{state}"/>')
         if not plans:
             lines.append("    </tlLogic>")

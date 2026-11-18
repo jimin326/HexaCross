@@ -1175,6 +1175,7 @@ def build(cfg_path):
         if chk["problems"]:
             raise RuntimeError(f"연산교차로 정밀 모델이 자료와 다름: {chk['problems']}")
         x6_rep = {"center_signal": x6_rep["center_signal"], "warnings": x6_rep.get("warnings", []),
+                  "stop_line_r": x6_rep.get("stop_line_r"),
                   "lanes_checked": chk["lanes_checked"], "ok": chk["ok"], "rows": chk["rows"]}
     print(f"[signals] 단일로 신호 현시 고침: {midblock}")
     # 합치기용 plain XML
