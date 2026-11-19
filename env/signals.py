@@ -14,6 +14,7 @@
      시간은 가정값: MIDBLOCK = 차량 녹색 60초, 황색 3초, 보행 27초 (주기 90초).
 """
 import math
+import os
 import re
 import xml.etree.ElementTree as ET
 
@@ -287,3 +288,101 @@ def brt_split_programs(net_path, skip=(), bus_green=10.0, yellow=3.0):
         done.append(tl.getID())
     open(net_path, "w", encoding="utf-8").write(txt)
     return done
+
+
+def demand_green_split(net_path, rou_path, skip=(), sat=1800.0, min_green=10.0, cycle_range=(60.0, 150.0), tls_add=None):
+    """배경 교통 수요(rou의 flow 경로와 도착률)에 맞춰 신호 녹색 시간을 다시 나눈다 (Webster).
+
+    현시 구성(어떤 연결이 함께 녹색인지)과 황색·전적색은 그대로 두고 녹색 시간만 바꾼다.
+      연결별 교통량 = 그 연결(진입 도로 → 진출 도로)을 지나는 flow들의 시간당 대수 합
+      현시 p의 포화도 y_p = 그 현시에 녹색인 진입 차로 중 가장 붐비는 차로의 (교통량 / sat)
+      주기 C = (1.5 L + 5) / (1 − Y) (L = 황색·전적색 합, Y = Σ y_p), cycle_range로 자름
+      녹색 g_p = (C − L) × y_p / Y, 최소 min_green
+    교통량이 0인 현시는 min_green. 늘 녹색(G)인 묶인 노드 내부 링크는 계산에서 뺀다.
+    tls_add: 따로 쓴 신호 프로그램 파일(.tls.xml)이 있으면 그 안의 같은 id 프로그램도 같이 고친다.
+    tls_add에 프로그램이 있는 신호는 SUMO가 그 프로그램으로 돌리므로 그 현시로 계산하고 그 파일만 고친다.
+    반환: {신호 id: (주기, [녹색들], Y)}"""
+    import collections
+    import sumolib
+    net = sumolib.net.readNet(net_path, withPrograms=True)
+    # 연결별 교통량 (진입 도로, 진출 도로) → 대/시
+    flow = collections.Counter()
+    root = ET.parse(rou_path).getroot()
+    routes = {r.get("id"): r.get("edges").split() for r in root.iter("route") if r.get("id")}
+    for f in root.iter("flow"):
+        edges = routes.get(f.get("route")) or (f.get("route") and None)
+        if not edges:
+            continue
+        per = f.get("period", "")
+        if per.startswith("exp("):
+            vph = float(per[4:-1]) * 3600.0
+        elif f.get("vehsPerHour"):
+            vph = float(f.get("vehsPerHour"))
+        elif per:
+            vph = 3600.0 / float(per)
+        else:
+            continue
+        for a, b in zip(edges, edges[1:]):
+            flow[(a, b)] += vph
+    add_phases = {}
+    if tls_add and os.path.exists(tls_add):
+        for t in ET.parse(tls_add).getroot().iter("tlLogic"):
+            add_phases[t.get("id")] = [(float(p.get("duration")), p.get("state")) for p in t.iter("phase")]
+    out = {}
+    for tl in net.getTrafficLights():
+        tid = tl.getID()
+        if tid in skip:
+            continue
+        progs = tl.getPrograms()
+        if not progs:
+            continue
+        prog = list(progs.values())[0]
+        phases = add_phases.get(tid) or [(float(p.duration), p.state) for p in prog.getPhases()]
+        conns = tl.getConnections()
+        n = len(phases[0][1])
+        always = {i for i in range(n) if all(st[i] in "Gg" for _, st in phases)}
+        lane_links = collections.defaultdict(set)     # 진입 차로 → 연결 index
+        link_flow = {}
+        lane_count = collections.Counter()            # (진입 도로, 진출 도로) 연결이 쓰는 진입 차로 수
+        for inl, outl, idx in conns:
+            lane_count[(inl.getEdge().getID(), outl.getEdge().getID())] += 1
+        for inl, outl, idx in conns:
+            if idx in always:
+                continue
+            k = (inl.getEdge().getID(), outl.getEdge().getID())
+            link_flow[idx] = link_flow.get(idx, 0.0) + flow.get(k, 0.0) / max(lane_count[k], 1)
+            lane_links[inl.getID()].add(idx)
+        green_idx = [k for k, (d, st) in enumerate(phases) if any(st[i] in "Gg" for i in range(n) if i not in always)
+                     and not any(st[i] in "yY" for i in range(n))]
+        if not green_idx:
+            continue
+        lost = sum(d for k, (d, st) in enumerate(phases) if k not in green_idx)
+        ys = []
+        for k in green_idx:
+            st = phases[k][1]
+            yk = 0.0
+            for lane, idxs in lane_links.items():
+                g = [i for i in idxs if st[i] in "Gg"]
+                if g:
+                    yk = max(yk, sum(link_flow.get(i, 0.0) for i in idxs) / sat)
+            ys.append(yk)
+        Y = sum(ys)
+        if Y <= 0:
+            continue
+        C = (1.5 * lost + 5.0) / max(1.0 - Y, 0.1)
+        C = min(max(C, cycle_range[0]), cycle_range[1])
+        avail = max(C - lost, min_green * len(green_idx))
+        greens = [max(min_green, avail * y / Y) for y in ys]
+        new = list(phases)
+        for k, g in zip(green_idx, greens):
+            new[k] = (round(g), phases[k][1])
+        out[tid] = (round(sum(d for d, _ in new)), [round(g) for g in greens], round(Y, 2))
+        for path in ([tls_add] if tid in add_phases else [net_path]):
+            txt = open(path, encoding="utf-8").read()
+            pat = re.compile(r'(<tlLogic id="' + re.escape(tid) + r'"[^>]*>)(.*?)(</tlLogic>)', re.S)
+            if not pat.search(txt):
+                continue
+            body = "".join(f'\n        <phase duration="{d:g}" state="{st}"/>' for d, st in new) + "\n    "
+            txt = pat.sub(lambda m: m.group(1) + body + m.group(3), txt, count=1)
+            open(path, "w", encoding="utf-8").write(txt)
+    return out
