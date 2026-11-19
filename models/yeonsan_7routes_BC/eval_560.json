@@ -1,0 +1,68 @@
+{
+ "seeds": [
+  905,
+  906,
+  907,
+  908
+ ],
+ "per_route": {
+  "S→W→회전교차로→W→E": {
+   "episodes": 80,
+   "insert_fail": 0,
+   "collision": 3,
+   "arrival": 59,
+   "wrong_lane": 18
+  },
+  "N→S": {
+   "episodes": 80,
+   "insert_fail": 0,
+   "arrival": 73,
+   "red_light": 5,
+   "collision": 2
+  },
+  "NE→SW": {
+   "episodes": 80,
+   "insert_fail": 0,
+   "arrival": 56,
+   "wrong_lane": 20,
+   "collision": 4
+  },
+  "E→W": {
+   "episodes": 80,
+   "insert_fail": 0,
+   "arrival": 62,
+   "wrong_lane": 9,
+   "red_light": 2,
+   "collision": 7
+  },
+  "S→N": {
+   "episodes": 80,
+   "insert_fail": 0,
+   "arrival": 76,
+   "red_light": 1,
+   "collision": 3
+  },
+  "SW→N": {
+   "episodes": 80,
+   "insert_fail": 0,
+   "arrival": 71,
+   "collision": 3,
+   "red_light": 5,
+   "wrong_lane": 1
+  },
+  "W→E": {
+   "episodes": 80,
+   "insert_fail": 0,
+   "arrival": 79,
+   "collision": 1
+  }
+ },
+ "total": {
+  "episodes": 560,
+  "insert_fail": 0,
+  "collision": 23,
+  "arrival": 476,
+  "wrong_lane": 48,
+  "red_light": 13
+ }
+}
