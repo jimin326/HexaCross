@@ -165,5 +165,120 @@
    "collision": 7,
    "red_light": 4
   }
+ },
+ "scale_0.7_bus_demandsplit_seeds921-924": {
+  "per_route": {
+   "S→W→회전교차로→W→E": {
+    "episodes": 60,
+    "insert_fail": 0,
+    "arrival": 60
+   },
+   "N→S": {
+    "episodes": 60,
+    "insert_fail": 0,
+    "arrival": 60
+   },
+   "NE→SW": {
+    "episodes": 60,
+    "insert_fail": 0,
+    "arrival": 55,
+    "collision": 4,
+    "red_light": 1
+   },
+   "E→W": {
+    "episodes": 60,
+    "insert_fail": 0,
+    "red_light": 3,
+    "arrival": 53,
+    "collision": 4
+   },
+   "S→N": {
+    "episodes": 60,
+    "insert_fail": 0,
+    "arrival": 59,
+    "red_light": 1
+   },
+   "SW→N": {
+    "episodes": 60,
+    "insert_fail": 0,
+    "arrival": 57,
+    "red_light": 1,
+    "wrong_lane": 2
+   },
+   "W→E": {
+    "episodes": 60,
+    "insert_fail": 0,
+    "arrival": 57,
+    "red_light": 3
+   }
+  },
+  "total": {
+   "episodes": 420,
+   "insert_fail": 0,
+   "arrival": 401,
+   "collision": 8,
+   "red_light": 9,
+   "wrong_lane": 2
+  }
+ },
+ "scale_0.85_bus_demandsplit_seeds921-924": {
+  "per_route": {
+   "S→W→회전교차로→W→E": {
+    "episodes": 60,
+    "insert_fail": 0,
+    "arrival": 52,
+    "wrong_lane": 4,
+    "collision": 3,
+    "timeout": 1
+   },
+   "N→S": {
+    "episodes": 60,
+    "insert_fail": 0,
+    "arrival": 56,
+    "collision": 4
+   },
+   "NE→SW": {
+    "episodes": 60,
+    "insert_fail": 0,
+    "arrival": 51,
+    "collision": 7,
+    "red_light": 1,
+    "wrong_lane": 1
+   },
+   "E→W": {
+    "episodes": 60,
+    "insert_fail": 0,
+    "arrival": 51,
+    "collision": 9
+   },
+   "S→N": {
+    "episodes": 60,
+    "insert_fail": 0,
+    "arrival": 57,
+    "collision": 3
+   },
+   "SW→N": {
+    "episodes": 60,
+    "insert_fail": 0,
+    "arrival": 54,
+    "wrong_lane": 5,
+    "collision": 1
+   },
+   "W→E": {
+    "episodes": 60,
+    "insert_fail": 0,
+    "arrival": 58,
+    "red_light": 2
+   }
+  },
+  "total": {
+   "episodes": 420,
+   "insert_fail": 0,
+   "arrival": 379,
+   "wrong_lane": 10,
+   "collision": 27,
+   "timeout": 1,
+   "red_light": 3
+  }
  }
 }
