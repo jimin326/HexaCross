@@ -1,6 +1,6 @@
 # 연산교차로 7경로 모델 G8 (모방학습 + DAgger 5회, 앙상블 8개)
 
-> 2026-11-20 · 브랜치 `traffic/yeonsan-capacity`
+> 2026-11-20 · 브랜치 `traffic/yeonsan-capacity` · **더 나은 모델: `models/yeonsan_7routes_I8/`** (0.85 충돌 0.48%)
 
 이 모델은 늘린 교통량 지도에서 다시 학습한 앙상블입니다. 지도에는 주변 신호 수요 분배와 실제 버스(BRT 포함)가 들어 있습니다.
 

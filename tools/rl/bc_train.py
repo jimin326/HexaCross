@@ -92,7 +92,20 @@ def main():
             base = np.where(L[idx] == 0, 5, 13)
             rear = rr.random(len(idx)) < 0.7
             for j, b in enumerate(base):
-                if rear[j]:
+                if os.environ.get("AUG_MODE") == "wide":
+                    # 넓은 보강 (I8): 바꾸려는 쪽에 (가) 가까운 뒤차 0~8 m (같거나 빠름) (나) 가까운 앞차 0~3 m (느리든 빠르든)
+                    #   (다) 나란히 겹친 차 (앞차 간격 0 또는 뒤차 간격 0, 속도 상관없이) → 정답 "유지".
+                    #   예전 보강은 "느린 앞차"만 있어서, 옆 차로에 나란히 있는 더 빠른 차 쪽으로 바꾸다 부딪혔다 (E→W 월드컵대로 진출부).
+                    k_ = rr.integers(4)
+                    if k_ == 0:
+                        o[j, b + 2] = -rr.uniform(0.0, 0.08); o[j, b + 3] = rr.uniform(0.0, 0.4)
+                    elif k_ == 1:
+                        o[j, b] = rr.uniform(0.0, 0.03); o[j, b + 1] = rr.uniform(-0.3, 0.4)
+                    elif k_ == 2:
+                        o[j, b] = 0.0; o[j, b + 1] = rr.uniform(-0.3, 0.4)
+                    else:
+                        o[j, b + 2] = -0.0; o[j, b + 3] = rr.uniform(-0.3, 0.4)
+                elif rear[j]:
                     o[j, b + 2] = -rr.uniform(0.0, float(os.environ.get("AUG_REAR", "0.08")))   # 뒤차 0~8 m
                     o[j, b + 3] = rr.uniform(0.07, 0.35)           # 1~5 m/s 더 빠름
                 else:
