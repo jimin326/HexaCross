@@ -4,7 +4,8 @@
 학생이 만든 상황(전문가가 안 가 본 상황)에서도 정답을 얻어 모방학습의 누적 오차를 줄인다.
 
 usage: python tools/rl/dagger_collect.py MODEL.pt OUT_PREFIX EPISODES_PER_WORKER
-환경 변수: N_WORKERS(4), SEED, BETA(0: 전문가가 대신 운전할 확률), STOCH(0/1 학생 확률적 행동)"""
+환경 변수: N_WORKERS(4), SEED, BETA(0: 전문가가 대신 운전할 확률), STOCH(0/1 학생 확률적 행동),
+  LANE_LABEL: best(권장: 경로를 이어 가려면 옮겨야 할 차로, getBestLanes) / wants(SUMO가 바꾸고 싶고 바꿀 수 있음, 추월 포함) / strategic"""
 import os, sys, json, shutil
 import multiprocessing as mp
 import numpy as np
@@ -31,7 +32,11 @@ def worker(q, repo, sdir, seed, n_ep, model):
         a_ = PPO(obs_dim=env.observation_space.shape[0], act_dim=2, **{**HPARAMS, "device": "cpu"})
         a_.policy.load_state_dict(torch.load(path, map_location="cpu", weights_only=False))
         return a_
-    if model.endswith(".ens"):      # 앙상블 학생: 가감속 평균, 차로 로짓(log softmax) 평균
+    ck_ = None if model.endswith(".ens") else torch.load(model, map_location="cpu", weights_only=True)
+    if isinstance(ck_, dict) and ck_.get("algorithm") == "ensemble":     # 앙상블 파일 (algorithms/ensemble.py)
+        from algorithms.ensemble import EnsemblePolicy
+        agent = EnsemblePolicy.build(env.observation_space.shape[0], 2, ck_["members"], HPARAMS)
+    elif model.endswith(".ens"):      # 앙상블 학생(구성원 경로 목록 파일): 가감속 평균, 차로 로짓(log softmax) 평균
         class _Ens:
             def __init__(self, ps):
                 self.ms = [_mk(p_) for p_ in ps]
@@ -70,13 +75,23 @@ def worker(q, repo, sdir, seed, n_ep, model):
                 # 경로 때문에 필요한 변경(strategic)이고 그쪽이 막혀 있지 않을 때만 "변경", 아니면 "유지"
                 # (추월·오른쪽 유지 같은 선택적 변경은 정답으로 쓰지 않음)
                 # 'stay'+'strategic' = 경로상 머물러야 함. 바꾸고 싶을 때는 방향 단어(left/right)가 붙는다
+                if os.environ.get("LANE_LABEL", "strategic") == "best":
+                    # 경로를 이어 가려면 옮겨야 할 차로 수(bestLanes 오프셋, + = 왼쪽). 그쪽이 막혀 있으면 "유지"
+                    cur = traci.vehicle.getLaneID(ego)
+                    if not cur.startswith(":"):
+                        off = next((b[3] for b in traci.vehicle.getBestLanes(ego) if b[0] == cur), 0)
+                        if off != 0:
+                            d_ = 1 if off > 0 else -1
+                            st_ = traci.vehicle.getLaneChangeStatePretty(ego, d_)[0]
+                            if not any(x.startswith("blocked") or x == "overlapping" for x in st_):
+                                lc = 0 if d_ > 0 else 2
                 if os.environ.get("LANE_LABEL", "strategic") == "wants":
                     # 예전 방식(dg1·dg2): SUMO 차로 변경 모델이 바꾸고 싶고 바꿀 수 있으면 (추월 포함)
                     if traci.vehicle.wantsAndCouldChangeLane(ego, 1):
                         lc = 0
                     elif traci.vehicle.wantsAndCouldChangeLane(ego, -1):
                         lc = 2
-                for d_, cls_, w_ in (() if os.environ.get("LANE_LABEL", "strategic") == "wants" else ((1, 0, "left"), (-1, 2, "right"))):
+                for d_, cls_, w_ in (() if os.environ.get("LANE_LABEL", "strategic") in ("wants", "best") else ((1, 0, "left"), (-1, 2, "right"))):
                     st_ = traci.vehicle.getLaneChangeStatePretty(ego, d_)[0]
                     if w_ in st_ and "strategic" in st_ and not any(x.startswith("blocked") or x == "overlapping" for x in st_):
                         lc = cls_
