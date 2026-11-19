@@ -1,0 +1,169 @@
+{
+ "scale_0.5_seeds909-914": {
+  "per_route": {
+   "S→W→회전교차로→W→E": {
+    "episodes": 120,
+    "insert_fail": 0,
+    "arrival": 117,
+    "red_light": 2,
+    "wrong_lane": 1
+   },
+   "N→S": {
+    "episodes": 120,
+    "insert_fail": 0,
+    "arrival": 120
+   },
+   "NE→SW": {
+    "episodes": 120,
+    "insert_fail": 0,
+    "arrival": 118,
+    "collision": 2
+   },
+   "E→W": {
+    "episodes": 120,
+    "insert_fail": 0,
+    "arrival": 112,
+    "collision": 4,
+    "red_light": 4
+   },
+   "S→N": {
+    "episodes": 120,
+    "insert_fail": 0,
+    "arrival": 120
+   },
+   "SW→N": {
+    "episodes": 120,
+    "insert_fail": 0,
+    "collision": 7,
+    "arrival": 110,
+    "red_light": 2,
+    "wrong_lane": 1
+   },
+   "W→E": {
+    "episodes": 120,
+    "insert_fail": 0,
+    "arrival": 120
+   }
+  },
+  "total": {
+   "episodes": 840,
+   "insert_fail": 0,
+   "arrival": 817,
+   "collision": 13,
+   "red_light": 8,
+   "wrong_lane": 2
+  }
+ },
+ "scale_0.7_seeds921-924": {
+  "per_route": {
+   "S→W→회전교차로→W→E": {
+    "episodes": 60,
+    "insert_fail": 0,
+    "arrival": 59,
+    "red_light": 1
+   },
+   "N→S": {
+    "episodes": 60,
+    "insert_fail": 0,
+    "arrival": 60
+   },
+   "NE→SW": {
+    "episodes": 60,
+    "insert_fail": 0,
+    "arrival": 58,
+    "wrong_lane": 1,
+    "timeout": 1
+   },
+   "E→W": {
+    "episodes": 60,
+    "insert_fail": 0,
+    "arrival": 54,
+    "collision": 2,
+    "wrong_lane": 2,
+    "red_light": 2
+   },
+   "S→N": {
+    "episodes": 60,
+    "insert_fail": 0,
+    "arrival": 60
+   },
+   "SW→N": {
+    "episodes": 60,
+    "insert_fail": 0,
+    "arrival": 55,
+    "wrong_lane": 1,
+    "collision": 4
+   },
+   "W→E": {
+    "episodes": 60,
+    "insert_fail": 0,
+    "arrival": 60
+   }
+  },
+  "total": {
+   "episodes": 420,
+   "insert_fail": 0,
+   "arrival": 406,
+   "collision": 6,
+   "wrong_lane": 4,
+   "timeout": 1,
+   "red_light": 3
+  }
+ },
+ "scale_1.0_seeds921-922": {
+  "per_route": {
+   "S→W→회전교차로→W→E": {
+    "episodes": 20,
+    "insert_fail": 0,
+    "arrival": 19,
+    "wrong_lane": 1
+   },
+   "N→S": {
+    "episodes": 20,
+    "insert_fail": 0,
+    "arrival": 20
+   },
+   "NE→SW": {
+    "episodes": 20,
+    "insert_fail": 0,
+    "arrival": 15,
+    "collision": 2,
+    "wrong_lane": 3
+   },
+   "E→W": {
+    "episodes": 20,
+    "insert_fail": 0,
+    "arrival": 16,
+    "wrong_lane": 3,
+    "red_light": 1
+   },
+   "S→N": {
+    "episodes": 20,
+    "insert_fail": 0,
+    "arrival": 18,
+    "collision": 2
+   },
+   "SW→N": {
+    "episodes": 20,
+    "insert_fail": 0,
+    "arrival": 16,
+    "collision": 3,
+    "red_light": 1
+   },
+   "W→E": {
+    "episodes": 20,
+    "insert_fail": 0,
+    "arrival": 18,
+    "red_light": 2
+   }
+  },
+  "total": {
+   "episodes": 140,
+   "insert_fail": 0,
+   "arrival": 122,
+   "wrong_lane": 7,
+   "collision": 7,
+   "red_light": 4
+  }
+ }
+}

@@ -1,0 +1,316 @@
+{
+ "net": "env/maps/yeonsan_area.net.xml",
+ "osm": "env/osm/yeonsan_area.osm",
+ "A_roads": {
+  "expected_way_dirs": 96,
+  "missing": []
+ },
+ "B_shape": {
+  "edges": 145,
+  "off_line": []
+ },
+ "C_direction": {
+  "against_oneway": [],
+  "two_way_one_side": []
+ },
+ "D_lanes": {
+  "count": {
+   "일치": 38,
+   "OSM에 차로 수 없음": 55,
+   "일치(합친 도로: 차도 lanes + busway/2)": 10,
+   "짝 없음(교차로 안 짧은 엣지)": 6,
+   "정밀 모델(차로 조사 자료와 대조)": 36
+  },
+  "mismatch": [],
+  "no_osm_value": [
+   {
+    "도로": "쌍미천로",
+    "사유": "OSM에 차로 수 없음",
+    "도로망_차로": 1,
+    "길이_m": 4065
+   },
+   {
+    "도로": "거제천로",
+    "사유": "OSM에 차로 수 없음",
+    "도로망_차로": 2,
+    "길이_m": 2875
+   },
+   {
+    "도로": "반송로",
+    "사유": "OSM에 차로 수 없음",
+    "도로망_차로": 2,
+    "길이_m": 1576
+   },
+   {
+    "도로": "고분로",
+    "사유": "OSM에 차로 수 없음",
+    "도로망_차로": 2,
+    "길이_m": 1182
+   },
+   {
+    "도로": "세병로",
+    "사유": "OSM에 차로 수 없음",
+    "도로망_차로": 2,
+    "길이_m": 1102
+   },
+   {
+    "도로": "중앙천로",
+    "사유": "OSM에 차로 수 없음",
+    "도로망_차로": 1,
+    "길이_m": 406
+   },
+   {
+    "도로": "연수로",
+    "사유": "OSM에 차로 수 없음",
+    "도로망_차로": 2,
+    "길이_m": 386
+   },
+   {
+    "도로": "신촌로",
+    "사유": "OSM에 차로 수 없음",
+    "도로망_차로": 1,
+    "길이_m": 265
+   },
+   {
+    "도로": "(이름없음)",
+    "사유": "OSM에 차로 수 없음",
+    "도로망_차로": 1,
+    "길이_m": 126
+   }
+  ]
+ },
+ "E_restrictions": {
+  "count": {
+   "via가 way(검사 생략)": 2,
+   "도로망 밖": 12,
+   "유턴 제한(도로망에 유턴 없음)": 3,
+   "정밀 모델 구역(차로별 금지·허용은 자료로 대조)": 13
+  },
+  "violations": []
+ },
+ "X6_precise": {
+  "lanes_checked": 33,
+  "ok": 33,
+  "problems": [],
+  "radius_m": 100.0
+ },
+ "F_signals": {
+  "tls_in_net": 14,
+  "osm_signals_on_roads": [
+   {
+    "node": "436843762",
+    "kind": "신호등",
+    "nearest_tls_m": 44,
+    "ok": true,
+    "note": "영역 밖/경계"
+   },
+   {
+    "node": "4958136019",
+    "kind": "신호등",
+    "nearest_tls_m": 39,
+    "ok": true,
+    "note": "영역 밖/경계"
+   },
+   {
+    "node": "7222328581",
+    "kind": "신호 횡단보도",
+    "nearest_tls_m": 6,
+    "ok": true,
+    "note": ""
+   },
+   {
+    "node": "7282326875",
+    "kind": "신호등",
+    "nearest_tls_m": 0,
+    "ok": true,
+    "note": ""
+   }
+  ],
+  "unsignalized_junctions": [
+   {
+    "node": "1768493023",
+    "type": "priority",
+    "legs": 3,
+    "roads": [
+     "(이름없음)",
+     "연수로"
+    ],
+    "classes": [
+     "secondary",
+     "secondary_link"
+    ]
+   },
+   {
+    "node": "1768493005",
+    "type": "priority",
+    "legs": 3,
+    "roads": [
+     "(이름없음)",
+     "연수로"
+    ],
+    "classes": [
+     "secondary",
+     "secondary_link"
+    ]
+   },
+   {
+    "node": "11253909049",
+    "type": "priority",
+    "legs": 3,
+    "roads": [
+     "(이름없음)",
+     "신촌로"
+    ],
+    "classes": [
+     "secondary"
+    ]
+   },
+   {
+    "node": "1768493021",
+    "type": "priority",
+    "legs": 4,
+    "roads": [
+     "(이름없음)",
+     "월드컵대로"
+    ],
+    "classes": [
+     "secondary",
+     "secondary_link"
+    ]
+   },
+   {
+    "node": "6611333147",
+    "type": "priority",
+    "legs": 3,
+    "roads": [
+     "신촌로"
+    ],
+    "classes": [
+     "residential",
+     "secondary"
+    ]
+   },
+   {
+    "node": "1772203945",
+    "type": "priority",
+    "legs": 3,
+    "roads": [
+     "신촌로"
+    ],
+    "classes": [
+     "residential",
+     "secondary"
+    ]
+   },
+   {
+    "node": "436872940",
+    "type": "priority",
+    "legs": 3,
+    "roads": [
+     "중앙천로"
+    ],
+    "classes": [
+     "residential",
+     "tertiary"
+    ]
+   },
+   {
+    "node": "436872945",
+    "type": "priority",
+    "legs": 3,
+    "roads": [
+     "중앙천로"
+    ],
+    "classes": [
+     "residential",
+     "tertiary"
+    ]
+   },
+   {
+    "node": "1772231758",
+    "type": "priority",
+    "legs": 3,
+    "roads": [
+     "중앙천로"
+    ],
+    "classes": [
+     "residential",
+     "tertiary"
+    ]
+   },
+   {
+    "node": "1772632697",
+    "type": "priority",
+    "legs": 3,
+    "roads": [
+     "쌍미천로"
+    ],
+    "classes": [
+     "residential",
+     "tertiary"
+    ]
+   },
+   {
+    "node": "11048133437",
+    "type": "priority",
+    "legs": 3,
+    "roads": [
+     "(이름없음)",
+     "거제천로"
+    ],
+    "classes": [
+     "secondary",
+     "secondary_link"
+    ]
+   },
+   {
+    "node": "11253909054",
+    "type": "priority",
+    "legs": 3,
+    "roads": [
+     "(이름없음)",
+     "신촌로"
+    ],
+    "classes": [
+     "secondary"
+    ]
+   },
+   {
+    "node": "4915874805",
+    "type": "priority",
+    "legs": 3,
+    "roads": [
+     "쌍미천로"
+    ],
+    "classes": [
+     "residential",
+     "tertiary"
+    ]
+   },
+   {
+    "node": "11253909057",
+    "type": "priority",
+    "legs": 3,
+    "roads": [
+     "(이름없음)",
+     "거제천로"
+    ],
+    "classes": [
+     "secondary"
+    ]
+   },
+   {
+    "node": "436815483",
+    "type": "priority",
+    "legs": 3,
+    "roads": [
+     "(이름없음)",
+     "거제천로"
+    ],
+    "classes": [
+     "secondary"
+    ]
+   }
+  ]
+ }
+}

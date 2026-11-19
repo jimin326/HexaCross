@@ -44,6 +44,13 @@ def load_agent(model_path, obs_dim, act_dim, algorithm="auto"):
     checkpoint = torch.load(model_path, map_location="cpu", weights_only=True)
     if not isinstance(checkpoint, dict):
         raise ValueError("지원하지 않는 모델 파일 형식입니다.")
+    if checkpoint.get("algorithm") == "ensemble":
+        # 앙상블 (algorithms/ensemble.py): 같은 구조 신경망 여러 개의 평균
+        from algorithms.ensemble import EnsemblePolicy
+        if (checkpoint["obs_dim"], checkpoint["act_dim"]) != (obs_dim, act_dim):
+            raise ValueError(f"앙상블 입출력 차원 {(checkpoint['obs_dim'], checkpoint['act_dim'])} != 환경 {(obs_dim, act_dim)}")
+        print(f"평가 알고리즘: ENSEMBLE ({len(checkpoint['members'])}개)")
+        return EnsemblePolicy.build(obs_dim, act_dim, checkpoint["members"], HPARAMS)
     if checkpoint.get("algorithm") == "bc":
         detected = "bc"
     elif "trunk.0.weight" in checkpoint and "mu_head.weight" in checkpoint:

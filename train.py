@@ -42,7 +42,9 @@ TOTAL_TIMESTEPS = 200_000   # 총 학습 스텝 수
 #  이 파일이 run 폴더에 스냅샷되므로 "그 결과가 어떤 계수였는지"도 남는다.
 # ══════════════════════════════════════════════════════════════════
 REWARD_OVERRIDES = dict(
-    speed_weight=0.1,          # 속도 보상 (스텝당 최대 이 값)
+    speed_weight=0.0,          # 속도 보상. 목표 진행 보상으로 대체 (중복 방지)
+    goal_progress_weight=0.1,  # 목표 도로 쪽으로 간 거리 비례 보상 (스텝당 최대)
+    goal_lane_weight=0.05,     # 목표 도로로 안 이어지는 차로에 있으면 스텝당 최대 감점
     collision_penalty=5.0,     # 충돌 시 -이 값, 즉시 종료
     arrival_bonus=2.0,         # 완주 보너스
     close_gap_threshold=6.0,   # 이 거리(m) 미만 접근 시

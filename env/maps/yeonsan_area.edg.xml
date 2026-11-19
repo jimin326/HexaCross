@@ -1,0 +1,236 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<edges version="1.20" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/edges_file.xsd">
+    <location netOffset="-506684.12,-3892301.55" convBoundary="0.00,0.00,1912.84,2209.36" origBoundary="129.072426,35.173156,129.098331,35.193553" projParameter="+proj=utm +zone=52 +ellps=WGS84 +datum=WGS84 +units=m +no_defs"/>
+
+    <edge id="-1116726175" from="cluster_1772229542_7222328581" to="10213505390" name="연수로" priority="11" type="highway.secondary" numLanes="3" speed="13.89" shape="989.58,147.86 948.06,154.31 922.33,158.14 881.16,164.26 798.80,176.72"/>
+    <edge id="-1116731562#0" from="1768493023" to="cluster_1772229542_7222328581" name="연수로" priority="11" type="highway.secondary" numLanes="2" speed="13.89" shape="1134.37,124.03 1003.94,145.50 989.58,147.86"/>
+    <edge id="-1116731563#0" from="1768492979" to="1768493023" name="연수로" priority="11" type="highway.secondary" numLanes="2" speed="13.89" shape="1202.02,112.90 1139.79,123.13 1134.37,124.03"/>
+    <edge id="-1116731563#1" from="1768493005" to="1768492979" name="연수로" priority="11" type="highway.secondary" numLanes="2" speed="13.89" shape="1256.40,103.95 1239.41,106.75 1202.02,112.90"/>
+    <edge id="-1123557924" from="10275142350" to="11253909049" name="신촌로" priority="11" type="highway.secondary" numLanes="2" speed="13.89" shape="11.36,1186.95 14.74,1185.20 91.47,1142.55"/>
+    <edge id="-1307662706#0" from="1768493021" to="1768492979" name="월드컵대로" priority="11" type="highway.secondary" numLanes="3" speed="13.89" shape="1175.83,189.42 1179.24,179.45 1196.75,128.27 1202.02,112.90"/>
+    <edge id="-1494615055" from="12508988076" to="cluster_3131958161_4958136016_4958136222" name="거제천로" priority="11" type="highway.secondary" numLanes="2" speed="13.89" shape="617.70,1993.41 599.78,1989.09 584.68,1963.55 544.02,1894.79 529.96,1871.00 504.97,1828.73 455.46,1745.01 401.45,1653.68 346.45,1560.65"/>
+    <edge id="-165300755" from="4633975089" to="6611333147" name="신촌로" priority="11" type="highway.secondary" numLanes="1" speed="13.89" shape="444.67,909.96 409.16,933.18 392.34,944.69 389.08,947.33 369.22,960.52 354.22,970.79 321.68,993.06 319.68,994.36 288.06,1014.96 243.81,1043.77"/>
+    <edge id="-165677670" from="1772203898" to="1772203945" name="신촌로" priority="4" type="highway.residential" numLanes="1" speed="8.33"/>
+    <edge id="-165682020" from="436872940" to="1772229512" name="중앙천로" priority="4" type="highway.residential" numLanes="1" speed="8.33" shape="967.77,253.51 956.37,255.18 894.84,264.13"/>
+    <edge id="-165682025" from="436872945" to="1772229569" name="중앙천로" priority="4" type="highway.residential" numLanes="1" speed="8.33"/>
+    <edge id="-165682032" from="1772216376" to="1772231758" name="중앙천로" priority="4" type="highway.residential" numLanes="1" speed="8.33"/>
+    <edge id="-165723577" from="1772632697" to="1772632690" name="쌍미천로" priority="4" type="highway.residential" numLanes="1" speed="8.33"/>
+    <edge id="-165814510#0" from="11048133437" to="6606304736" name="거제천로" priority="11" type="highway.secondary" numLanes="2" speed="13.89" shape="1378.07,2015.45 1361.46,2015.40 1333.28,2016.03 1303.55,2016.17 1226.60,2017.49 1187.83,2018.67 1102.21,2021.28 1047.50,2028.21 1046.99,2028.28 928.92,2059.70"/>
+    <edge id="-165814510#1" from="cluster_14158297210_1773421582" to="11048133437" name="거제천로" priority="11" type="highway.secondary" numLanes="2" speed="13.89" shape="1420.29,2014.70 1378.07,2015.45"/>
+    <edge id="-26005519" from="x6b_0" to="1768493021" name="월드컵대로" priority="11" type="highway.secondary" numLanes="3" speed="13.89" shape="799.79,1288.20 809.18,1260.77 835.50,1183.84 883.90,1042.42 900.84,992.91 902.47,988.17 906.50,976.38 941.62,873.76 960.04,819.94 963.27,810.51 1009.94,674.13 1041.96,580.58 1048.01,562.89 1052.07,551.02 1059.13,530.40 1081.22,465.86 1094.97,425.68 1136.36,304.64 1166.06,217.96 1175.83,189.42"/>
+    <edge id="-37399210" from="6606304736" to="436818569" name="세병로" priority="11" type="highway.secondary" numLanes="2" speed="13.89" shape="928.92,2059.70 943.49,1992.80 948.26,1970.88 964.09,1898.19 968.64,1877.29 997.71,1743.80 1024.05,1634.56"/>
+    <edge id="-37400617#1" from="436818569" to="x6b_1" name="반송로" priority="11" type="highway.secondary" numLanes="2" speed="13.89" shape="1024.05,1634.56 976.07,1587.50 875.92,1491.96 842.07,1464.81 827.21,1450.40"/>
+    <edge id="-37400617#2" from="cluster_14158297261_14158297263" to="436818569" name="반송로" priority="11" type="highway.secondary" numLanes="2" speed="13.89" shape="1261.69,1862.53 1230.59,1832.70 1113.59,1720.45 1109.41,1716.45 1024.05,1634.56"/>
+    <edge id="-37400617#3" from="436859903" to="cluster_14158297261_14158297263" name="반송로" priority="11" type="highway.secondary" numLanes="2" speed="13.89" shape="1281.24,1881.28 1261.69,1862.53"/>
+    <edge id="-37400617#4" from="cluster_14158297210_1773421582" to="436859903" name="반송로" priority="11" type="highway.secondary" numLanes="2" speed="13.89" shape="1420.29,2014.70 1346.08,1943.50 1322.84,1921.20 1313.44,1912.18 1281.24,1881.28"/>
+    <edge id="-37400617#6" from="436843762" to="cluster_14158297210_1773421582" name="반송로" priority="11" type="highway.secondary" numLanes="2" speed="13.89" shape="1456.82,2049.74 1429.83,2024.15"/>
+    <edge id="-37401760#0" from="1772632697" to="436859887" name="쌍미천로" priority="8" type="highway.tertiary" numLanes="1" speed="13.89" shape="1665.20,162.66 1724.43,101.14 1714.89,28.53"/>
+    <edge id="-468972122#0" from="6611333147" to="4633975089" name="신촌로" priority="11" type="highway.secondary" numLanes="1" speed="13.89" shape="243.81,1043.77 288.06,1014.96 319.68,994.36 321.68,993.06 354.22,970.79 369.22,960.52 389.08,947.33 392.34,944.69 409.16,933.18 444.67,909.96"/>
+    <edge id="-468972122#1" from="1772203945" to="6611333147" name="신촌로" priority="11" type="highway.secondary" numLanes="1" speed="13.89"/>
+    <edge id="-468972122#2" from="11253909054" to="1772203945" name="신촌로" priority="11" type="highway.secondary" numLanes="1" speed="13.89"/>
+    <edge id="-500562190" from="4915874805" to="4915874803" name="쌍미천로" priority="4" type="highway.residential" numLanes="1" speed="8.33" shape="1271.68,1624.83 1214.96,1626.74 1192.25,1637.18"/>
+    <edge id="-517488005" from="6606304736" to="12508988076" name="거제천로" priority="11" type="highway.secondary" numLanes="2" speed="13.89" shape="928.92,2059.70 866.83,2048.21 837.76,2041.69 779.84,2029.07 757.17,2024.16 617.70,1993.41"/>
+    <edge id="-704103173" from="6611333147" to="6611333154" name="신촌로" priority="4" type="highway.residential" numLanes="1" speed="8.33" shape="243.81,1043.77 245.93,1053.34 237.21,1113.84 236.72,1121.38"/>
+    <edge id="-757668926#0" from="436818089" to="1772632697" name="쌍미천로" priority="8" type="highway.tertiary" numLanes="1" speed="13.89" shape="1259.45,1333.09 1258.26,1279.66 1256.78,1230.18 1254.41,1178.64 1252.11,1125.39 1251.11,1073.65 1256.59,1019.13 1265.97,966.47 1274.32,913.48 1284.50,860.64 1300.51,808.60 1325.67,755.41 1355.69,697.80 1357.92,692.73 1390.48,630.04 1423.68,570.95 1450.79,501.37 1448.82,449.49 1447.74,438.95 1445.21,414.00 1450.59,385.44 1457.34,378.97 1466.02,370.67 1524.52,309.83 1571.53,261.32 1665.20,162.66"/>
+    <edge id="-757668926#1" from="7282326875" to="436818089" name="쌍미천로" priority="8" type="highway.tertiary" numLanes="1" speed="13.89" shape="1265.97,1490.92 1264.02,1436.12 1261.91,1385.90 1259.45,1333.09"/>
+    <edge id="-757668926#2" from="4915874805" to="7282326875" name="쌍미천로" priority="8" type="highway.tertiary" numLanes="1" speed="13.89" shape="1271.68,1624.83 1268.99,1544.91 1265.97,1490.92"/>
+    <edge id="-757668926#3" from="cluster_14158297261_14158297263" to="4915874805" name="쌍미천로" priority="8" type="highway.tertiary" numLanes="1" speed="13.89" shape="1277.56,1845.01 1276.78,1825.23 1275.17,1726.27 1271.68,1624.83"/>
+    <edge id="-773756903" from="436859887" to="1768493005" name="연수로" priority="11" type="highway.secondary" numLanes="2" speed="13.89" shape="1714.89,28.53 1654.56,38.44 1586.06,49.71 1516.40,61.38 1485.44,66.17 1456.01,71.11 1350.85,88.41 1305.02,95.75 1256.40,103.95"/>
+    <edge id="-773756904#0" from="436872940" to="cluster_1772229542_7222328581" name="중앙천로" priority="8" type="highway.tertiary" numLanes="1" speed="13.89" shape="967.77,253.51 969.11,248.90 981.52,196.05 989.46,164.70 989.50,159.15"/>
+    <edge id="-773756904#1" from="1772231758" to="436872940" name="중앙천로" priority="8" type="highway.tertiary" numLanes="1" speed="13.89" shape="791.28,619.45 817.12,564.72 843.82,510.91 878.83,439.02 895.88,403.70 898.33,398.60 920.32,353.02 945.29,301.26 967.77,253.51"/>
+    <edge id="-773756904#2" from="436872945" to="1772231758" name="중앙천로" priority="8" type="highway.tertiary" numLanes="1" speed="13.89" shape="573.31,823.88 581.69,818.35 636.12,782.48 692.83,744.95 703.00,737.95 751.38,702.99 765.13,674.50 791.28,619.45"/>
+    <edge id="-773756904#3" from="4633975089" to="436872945" name="중앙천로" priority="8" type="highway.tertiary" numLanes="1" speed="13.89" shape="444.67,909.96 510.46,864.53 573.31,823.88"/>
+    <edge id="-794688376#0" from="436818089" to="10314759012" name="고분로" priority="11" type="highway.secondary" numLanes="2" speed="13.89" shape="1259.45,1333.09 1375.24,1329.28 1459.34,1326.53"/>
+    <edge id="-794688377" from="x6b_2" to="436818089" name="고분로" priority="11" type="highway.secondary" numLanes="2" speed="13.89" shape="855.30,1358.28 878.34,1354.63 950.30,1343.23 1014.11,1341.14 1018.27,1340.99 1134.15,1337.19 1259.45,1333.09"/>
+    <edge id="-794701342" from="cluster_3131958161_4958136016_4958136222" to="11253909057" name="거제천로" priority="11" type="highway.secondary" numLanes="1" speed="13.89" shape="339.80,1549.37 316.10,1508.73 302.38,1485.74 274.85,1438.03 246.68,1389.74 218.31,1341.10 189.80,1292.25 160.79,1242.50 130.25,1190.17 105.21,1148.44"/>
+    <edge id="-794701343" from="436815483" to="1770938434" name="거제천로" priority="11" type="highway.secondary" numLanes="2" speed="13.89" shape="94.42,1128.57 64.16,1075.72 0.00,952.30"/>
+    <edge id="-794794082" from="1774422433" to="436859887" name="연수로" priority="11" type="highway.secondary" numLanes="2" speed="13.89" shape="1912.84,0.00 1886.04,3.86 1868.59,6.37 1819.13,13.50 1714.89,28.53"/>
+    <edge id="-795088371" from="6606304685" to="6606304736" name="세병로" priority="11" type="highway.secondary" numLanes="2" speed="13.89" shape="884.16,2209.36 888.62,2194.43 915.87,2103.30 928.92,2059.70"/>
+    <edge id="-88000000100#2" from="12785591052" to="x6b_3" name="중앙대로" priority="11" type="highway.secondary" numLanes="3" speed="13.89" shape="713.18,1547.28 715.92,1535.14 721.39,1510.86 724.14,1498.70 728.98,1477.49 729.59,1474.83">
+        <lane index="0"/>
+        <lane index="1"/>
+        <lane index="2" allow="bus"/>
+    </edge>
+    <edge id="-88000000100#3" from="12508988076" to="12785591052" name="중앙대로" priority="11" type="highway.secondary" numLanes="3" speed="13.89" shape="617.70,1993.41 619.65,1984.09 624.07,1963.29 628.49,1942.49 632.90,1921.69 637.32,1900.90 641.73,1880.10 646.14,1859.30 650.56,1838.50 653.31,1825.47 656.90,1808.05 661.04,1787.93 665.17,1767.83 669.31,1747.72 673.45,1727.60 677.60,1707.50 681.74,1687.39 684.12,1675.92 688.74,1655.52 693.64,1633.90 698.55,1612.28 703.46,1590.66 705.90,1579.85 708.27,1569.26 713.18,1547.28">
+        <lane index="0"/>
+        <lane index="1"/>
+        <lane index="2" allow="bus"/>
+    </edge>
+    <edge id="-88000000101" from="990000009999" to="12508988076" name="중앙대로" priority="11" type="highway.secondary" numLanes="3" speed="13.89" shape="581.70,2167.87 582.96,2160.99 585.52,2149.13 589.28,2132.15 592.35,2118.21 598.03,2090.44 602.34,2069.17 606.65,2047.91 610.96,2026.64 615.26,2005.37 617.70,1993.41">
+        <lane index="0"/>
+        <lane index="1"/>
+        <lane index="2" allow="bus"/>
+    </edge>
+    <edge id="-88000000200#3" from="4633975089" to="x6b_4" name="중앙대로" priority="11" type="highway.secondary" numLanes="3" speed="13.89" shape="444.67,909.96 455.47,926.13 466.69,942.92 477.90,959.70 483.71,968.43 489.11,976.58 505.37,1002.53 516.22,1019.56 527.06,1036.59 537.90,1053.63 543.30,1062.09 554.21,1078.93 565.12,1095.78 576.04,1112.61 586.95,1129.45 597.87,1146.30 603.29,1154.64 614.52,1171.76 625.76,1188.89 634.37,1202.06 642.58,1214.75 653.68,1231.95 664.79,1249.18 675.91,1266.38 681.43,1274.97 693.43,1293.91 696.81,1299.24">
+        <lane index="0"/>
+        <lane index="1"/>
+        <lane index="2" allow="bus"/>
+    </edge>
+    <edge id="-88000000200#4" from="990000019999" to="4633975089" name="중앙대로" priority="11" type="highway.secondary" numLanes="3" speed="13.89" shape="335.06,742.68 338.38,747.78 347.95,762.50 355.71,774.50 367.18,792.30 378.65,810.13 390.11,827.95 395.88,836.94 408.79,856.23 421.89,875.83 428.52,885.72 436.39,897.51 444.67,909.96">
+        <lane index="0"/>
+        <lane index="1"/>
+        <lane index="2" allow="bus"/>
+    </edge>
+    <edge id="1116726175" from="10213505390" to="cluster_1772229542_7222328581" name="연수로" priority="11" type="highway.secondary" numLanes="3" speed="13.89" shape="798.80,176.72 881.16,164.26 922.33,158.14 948.06,154.31 989.58,147.86"/>
+    <edge id="1116731401" from="1768492979" to="1768493021" name="월드컵대로" priority="11" type="highway.secondary" numLanes="3" speed="13.89" shape="1202.02,112.90 1196.75,128.27 1179.24,179.45 1175.83,189.42"/>
+    <edge id="1116731562#0" from="cluster_1772229542_7222328581" to="1768493023" name="연수로" priority="11" type="highway.secondary" numLanes="2" speed="13.89" shape="989.58,147.86 1003.94,145.50 1134.37,124.03"/>
+    <edge id="1116731562#1" from="1768493023" to="1768492979" name="연수로" priority="11" type="highway.secondary" numLanes="2" speed="13.89" shape="1134.37,124.03 1139.79,123.13 1202.02,112.90"/>
+    <edge id="1116731563#1" from="1768492979" to="1768493005" name="연수로" priority="11" type="highway.secondary" numLanes="2" speed="13.89" shape="1202.02,112.90 1239.41,106.75 1256.40,103.95"/>
+    <edge id="1123557924" from="11253909049" to="10275142350" name="신촌로" priority="11" type="highway.secondary" numLanes="1" speed="13.89" shape="91.47,1142.55 14.74,1185.20 11.36,1186.95"/>
+    <edge id="1189841738" from="11048133435" to="11048133437" priority="10" type="highway.secondary_link" numLanes="1" speed="8.33" shape="1432.75,2095.66 1420.04,2081.73 1413.16,2058.73 1381.27,2026.69 1378.07,2015.45" spreadType="center"/>
+    <edge id="1214651036#0" from="11253909049" to="436815483" priority="11" type="highway.secondary" numLanes="1" speed="13.89" shape="91.47,1142.55 90.15,1137.69 91.43,1132.31 94.42,1128.57" spreadType="center"/>
+    <edge id="1214651036#1" from="436815483" to="11253909054" priority="11" type="highway.secondary" numLanes="1" speed="13.89" shape="94.42,1128.57 98.66,1129.03 103.66,1131.36 105.41,1133.88" spreadType="center"/>
+    <edge id="1214651036#2" from="11253909054" to="11253909057" priority="11" type="highway.secondary" numLanes="1" speed="13.89" shape="105.41,1133.88 107.69,1137.29 108.22,1142.91 105.21,1148.44" spreadType="center"/>
+    <edge id="1214651036#3" from="11253909057" to="11253909049" priority="11" type="highway.secondary" numLanes="1" speed="13.89" shape="105.21,1148.44 99.93,1149.70 94.67,1146.75 91.47,1142.55" spreadType="center"/>
+    <edge id="1307662706#1" from="1768493021" to="x6b_0" name="월드컵대로" priority="11" type="highway.secondary" numLanes="3" speed="13.89" shape="1175.83,189.42 1166.06,217.96 1136.36,304.64 1094.97,425.68 1081.22,465.86 1059.13,530.40 1052.07,551.02 1048.01,562.89 1041.96,580.58 1009.94,674.13 963.27,810.51 960.04,819.94 941.62,873.76 906.50,976.38 902.47,988.17 900.84,992.91 883.90,1042.42 835.50,1183.84 809.18,1260.77 799.79,1288.20"/>
+    <edge id="1494616202" from="cluster_3131958161_4958136016_4958136222" to="10281976900" name="월드컵대로" priority="11" type="highway.secondary" numLanes="3" speed="13.89" shape="346.45,1560.65 251.71,1588.87 159.29,1616.32 154.77,1617.72" spreadType="center"/>
+    <edge id="1556639437" from="cluster_14158297261_14158297263" to="436859903" priority="10" type="highway.secondary_link" numLanes="1" speed="8.33" shape="1277.56,1845.01 1281.24,1881.28" spreadType="center"/>
+    <edge id="165290627" from="1768493005" to="1768493021" priority="10" type="highway.secondary_link" numLanes="2" speed="8.33" shape="1256.40,103.95 1247.95,106.29 1231.05,127.91 1224.45,133.50 1217.86,139.08 1205.14,155.61 1191.62,174.37 1175.83,189.42" spreadType="center"/>
+    <edge id="165290632" from="1768493021" to="1768493023" priority="10" type="highway.secondary_link" numLanes="2" speed="8.33" shape="1175.83,189.42 1173.38,161.16 1172.66,156.54 1169.74,146.08 1167.84,144.01 1162.41,138.05 1158.15,135.41 1150.94,130.75 1134.37,124.03" spreadType="center"/>
+    <edge id="165677670" from="1772203945" to="1772203898" name="신촌로" priority="4" type="highway.residential" numLanes="1" speed="8.33"/>
+    <edge id="165682020" from="1772229512" to="436872940" name="중앙천로" priority="4" type="highway.residential" numLanes="1" speed="8.33" shape="894.84,264.13 956.37,255.18 967.77,253.51"/>
+    <edge id="165682025" from="1772229569" to="436872945" name="중앙천로" priority="4" type="highway.residential" numLanes="1" speed="8.33"/>
+    <edge id="165682032" from="1772231758" to="1772216376" name="중앙천로" priority="4" type="highway.residential" numLanes="1" speed="8.33"/>
+    <edge id="165723577" from="1772632690" to="1772632697" name="쌍미천로" priority="4" type="highway.residential" numLanes="1" speed="8.33"/>
+    <edge id="165814510#0" from="6606304736" to="11048133437" name="거제천로" priority="11" type="highway.secondary" numLanes="2" speed="13.89" shape="928.92,2059.70 1046.99,2028.28 1047.50,2028.21 1102.21,2021.28 1187.83,2018.67 1226.60,2017.49 1303.55,2016.17 1333.28,2016.03 1361.46,2015.40 1378.07,2015.45"/>
+    <edge id="165814510#1" from="11048133437" to="cluster_14158297210_1773421582" name="거제천로" priority="11" type="highway.secondary" numLanes="2" speed="13.89" shape="1378.07,2015.45 1420.29,2014.70"/>
+    <edge id="165814511" from="cluster_14158297210_1773421582" to="14158297206" priority="10" type="highway.secondary_link" numLanes="1" speed="8.33" shape="1429.83,2024.15 1441.43,2017.81 1453.11,2016.80 1462.86,2013.87 1474.23,2019.44" spreadType="center"/>
+    <edge id="37399210" from="436818569" to="6606304736" name="세병로" priority="11" type="highway.secondary" numLanes="2" speed="13.89" shape="1024.05,1634.56 997.71,1743.80 968.64,1877.29 964.09,1898.19 948.26,1970.88 943.49,1992.80 928.92,2059.70"/>
+    <edge id="37400617#1" from="x6b_1" to="436818569" name="반송로" priority="11" type="highway.secondary" numLanes="2" speed="13.89" shape="827.21,1450.40 842.07,1464.81 875.92,1491.96 976.07,1587.50 1024.05,1634.56"/>
+    <edge id="37400617#2" from="436818569" to="cluster_14158297261_14158297263" name="반송로" priority="11" type="highway.secondary" numLanes="2" speed="13.89" shape="1024.05,1634.56 1109.41,1716.45 1113.59,1720.45 1230.59,1832.70 1261.69,1862.53"/>
+    <edge id="37400617#3" from="cluster_14158297261_14158297263" to="436859903" name="반송로" priority="11" type="highway.secondary" numLanes="2" speed="13.89" shape="1261.69,1862.53 1281.24,1881.28"/>
+    <edge id="37400617#4" from="436859903" to="cluster_14158297210_1773421582" name="반송로" priority="11" type="highway.secondary" numLanes="2" speed="13.89" shape="1281.24,1881.28 1313.44,1912.18 1322.84,1921.20 1346.08,1943.50 1420.29,2014.70"/>
+    <edge id="37400617#6" from="cluster_14158297210_1773421582" to="436843762" name="반송로" priority="11" type="highway.secondary" numLanes="2" speed="13.89" shape="1429.83,2024.15 1456.82,2049.74"/>
+    <edge id="37401760#0" from="436859887" to="1772632697" name="쌍미천로" priority="8" type="highway.tertiary" numLanes="1" speed="13.89" shape="1714.89,28.53 1724.43,101.14 1665.20,162.66"/>
+    <edge id="37401760#1" from="1772632697" to="436818089" name="쌍미천로" priority="8" type="highway.tertiary" numLanes="1" speed="13.89" shape="1665.20,162.66 1571.53,261.32 1524.52,309.83 1466.02,370.67 1457.34,378.97 1450.59,385.44 1445.21,414.00 1447.74,438.95 1448.82,449.49 1450.79,501.37 1423.68,570.95 1390.48,630.04 1357.92,692.73 1355.69,697.80 1325.67,755.41 1300.51,808.60 1284.50,860.64 1274.32,913.48 1265.97,966.47 1256.59,1019.13 1251.11,1073.65 1252.11,1125.39 1254.41,1178.64 1256.78,1230.18 1258.26,1279.66 1259.45,1333.09"/>
+    <edge id="37402732#1" from="cluster_1772229542_7222328581" to="436872940" name="중앙천로" priority="8" type="highway.tertiary" numLanes="1" speed="13.89" shape="989.50,159.15 989.46,164.70 981.52,196.05 969.11,248.90 967.77,253.51"/>
+    <edge id="468972122#1" from="6611333147" to="1772203945" name="신촌로" priority="11" type="highway.secondary" numLanes="1" speed="13.89"/>
+    <edge id="468972122#2" from="1772203945" to="11253909054" name="신촌로" priority="11" type="highway.secondary" numLanes="1" speed="13.89"/>
+    <edge id="500562190" from="4915874803" to="4915874805" name="쌍미천로" priority="4" type="highway.residential" numLanes="1" speed="8.33" shape="1192.25,1637.18 1214.96,1626.74 1271.68,1624.83"/>
+    <edge id="506009345#1" from="x6b_5" to="cluster_3131958161_4958136016_4958136222" name="월드컵대로" priority="11" type="highway.secondary" numLanes="3" speed="13.89" shape="664.42,1415.55 635.95,1429.42 567.59,1460.03 467.06,1507.99 346.45,1560.65" spreadType="center"/>
+    <edge id="506009346#1" from="cluster_3131958161_4958136016_4958136222" to="12508988076" name="거제천로" priority="11" type="highway.secondary" numLanes="2" speed="13.89" shape="346.45,1560.65 401.45,1653.68 455.46,1745.01 504.97,1828.73 529.96,1871.00 544.02,1894.79 584.68,1963.55 599.78,1989.09 617.70,1993.41"/>
+    <edge id="512418452" from="10267636825" to="cluster_3131958161_4958136016_4958136222" name="월드컵대로" priority="11" type="highway.secondary" numLanes="3" speed="13.89" shape="147.96,1605.92 243.47,1577.55 339.80,1549.37" spreadType="center"/>
+    <edge id="517488002" from="cluster_3131958161_4958136016_4958136222" to="x6b_6" name="월드컵대로" priority="11" type="highway.secondary" numLanes="4" speed="13.89" shape="339.80,1549.37 399.74,1523.16 456.87,1497.45 563.86,1449.26 632.83,1417.76 660.90,1404.94" spreadType="center"/>
+    <edge id="517488005" from="12508988076" to="6606304736" name="거제천로" priority="11" type="highway.secondary" numLanes="2" speed="13.89" shape="617.70,1993.41 757.17,2024.16 779.84,2029.07 837.76,2041.69 866.83,2048.21 928.92,2059.70"/>
+    <edge id="704103173" from="6611333154" to="6611333147" name="신촌로" priority="4" type="highway.residential" numLanes="1" speed="8.33" shape="236.72,1121.38 237.21,1113.84 245.93,1053.34 243.81,1043.77"/>
+    <edge id="757668926#1" from="436818089" to="7282326875" name="쌍미천로" priority="8" type="highway.tertiary" numLanes="1" speed="13.89" shape="1259.45,1333.09 1261.91,1385.90 1264.02,1436.12 1265.97,1490.92"/>
+    <edge id="757668926#2" from="7282326875" to="4915874805" name="쌍미천로" priority="8" type="highway.tertiary" numLanes="1" speed="13.89" shape="1265.97,1490.92 1268.99,1544.91 1271.68,1624.83"/>
+    <edge id="757668926#3" from="4915874805" to="cluster_14158297261_14158297263" name="쌍미천로" priority="8" type="highway.tertiary" numLanes="1" speed="13.89" shape="1271.68,1624.83 1275.17,1726.27 1276.78,1825.23 1277.56,1845.01"/>
+    <edge id="773756903" from="1768493005" to="436859887" name="연수로" priority="11" type="highway.secondary" numLanes="2" speed="13.89" shape="1256.40,103.95 1305.02,95.75 1350.85,88.41 1456.01,71.11 1485.44,66.17 1516.40,61.38 1586.06,49.71 1654.56,38.44 1714.89,28.53"/>
+    <edge id="773756904#1" from="436872940" to="1772231758" name="중앙천로" priority="8" type="highway.tertiary" numLanes="1" speed="13.89" shape="967.77,253.51 945.29,301.26 920.32,353.02 898.33,398.60 895.88,403.70 878.83,439.02 843.82,510.91 817.12,564.72 791.28,619.45"/>
+    <edge id="773756904#2" from="1772231758" to="436872945" name="중앙천로" priority="8" type="highway.tertiary" numLanes="1" speed="13.89" shape="791.28,619.45 765.13,674.50 751.38,702.99 703.00,737.95 692.83,744.95 636.12,782.48 581.69,818.35 573.31,823.88"/>
+    <edge id="773756904#3" from="436872945" to="4633975089" name="중앙천로" priority="8" type="highway.tertiary" numLanes="1" speed="13.89" shape="573.31,823.88 510.46,864.53 444.67,909.96"/>
+    <edge id="794688376#0" from="10314759012" to="436818089" name="고분로" priority="11" type="highway.secondary" numLanes="2" speed="13.89" shape="1459.34,1326.53 1375.24,1329.28 1259.45,1333.09"/>
+    <edge id="794688376#1" from="436818089" to="x6b_2" name="고분로" priority="11" type="highway.secondary" numLanes="2" speed="13.89" shape="1259.45,1333.09 1134.15,1337.19 1018.27,1340.99 1014.11,1341.14 950.30,1343.23 878.34,1354.63 855.30,1358.28"/>
+    <edge id="794701342" from="11253909057" to="cluster_3131958161_4958136016_4958136222" name="거제천로" priority="11" type="highway.secondary" numLanes="1" speed="13.89" shape="105.21,1148.44 130.25,1190.17 160.79,1242.50 189.80,1292.25 218.31,1341.10 246.68,1389.74 274.85,1438.03 302.38,1485.74 316.10,1508.73 339.80,1549.37"/>
+    <edge id="794701343" from="1770938434" to="436815483" name="거제천로" priority="11" type="highway.secondary" numLanes="2" speed="13.89" shape="0.00,952.30 64.16,1075.72 94.42,1128.57"/>
+    <edge id="794794082" from="436859887" to="1774422433" name="연수로" priority="11" type="highway.secondary" numLanes="2" speed="13.89" shape="1714.89,28.53 1819.13,13.50 1868.59,6.37 1886.04,3.86 1912.84,0.00"/>
+    <edge id="795088371" from="6606304736" to="6606304685" name="세병로" priority="11" type="highway.secondary" numLanes="2" speed="13.89" shape="928.92,2059.70 915.87,2103.30 888.62,2194.43 884.16,2209.36"/>
+    <edge id="88000000100#2" from="x6b_3" to="12785591052" name="중앙대로" priority="11" type="highway.secondary" numLanes="3" speed="13.89" shape="729.59,1474.83 728.98,1477.49 724.14,1498.70 721.39,1510.86 715.92,1535.14 713.18,1547.28">
+        <lane index="0"/>
+        <lane index="1"/>
+        <lane index="2" allow="bus"/>
+    </edge>
+    <edge id="88000000100#3" from="12785591052" to="12508988076" name="중앙대로" priority="11" type="highway.secondary" numLanes="3" speed="13.89" shape="713.18,1547.28 708.27,1569.26 705.90,1579.85 703.46,1590.66 698.55,1612.28 693.64,1633.90 688.74,1655.52 684.12,1675.92 681.74,1687.39 677.60,1707.50 673.45,1727.60 669.31,1747.72 665.17,1767.83 661.04,1787.93 656.90,1808.05 653.31,1825.47 650.56,1838.50 646.14,1859.30 641.73,1880.10 637.32,1900.90 632.90,1921.69 628.49,1942.49 624.07,1963.29 619.65,1984.09 617.70,1993.41">
+        <lane index="0"/>
+        <lane index="1"/>
+        <lane index="2" allow="bus"/>
+    </edge>
+    <edge id="88000000101" from="12508988076" to="990000009999" name="중앙대로" priority="11" type="highway.secondary" numLanes="3" speed="13.89" shape="617.70,1993.41 615.26,2005.37 610.96,2026.64 606.65,2047.91 602.34,2069.17 598.03,2090.44 592.35,2118.21 589.28,2132.15 585.52,2149.13 582.96,2160.99 581.70,2167.87">
+        <lane index="0"/>
+        <lane index="1"/>
+        <lane index="2" allow="bus"/>
+    </edge>
+    <edge id="88000000200#3" from="x6b_4" to="4633975089" name="중앙대로" priority="11" type="highway.secondary" numLanes="3" speed="13.89" shape="696.81,1299.24 693.43,1293.91 681.43,1274.97 675.91,1266.38 664.79,1249.18 653.68,1231.95 642.58,1214.75 634.37,1202.06 625.76,1188.89 614.52,1171.76 603.29,1154.64 597.87,1146.30 586.95,1129.45 576.04,1112.61 565.12,1095.78 554.21,1078.93 543.30,1062.09 537.90,1053.63 527.06,1036.59 516.22,1019.56 505.37,1002.53 489.11,976.58 483.71,968.43 477.90,959.70 466.69,942.92 455.47,926.13 444.67,909.96">
+        <lane index="0"/>
+        <lane index="1"/>
+        <lane index="2" allow="bus"/>
+    </edge>
+    <edge id="88000000200#4" from="4633975089" to="990000019999" name="중앙대로" priority="11" type="highway.secondary" numLanes="3" speed="13.89" shape="444.67,909.96 436.39,897.51 428.52,885.72 421.89,875.83 408.79,856.23 395.88,836.94 390.11,827.95 378.65,810.13 367.18,792.30 355.71,774.50 347.95,762.50 338.38,747.78 335.06,742.68">
+        <lane index="0"/>
+        <lane index="1"/>
+        <lane index="2" allow="bus"/>
+    </edge>
+    <edge id="x6_E_in0" from="x6b_2" to="x6_E_in_55" name="고분로" priority="11" type="highway.secondary" numLanes="4" speed="13.89"/>
+    <edge id="x6_E_in1" from="x6_E_in_55" to="414663644" name="고분로" priority="11" type="highway.secondary" numLanes="4" speed="13.89"/>
+    <edge id="x6_E_out0" from="414663644" to="x6_E_merge" name="고분로" priority="11" type="highway.secondary" numLanes="2" speed="13.89"/>
+    <edge id="x6_E_out1" from="x6_E_merge" to="x6b_2" name="고분로" priority="11" type="highway.secondary" numLanes="2" speed="13.89"/>
+    <edge id="x6_NE_in0" from="x6b_1" to="x6_NE_in_71" name="반송로" priority="11" type="highway.secondary" numLanes="4" speed="13.89"/>
+    <edge id="x6_NE_in1" from="x6_NE_in_71" to="414663644" name="반송로" priority="11" type="highway.secondary" numLanes="4" speed="13.89"/>
+    <edge id="x6_NE_out0" from="414663644" to="x6_NE_merge" name="반송로" priority="11" type="highway.secondary" numLanes="3" speed="13.89"/>
+    <edge id="x6_NE_out1" from="x6_NE_merge" to="x6b_1" name="반송로" priority="11" type="highway.secondary" numLanes="3" speed="13.89"/>
+    <edge id="x6_N_in0" from="x6b_3" to="x6_N_in_74" name="중앙대로" priority="11" type="highway.secondary" numLanes="5" speed="13.89">
+        <lane index="0"/>
+        <lane index="1"/>
+        <lane index="2"/>
+        <lane index="3"/>
+        <lane index="4" allow="bus"/>
+    </edge>
+    <edge id="x6_N_in1" from="x6_N_in_74" to="414663644" name="중앙대로" priority="11" type="highway.secondary" numLanes="5" speed="13.89">
+        <lane index="0"/>
+        <lane index="1"/>
+        <lane index="2"/>
+        <lane index="3"/>
+        <lane index="4" allow="bus"/>
+    </edge>
+    <edge id="x6_N_out0" from="414663644" to="x6_N_merge" name="중앙대로" priority="11" type="highway.secondary" numLanes="3" speed="13.89">
+        <lane index="0"/>
+        <lane index="1"/>
+        <lane index="2" allow="bus"/>
+    </edge>
+    <edge id="x6_N_out1" from="x6_N_merge" to="x6b_3" name="중앙대로" priority="11" type="highway.secondary" numLanes="3" speed="13.89">
+        <lane index="0"/>
+        <lane index="1"/>
+        <lane index="2" allow="bus"/>
+    </edge>
+    <edge id="x6_SW_in0" from="x6b_4" to="x6_SW_in_73" name="중앙대로" priority="11" type="highway.secondary" numLanes="7" speed="13.89">
+        <lane index="0"/>
+        <lane index="1"/>
+        <lane index="2"/>
+        <lane index="3"/>
+        <lane index="4"/>
+        <lane index="5" allow="bus"/>
+        <lane index="6" allow="bus"/>
+    </edge>
+    <edge id="x6_SW_in1" from="x6_SW_in_73" to="414663644" name="중앙대로" priority="11" type="highway.secondary" numLanes="7" speed="13.89">
+        <lane index="0"/>
+        <lane index="1"/>
+        <lane index="2"/>
+        <lane index="3">
+            <stopOffset vClasses="all" value="3.00"/>
+        </lane>
+        <lane index="4">
+            <stopOffset vClasses="all" value="3.00"/>
+        </lane>
+        <lane index="5" allow="bus"/>
+        <lane index="6" allow="bus"/>
+    </edge>
+    <edge id="x6_SW_out0" from="414663644" to="x6_SW_merge" name="중앙대로" priority="11" type="highway.secondary" numLanes="3" speed="13.89">
+        <lane index="0"/>
+        <lane index="1"/>
+        <lane index="2" allow="bus"/>
+    </edge>
+    <edge id="x6_SW_out1" from="x6_SW_merge" to="x6b_4" name="중앙대로" priority="11" type="highway.secondary" numLanes="3" speed="13.89">
+        <lane index="0"/>
+        <lane index="1"/>
+        <lane index="2" allow="bus"/>
+    </edge>
+    <edge id="x6_S_in0" from="x6b_0" to="x6_S_in_84" name="월드컵대로" priority="11" type="highway.secondary" numLanes="4" speed="13.89"/>
+    <edge id="x6_S_in1" from="x6_S_in_84" to="414663644" name="월드컵대로" priority="11" type="highway.secondary" numLanes="4" speed="13.89"/>
+    <edge id="x6_S_out0" from="414663644" to="x6_S_merge" name="월드컵대로" priority="11" type="highway.secondary" numLanes="3" speed="13.89"/>
+    <edge id="x6_S_out1" from="x6_S_merge" to="x6b_0" name="월드컵대로" priority="11" type="highway.secondary" numLanes="3" speed="13.89"/>
+    <edge id="x6_W_in0" from="x6b_6" to="x6_W_in_53" name="월드컵대로" priority="11" type="highway.secondary" numLanes="4" speed="13.89" shape="662.58,1411.12 706.17,1392.67"/>
+    <edge id="x6_W_in1" from="x6_W_in_53" to="414663644" name="월드컵대로" priority="11" type="highway.secondary" numLanes="4" speed="13.89"/>
+    <edge id="x6_W_out0" from="414663644" to="x6_W_merge" name="월드컵대로" priority="11" type="highway.secondary" numLanes="3" speed="13.89"/>
+    <edge id="x6_W_out1" from="x6_W_merge" to="x6b_5" name="월드컵대로" priority="11" type="highway.secondary" numLanes="3" speed="13.89" shape="680.14,1409.33 662.66,1411.08"/>
+    <edge id="x6_slip_E_NE" from="x6_E_in_55" to="x6_NE_merge" priority="9" type="highway.secondary_link" numLanes="1" speed="8.33" shape="811.84,1367.38 811.21,1371.91 810.62,1376.56 810.08,1381.33 809.57,1386.22 809.11,1391.23 808.69,1396.36 808.31,1401.62 807.98,1406.99 807.68,1412.49 807.42,1418.10 807.21,1423.84 807.04,1429.70"/>
+    <edge id="x6_slip_NE_N" from="x6_NE_in_71" to="x6_N_merge" priority="9" type="highway.secondary_link" numLanes="1" speed="8.33" shape="807.04,1429.70 801.48,1432.08 795.86,1434.33 790.18,1436.47 784.45,1438.50 778.67,1440.40 772.83,1442.19 766.94,1443.85 760.99,1445.41 754.99,1446.84 748.93,1448.15 742.82,1449.35 736.66,1450.43"/>
+    <edge id="x6_slip_N_W" from="x6_N_in_74" to="x6_W_merge" priority="9" type="highway.secondary_link" numLanes="1" speed="8.33" shape="736.66,1450.43 732.15,1447.21 727.61,1443.95 723.03,1440.65 718.41,1437.32 713.75,1433.95 709.06,1430.54 704.34,1427.10 699.57,1423.62 694.77,1420.10 689.93,1416.55 685.05,1412.96 680.14,1409.33"/>
+    <edge id="x6_slip_SW_S" from="x6_SW_in_73" to="x6_S_merge" priority="9" type="highway.secondary_link" numLanes="1" speed="8.33" shape="712.69,1320.08 718.93,1318.30 725.22,1316.64 731.57,1315.10 737.98,1313.67 744.44,1312.35 750.96,1311.16 757.54,1310.08 764.18,1309.11 770.87,1308.26 777.61,1307.53 784.42,1306.91 791.28,1306.41"/>
+    <edge id="x6_slip_S_E" from="x6_S_in_84" to="x6_E_merge" priority="9" type="highway.secondary_link" numLanes="1" speed="8.33" shape="793.39,1301.88 795.56,1308.16 797.76,1314.25 799.99,1320.17 802.26,1325.91 804.56,1331.47 806.89,1336.85 809.26,1342.04 811.67,1347.06 814.11,1351.90 816.58,1356.56 819.09,1361.04 821.63,1365.33"/>
+    <edge id="x6_slip_W_SW" from="x6_W_in_53" to="x6_SW_merge" priority="9" type="highway.secondary_link" numLanes="1" speed="8.33" shape="706.17,1392.67 706.81,1387.65 707.57,1382.62 708.45,1377.59 709.45,1372.55 710.57,1367.50 711.82,1362.45 713.18,1357.39 714.66,1352.33 716.26,1347.26 717.98,1342.18 719.82,1337.10 721.78,1332.01"/>
+
+    <roundabout nodes="11253909049 11253909054 11253909057 436815483" edges="1214651036#0 1214651036#1 1214651036#2 1214651036#3"/>
+
+</edges>
