@@ -20,8 +20,10 @@ import torch
 
 
 class ResidualPolicy:
-    def __init__(self, base, residual, scale, lane_veto=False):
+    def __init__(self, base, residual, scale, lane_veto=False, max_veto=0):
         self.base, self.residual, self.scale, self.lane_veto = base, residual, float(scale), bool(lane_veto)
+        self.max_veto = int(max_veto)      # >0이면 거부권으로 미룰 수 있는 최대 연속 스텝 (그 뒤엔 기본 운전자 명령대로)
+        self._veto_n = 0
         self.residual.eval()
 
     @staticmethod
@@ -33,6 +35,17 @@ class ResidualPolicy:
         accel = float(np.clip(base_action[0] + scale * float(res_action[0]), -1.0, 1.0))
         lane = float(base_action[1]) if (not lane_veto or float(res_action[1]) == 0.0) else 0.0
         return np.array([accel, lane], dtype=np.float32)
+
+    @staticmethod
+    def veto_step(base_action, res_action, n, max_veto):
+        """연속 거부 횟수 관리: 기본 운전자가 차로를 안 바꾸려 하면 0으로, 거부 중이면 +1.
+        max_veto(>0)번 연속 거부했으면 이번에는 거부권을 쓸 수 없다 (미루기만 가능, 막지는 못함).
+        반환: (이번 스텝 거부권 사용 가능 여부, 새 연속 횟수)"""
+        if float(base_action[1]) == 0.0:
+            return False, 0
+        allowed = max_veto <= 0 or n < max_veto
+        vetoing = allowed and float(res_action[1]) != 0.0
+        return allowed, (n + 1 if vetoing else 0)
 
     @staticmethod
     def init_residual(policy, log_std=-1.0, follow_bias=4.0):
@@ -51,12 +64,12 @@ class ResidualPolicy:
         base = EnsemblePolicy.build(b["obs_dim"], b["act_dim"], b["members"], hparams)
         a = PPO(obs_dim=obs_dim + 2, act_dim=act_dim, **{**hparams, "device": "cpu"})
         a.policy.load_state_dict(checkpoint["residual"])
-        return ResidualPolicy(base, a.policy, checkpoint["scale"], checkpoint.get("lane_veto", False))
+        return ResidualPolicy(base, a.policy, checkpoint["scale"], checkpoint.get("lane_veto", False), checkpoint.get("max_veto", 0))
 
     @staticmethod
-    def save(path, obs_dim, act_dim, scale, base_checkpoint, residual_state, lane_veto=False):
+    def save(path, obs_dim, act_dim, scale, base_checkpoint, residual_state, lane_veto=False, max_veto=0):
         torch.save({"algorithm": "residual", "obs_dim": int(obs_dim), "act_dim": int(act_dim), "scale": float(scale),
-                    "lane_veto": bool(lane_veto),
+                    "lane_veto": bool(lane_veto), "max_veto": int(max_veto),
                     "base": base_checkpoint, "residual": residual_state}, path)
 
     @torch.no_grad()
@@ -69,4 +82,7 @@ class ResidualPolicy:
         else:
             r = np.array([float(torch.normal(mu, std).reshape(-1)[0]),
                           (1.0, 0.0, -1.0)[int(torch.distributions.Categorical(logits=logits.reshape(-1)).sample())]], np.float32)
+        if self.lane_veto and self.max_veto > 0:
+            allowed, self._veto_n = self.veto_step(b, r, self._veto_n, self.max_veto)
+            return self.combine(b, r, self.scale, allowed)
         return self.combine(b, r, self.scale, self.lane_veto)
