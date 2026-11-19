@@ -72,7 +72,7 @@ def main():
     val_eps = set(eps[: max(1, len(eps) // 10)].tolist())
     vm = np.array([e in val_eps for e in E])
     print(f"steps {len(O)} episodes {len(eps)} (검증 {len(val_eps)}) lane {np.bincount(L, minlength=3).tolist()}", flush=True)
-    agent = PPO(obs_dim=O.shape[1], act_dim=2, **{**HPARAMS, "device": "cpu"})
+    agent = PPO(obs_dim=O.shape[1], act_dim=2, **{**HPARAMS, "device": "cpu", "seed": int(os.environ.get("SEED", "0"))})   # PPO()가 시드를 다시 고정하므로 여기서 넘김
     pol = agent.policy
     w = float(os.environ.get("LC_WEIGHT", "30"))
     cw = torch.tensor([w, 1.0, w])
@@ -113,9 +113,10 @@ def main():
     Mt = torch.as_tensor(lane_ok.astype(np.float32))
     LWt = torch.as_tensor(LW); AKt = torch.as_tensor(acc_ok.astype(np.float32))
     tr_idx, va_idx = np.where(~vm)[0], np.where(vm)[0]
+    srng = np.random.default_rng(int(os.environ.get("SEED", "0")))   # 미니배치 순서 (검증 분할은 시드와 무관하게 고정)
     bs = int(os.environ.get("BATCH", "512"))
     for ep in range(int(os.environ.get("EPOCHS", "30"))):
-        pol.train(); rng.shuffle(tr_idx); tot = [0.0, 0.0, 0]
+        pol.train(); srng.shuffle(tr_idx); tot = [0.0, 0.0, 0]
         for s in range(0, len(tr_idx), bs):
             b = tr_idx[s:s + bs]
             mu, _, logits, _ = pol(Ot[b])
