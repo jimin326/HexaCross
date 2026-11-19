@@ -5,11 +5,13 @@
 
 - 관측: 환경 관측 + 기본 운전자 행동 2개 (가감속, 차로 명령) → obs_dim + 2
 - 가감속: clip(기본 가감속 + scale × 잔차 가감속, -1, 1)
-- 차로: 잔차 차로 출력이 "유지(0)"면 기본 운전자의 차로 명령을 따르고,
-        "왼쪽/오른쪽"이면 이번 스텝 차로 변경을 하지 않는다 (거부권). 잔차가 스스로 차로를 바꾸지는 않는다.
+- 차로: 기본은 기본 운전자의 차로 명령 그대로 (lane_veto=False, 잔차의 차로 출력은 쓰지 않음).
+        lane_veto=True면 잔차 차로 출력이 "왼쪽/오른쪽"일 때 이번 스텝 차로 변경을 하지 않는다 (거부권).
+        ※ 거부권을 켜고 학습하면(res1) 충돌 감점(10)이 잘못된 차로 감점(5)보다 커서 회전교차로 경로에
+          꼭 필요한 차로 변경까지 막도록 배웠다 (결정적 평가 회전교차로 완주 1/30). 그래서 기본은 끔.
   → 처음(잔차 0, 거부 확률 0에 가까움)에는 기본 운전자와 똑같이 운전하고, 보상으로 고칠 점만 배운다.
 
-파일 형식 (torch.save): {"algorithm": "residual", "obs_dim": 환경 관측 차원, "act_dim": 2, "scale": float,
+파일 형식 (torch.save): {"algorithm": "residual", "obs_dim": 환경 관측 차원, "act_dim": 2, "scale": float, "lane_veto": bool,
                          "base": 앙상블 파일 내용(dict), "residual": state_dict}
 test.py의 load_agent가 자동으로 알아본다.
 """
@@ -18,8 +20,8 @@ import torch
 
 
 class ResidualPolicy:
-    def __init__(self, base, residual, scale):
-        self.base, self.residual, self.scale = base, residual, float(scale)
+    def __init__(self, base, residual, scale, lane_veto=False):
+        self.base, self.residual, self.scale, self.lane_veto = base, residual, float(scale), bool(lane_veto)
         self.residual.eval()
 
     @staticmethod
@@ -27,9 +29,9 @@ class ResidualPolicy:
         return np.concatenate([np.asarray(obs, np.float32), np.asarray(base_action, np.float32)])
 
     @staticmethod
-    def combine(base_action, res_action, scale):
+    def combine(base_action, res_action, scale, lane_veto=False):
         accel = float(np.clip(base_action[0] + scale * float(res_action[0]), -1.0, 1.0))
-        lane = float(base_action[1]) if float(res_action[1]) == 0.0 else 0.0
+        lane = float(base_action[1]) if (not lane_veto or float(res_action[1]) == 0.0) else 0.0
         return np.array([accel, lane], dtype=np.float32)
 
     @staticmethod
@@ -49,11 +51,12 @@ class ResidualPolicy:
         base = EnsemblePolicy.build(b["obs_dim"], b["act_dim"], b["members"], hparams)
         a = PPO(obs_dim=obs_dim + 2, act_dim=act_dim, **{**hparams, "device": "cpu"})
         a.policy.load_state_dict(checkpoint["residual"])
-        return ResidualPolicy(base, a.policy, checkpoint["scale"])
+        return ResidualPolicy(base, a.policy, checkpoint["scale"], checkpoint.get("lane_veto", False))
 
     @staticmethod
-    def save(path, obs_dim, act_dim, scale, base_checkpoint, residual_state):
+    def save(path, obs_dim, act_dim, scale, base_checkpoint, residual_state, lane_veto=False):
         torch.save({"algorithm": "residual", "obs_dim": int(obs_dim), "act_dim": int(act_dim), "scale": float(scale),
+                    "lane_veto": bool(lane_veto),
                     "base": base_checkpoint, "residual": residual_state}, path)
 
     @torch.no_grad()
@@ -66,4 +69,4 @@ class ResidualPolicy:
         else:
             r = np.array([float(torch.normal(mu, std).reshape(-1)[0]),
                           (1.0, 0.0, -1.0)[int(torch.distributions.Categorical(logits=logits.reshape(-1)).sample())]], np.float32)
-        return self.combine(b, r, self.scale)
+        return self.combine(b, r, self.scale, self.lane_veto)
