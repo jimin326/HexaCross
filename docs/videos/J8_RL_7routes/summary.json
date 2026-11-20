@@ -1,0 +1,30 @@
+{
+ "ego_0": {
+  "steps": 1430,
+  "end": "arrived"
+ },
+ "ego_1": {
+  "steps": 1071,
+  "end": "arrived"
+ },
+ "ego_2": {
+  "steps": 2074,
+  "end": "arrived"
+ },
+ "ego_3": {
+  "steps": 619,
+  "end": "arrived"
+ },
+ "ego_4": {
+  "steps": 298,
+  "end": "arrived"
+ },
+ "ego_5": {
+  "steps": 922,
+  "end": "arrived"
+ },
+ "ego_6": {
+  "steps": 312,
+  "end": "arrived"
+ }
+}
