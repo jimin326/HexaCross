@@ -229,6 +229,10 @@ def make_vtypes_block(traffic: dict, keep_strategic: bool = False):
                     attrs.append('lcStrategic="0"')
                 attrs += ['lcCooperative="0"',
                           'lcSpeedGain="0"', 'lcKeepRight="0"']
+            else:
+                # 차로변경을 허용하는 배경차: 양보·빈 차로 이용은 SUMO 기본값대로 두고,
+                # 우측 차로로 돌아가려는 성향만 끈다 (도심 다차로에서 오른쪽에 몰리지 않게).
+                attrs.append('lcKeepRight="0"')
             vtype_lines.append("        <vType " + " ".join(attrs) + "/>")
         vtypes_block = ('    <vTypeDistribution id="carDist">\n'
                         + "\n".join(vtype_lines)
