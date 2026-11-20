@@ -23,6 +23,15 @@ usage (저장소 루트에서): python tools/rl/residual_train.py RUN_NAME
   RING_EVERY (2), RING_N (4): 몇 스텝마다, 몇 개 상태를 들고 있을지 (가장 오래된 것 = 충돌 RING_EVERY×RING_N 스텝 전)
   DANGER_DIR, DANGER_MAX (워커당 150)
 모방학습 손실 함께 (BC_DATA, BC_W, BC_STEPS, BC_BATCH, LC_WEIGHT): 잔차가 아닐 때 PPO + BC
+  BC_DATA는 쉼표로 여러 파일. tools/rl/make_bcdata.py로 DAgger 데이터 + 넓은 차로 변경 보강을 만든다.
+앙상블 전체 미세조정 (PPO + BC):
+  INIT_ENSEMBLE   앙상블 파일 (예: models/yeonsan_7routes_J8/model.pt). 구성원 8개를 모두 학습하고
+                  가치 신경망은 새로 만든다. INIT_LOG_STD 기본 -1.5. 결과는 ens_model.pt, ens_*k.pt (앙상블 형식)
+  예: INIT_ENSEMBLE=models/yeonsan_7routes_J8/model.pt LR=1e-5 BC_DATA=data/bc_ft.npz BC_W=1 VALUE_WARMUP=20 \
+      LANE_ENT=0 DANGER_P=0.2 RING_N=6 TIMESTEPS=1000000 SEED=21 \
+      REWARD_PATCH='{"collision_penalty": 50.0, "red_light_penalty": 20.0, "wrong_lane_penalty": 10.0, "ttc_penalty": 0.3}' \
+      python tools/rl/residual_train.py ft1
+  (결과: models/yeonsan_7routes_J8_RL/README.md)
 
 결과 요약 (2026-11-20, 교통량 0.85): 잔차 강화학습은 여러 설정에서 모두 기본 운전자보다 나아지지 않았다.
 models/yeonsan_7routes_I8/README.md "강화학습 사후학습" 참고.
@@ -205,7 +214,7 @@ def main():
               entropy_coef=float(os.environ.get("ENT_COEF", hp.get("entropy_coef", 0.0))),
               lane_entropy_coef=float(os.environ.get("LANE_ENT", hp.get("lane_entropy_coef", 0.0))), seed=seed, device="cpu")
     keep = {k: os.environ.get(k) for k in ("N_ENVS", "STEPS_PER_ENV", "TIMESTEPS", "SEED", "LR", "N_EPOCHS", "MINIBATCH",
-                                           "ENT_COEF", "REWARD_PATCH", "INIT_MODEL", "VALUE_WARMUP", "LANE_ENT", "INIT_LOG_STD", "MAX_STEPS", "LANE_PLAN_RANGE",
+                                           "ENT_COEF", "REWARD_PATCH", "INIT_MODEL", "INIT_ENSEMBLE", "DANGER_P", "RING_N", "VALUE_WARMUP", "LANE_ENT", "INIT_LOG_STD", "MAX_STEPS", "LANE_PLAN_RANGE",
                                            "OBS_VISIBILITY", "LANE_ARROWS", "INTERNAL_OBS", "BC_DATA", "BC_W", "BC_STEPS", "RESIDUAL_BASE", "RESIDUAL_SCALE", "RESIDUAL_LANE")}
     json.dump({"env": keep, "hparams": {k: (list(v) if isinstance(v, tuple) else v) for k, v in hp.items()},
                "reward": _reward()}, open(os.path.join(run_dir, "run_patch.json"), "w"), ensure_ascii=False, indent=1)
@@ -230,6 +239,15 @@ def main():
         r.recv()
 
     agent = PPO(obs_dim=obs_dim, act_dim=2, buffer=RolloutBuffer(), **hp)
+    ens_init = os.environ.get("INIT_ENSEMBLE")
+    if ens_init:
+        # 앙상블 전체 미세조정: 정책 = 구성원 평균 (EnsembleActorCritic), 가치는 새 신경망
+        from algorithms.ensemble import EnsembleActorCritic
+        from train import HPARAMS
+        ek_ = torch.load(ens_init, map_location="cpu", weights_only=False)
+        agent.policy = EnsembleActorCritic(obs_dim, ek_["members"], HPARAMS, init_log_std=float(os.environ.get("INIT_LOG_STD", "-1.5")))
+        agent.optimizer = torch.optim.Adam(agent.policy.parameters(), lr=hp["lr"])
+        print(f"[ensemble] {ens_init} 구성원 {len(ek_['members'])}개 미세조정", flush=True)
     ck = os.path.join(run_dir, "ckpt.pt")
     steps, n_upd = 0, 0
     if os.path.exists(ck):
@@ -237,6 +255,8 @@ def main():
         agent.policy.load_state_dict(d["policy"]); agent.optimizer.load_state_dict(d["optim"])
         steps, n_upd = d["steps"], d["updates"]
         print(f"[ckpt] 이어서 학습: {steps} 스텝부터", flush=True)
+    elif ens_init:
+        pass
     elif os.environ.get("INIT_MODEL"):
         agent.policy.load_state_dict(torch.load(os.environ["INIT_MODEL"], map_location="cpu", weights_only=False))
         print(f"[init] {os.environ['INIT_MODEL']}", flush=True)
@@ -252,7 +272,7 @@ def main():
     bc = None
     if os.environ.get("BC_DATA"):
         sys.path.insert(0, S)
-        import bc_hybrid as bc_mod
+        import bc_train as bc_mod
         globals()["bc_mod"] = bc_mod
         ds = [np.load(p) for p in os.environ["BC_DATA"].split(",")]
         bc = (torch.as_tensor(np.concatenate([d["obs"] for d in ds])), torch.as_tensor(np.concatenate([d["accel"] for d in ds])),
@@ -313,7 +333,7 @@ def main():
         warm = n_upd < int(os.environ.get("VALUE_WARMUP", "0"))
         if warm:   # 처음 몇 번은 가치 head만 학습 (모방학습 정책을 흔들지 않게)
             for n_, p_ in agent.policy.named_parameters():
-                p_.requires_grad_(n_.startswith("v_head"))
+                p_.requires_grad_(n_.startswith("v_head") or n_.startswith("v_net"))
         st = agent.update(np.concatenate(advs), np.concatenate(rets))
         if bc is not None and not warm:
             # 모방학습 손실을 함께: PPO 업데이트 뒤 전문가 데이터로 BC_STEPS번 (가중치 BC_W) — 모방학습으로 익힌 행동이 흐트러지지 않게
@@ -347,12 +367,18 @@ def main():
                        ck + ".tmp")
             os.replace(ck + ".tmp", ck)
             torch.save(agent.policy.state_dict(), os.path.join(run_dir, "model.pt"))
+            if ens_init:
+                from algorithms.ensemble import EnsemblePolicy
+                EnsemblePolicy.save(os.path.join(run_dir, "ens_model.pt"), obs_dim, 2, agent.policy.members())
             if os.environ.get("RESIDUAL_BASE"):
                 from algorithms.residual import ResidualPolicy
                 ResidualPolicy.save(os.path.join(run_dir, "residual_model.pt"), obs_dim - 2, 2, float(os.environ.get("RESIDUAL_SCALE", "0.3")),
                                     torch.load(os.environ["RESIDUAL_BASE"], map_location="cpu", weights_only=True), agent.policy.state_dict(), os.environ.get("RESIDUAL_LANE") == "1", int(os.environ.get("MAX_VETO", "0")))
         if steps // snap_every != (steps - T * n_env) // snap_every:
             torch.save(agent.policy.state_dict(), os.path.join(run_dir, f"snap_{steps // 1000}k.pt"))
+            if ens_init:
+                from algorithms.ensemble import EnsemblePolicy
+                EnsemblePolicy.save(os.path.join(run_dir, f"ens_{steps // 1000}k.pt"), obs_dim, 2, agent.policy.members())
             if os.environ.get("RESIDUAL_BASE"):
                 from algorithms.residual import ResidualPolicy
                 ResidualPolicy.save(os.path.join(run_dir, f"residual_{steps // 1000}k.pt"), obs_dim - 2, 2, float(os.environ.get("RESIDUAL_SCALE", "0.3")),
