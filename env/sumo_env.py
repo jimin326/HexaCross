@@ -201,6 +201,17 @@ class SumoHighwayEnv(gym.Env):
         self.foe_obs = bool(jf.get("enabled", False))
         self.foe_range = float(jf.get("range", 60.0))
         self.foe_time = float(jf.get("time_scale", 5.0))
+        # ---- 진행 방향 앞 차체 감지 (센서처럼, 차로·경로와 무관) ----
+        # SUMO getLeader는 내 경로의 차로만 따라가서, 같은 차로에서 다른 방향(예: 좌회전) 연결 차로로
+        # 들어가다 멈춘 차의 뒷부분이 내 앞을 막고 있어도 못 본다. 내 진행 방향 앞 폭 안의 차체를 직접 찾아
+        # 현재 차로 앞차 거리를 더 가까운 쪽으로 고친다 (관측 개수는 그대로).
+        cl = (mdp_obs.get("corridor_leader") or {})
+        self.corr_obs = bool(cl.get("enabled", False)) or os.environ.get("CORRIDOR_OBS") == "1"
+        self.corr_range = float(os.environ.get("CORRIDOR_RANGE", cl.get("range", 25.0)))
+        self.corr_margin = float(os.environ.get("CORRIDOR_MARGIN", cl.get("margin", 0.3)))
+        self.corr_junction_only = bool(cl.get("junction_only", True))
+        if os.environ.get("CORRIDOR_OBS") == "0":
+            self.corr_obs = False
         self._route_total = 1.0        # 출발 위치부터 경로 끝까지 거리 (m)
         self._prev_odo = 0.0           # 직전 스텝 주행거리 (m)
         self.randomize_signal = bool(mdp_sim.get("randomize_signal_phase", True))
@@ -827,6 +838,10 @@ class SumoHighwayEnv(gym.Env):
         if offset == 0:
             if leader:
                 res = traci.vehicle.getLeader(self.ego_id, self.visibility)
+                if self.corr_obs:
+                    c = self._corridor_leader()
+                    if c is not None and (res is None or c[0] < res[1]):
+                        return c
                 if res is None:
                     return None
                 vid, gap = res
@@ -863,6 +878,43 @@ class SumoHighwayEnv(gym.Env):
             return None
         # 나란히 겹쳐 달리는 차(간격 음수)는 "간격 0" — 예전에는 버려서 바로 옆 차가 안 보였다 (사각지대)
         return max(float(gap), 0.0), traci.vehicle.getSpeed(vid)
+
+    def _corridor_leader(self):
+        """내 진행 방향 앞 corr_range(m) 안, 내 차폭(+여유) 안에 들어온 가장 가까운 다른 차체.
+        (거리 m, 그 차의 내 진행 방향 속도) 또는 None. 차체는 앞·가운데·뒤 세 점으로 본다."""
+        import math
+        ego = self.ego_id
+        try:
+            ex, ey = traci.vehicle.getPosition(ego)
+            a = math.radians(traci.vehicle.getAngle(ego))
+            hw = traci.vehicle.getWidth(ego) / 2.0 + self.corr_margin
+            mg = traci.vehicle.getMinGap(ego)       # getLeader 거리와 맞추려고 (getLeader = 실제 간격 - minGap)
+        except traci.TraCIException:
+            return None
+        hx, hy = math.sin(a), math.cos(a)
+        r2 = (self.corr_range + 20.0) ** 2
+        best = None
+        only_j = self.corr_junction_only
+        for vid in traci.vehicle.getIDList():
+            if vid == ego:
+                continue
+            # 기본: 교차로 안(내부 연결 차로)에 있는 차만 — 일반 도로 앞차는 getLeader가 이미 보고,
+            # 굽은 도로에서 옆 차로 차를 잘못 잡는 일을 줄인다
+            if only_j and not traci.vehicle.getLaneID(vid).startswith(":"):
+                continue
+            px, py = traci.vehicle.getPosition(vid)
+            if (px - ex) ** 2 + (py - ey) ** 2 > r2:
+                continue
+            b = math.radians(traci.vehicle.getAngle(vid))
+            L = traci.vehicle.getLength(vid)
+            bx, by = math.sin(b), math.cos(b)
+            for f in (0.0, 0.5, 1.0):
+                qx, qy = px - f * L * bx - ex, py - f * L * by - ey
+                d = qx * hx + qy * hy
+                if 0.0 < d < self.corr_range and abs(qx * hy - qy * hx) < hw:
+                    if best is None or d < best[0]:
+                        best = (d, traci.vehicle.getSpeed(vid) * (bx * hx + by * hy))
+        return None if best is None else (max(best[0] - mg, 0.0), best[1])
 
     def _lane_connectivity(self, offset: int) -> float:
         """오프셋 차선의 '경로상 연결성'을 반환.

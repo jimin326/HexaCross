@@ -20,13 +20,13 @@
         <phase duration="2" state="rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr"/>
     </tlLogic>
     <tlLogic id="6612040590" type="static" programID="custom" offset="0">
-        <phase duration="30" state="GGGGrrrrrrr"/>
+        <phase duration="20" state="GGGGrrrrrrr"/>
         <phase duration="3" state="yyyyrrrrrrr"/>
         <phase duration="2" state="rrrrrrrrrrr"/>
-        <phase duration="30" state="rrrrGGGGrrr"/>
+        <phase duration="21" state="rrrrGGGGrrr"/>
         <phase duration="3" state="rrrryyyyrrr"/>
         <phase duration="2" state="rrrrrrrrrrr"/>
-        <phase duration="20" state="rrrrrrrrGGG"/>
+        <phase duration="10" state="rrrrrrrrGGG"/>
         <phase duration="3" state="rrrrrrrryyy"/>
         <phase duration="2" state="rrrrrrrrrrr"/>
     </tlLogic>

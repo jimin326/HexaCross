@@ -311,6 +311,36 @@ def _merge_carriageways(osm_file, merges, out_dir):
     return out, rename, done
 
 
+def bus_vtype_line(bus_cfg: dict) -> str:
+    """버스 차종 (시내버스 12 m). bus_cfg["vtype"]으로 값을 바꿀 수 있다."""
+    v = {"accel": 1.2, "decel": 4.0, "emergencyDecel": 7.0, "length": 12.0, "minGap": 2.5, "tau": 1.2,
+         "maxSpeed": 13.89, "speedDev": 0.05, "sigma": 0.3, **(bus_cfg.get("vtype") or {})}
+    attrs = " ".join(f'{k}="{val}"' for k, val in v.items())
+    # bus_brt: 중앙 BRT 차로 버스. 실제 BRT는 연석·펜스로 갈라져 있어 중간에 일반 차로로 못 나간다.
+    #   SUMO 경로 차로 선택은 줄이 짧은 차로를 고르기도 해서(BRT에 버스가 서 있으면 일반 차로로 빠짐) 차로 변경을 끈다
+    #   (lcStrategic -1). BRT 경로는 brt_depart_lane이 차로 변경 없이 끝까지 이어지는지 확인한 것만 쓴다.
+    return "\n".join(
+        f'    <vType id="{vid}" vClass="bus" guiShape="bus" color="{col}" {attrs} '
+        f'lcCooperative="0" lcSpeedGain="0" lcKeepRight="0"{extra}/>'
+        for vid, col, extra in (("bus_city", "0.15,0.45,0.95", ""), ("bus_brt", "0.1,0.3,0.8", ' lcStrategic="-1"')))
+
+
+def brt_depart_lane(net, edges):
+    """첫 엣지의 버스전용차로에서 출발해 차로 변경 없이(연결만 따라) 경로 끝까지 갈 수 있으면 그 차로 번호, 아니면 None."""
+    first = net.getEdge(edges[0])
+    for ln in first.getLanes():
+        if not (ln.allows("bus") and not ln.allows("passenger")):
+            continue
+        cur = {ln}
+        for nxt in edges[1:]:
+            cur = {c.getToLane() for l_ in cur for c in l_.getOutgoing() if c.getToLane().getEdge().getID() == nxt}
+            if not cur:
+                break
+        if cur:
+            return ln.getIndex()
+    return None
+
+
 def build_osm(road: dict, ego: dict, traffic: dict, signal: dict,
               out_dir: str) -> str:
     from env.road_builder import make_vtypes_block   # 순환 import 방지
@@ -730,6 +760,31 @@ def build_osm(road: dict, ego: dict, traffic: dict, signal: dict,
             leg_total[a] += vph
         meta["demand"] = {"scenario": demand.get("scenario"),
                           "veh_per_hour": round(sum(leg_total.values()), 1)}
+        # 버스 (실제 버스 차종): 실측 OD의 버스 중형+대형. BRT 이동(버스전용차로만으로 끝까지 갈 수 있는 경로)은
+        # 버스전용차로에서 출발하고, 나머지는 일반 차로로 다닌다. include_bus(버스를 승용차로 셈)와 같이 켜면 두 번 세므로 막는다.
+        bus_cfg = demand.get("bus_vehicles") or {}
+        if bus_cfg.get("enabled"):
+            if demand.get("include_bus"):
+                raise ValueError("demand.include_bus와 demand.bus_vehicles.enabled를 같이 켜면 버스를 두 번 셉니다.")
+            from env.road_builder import load_od_bus
+            vtypes_block += "\n" + bus_vtype_line(bus_cfg)
+            meta["bus"] = {"routes": {}, "veh_per_hour": 0.0}
+            for (o, d), vph in load_od_bus(demand).items():
+                a, b = od_legs.get(o), od_legs.get(d)
+                if a is None or b is None or (a, b) in banned or a == b:
+                    continue
+                p = through_path(a, b)
+                if p is None or not all(net.getEdge(e).allows("bus") for e in p):
+                    continue
+                lane = brt_depart_lane(net, p)
+                rid = f"bus_{len(meta['bus']['routes'])}"
+                route_lines.append(f'    <route id="{rid}" edges="{" ".join(p)}"/>')
+                arrival = (f'period="exp({vph / 3600.0:.6f})"' if poisson else f'vehsPerHour="{vph:.1f}"')
+                flow_lines.append(
+                    f'    <flow id="f_{rid}" type="{"bus_city" if lane is None else "bus_brt"}" route="{rid}" begin="0" end="100000" {arrival} '
+                    f'departLane="{"best" if lane is None else lane}" departSpeed="{traffic.get("depart_speed", "max")}"/>')
+                meta["bus"]["routes"][rid] = {"od": [a, b], "rate": vph, "brt": lane is not None}
+                meta["bus"]["veh_per_hour"] += vph
     else:
         leg_total = {a: float(by_id[a]["inflow"]) for a in by_id}
         for a in by_id:
@@ -1064,6 +1119,16 @@ def build_osm(road: dict, ego: dict, traffic: dict, signal: dict,
             f.write("<additional>\n" + "\n".join(lines) + "\n</additional>\n")
         additional.append("highway.tls.xml")
     meta["center_tls"] = center_tl
+    # 주변(상류) 신호 녹색 시간을 배경 교통 수요에 맞춰 다시 나눈다 (env/signals.demand_green_split, Webster).
+    # 연산교차로 중심은 6현시 동시 신호 시간을 그대로 둔다 (수요 분배로 바꾸면 주기 156초 → 통과량이 오히려 줄었음).
+    if signal.get("enabled", True) and signal.get("demand_split", False):
+        from env.signals import demand_green_split
+        tls_path = os.path.join(out_dir, "highway.tls.xml")
+        ds = demand_green_split(net_path, os.path.join(out_dir, "highway.rou.xml"), skip=(center_tl,),
+                                tls_add=tls_path if os.path.exists(tls_path) else None,
+                                cycle_range=tuple(signal.get("demand_split_cycle", (60.0, 150.0))))
+        meta["demand_split"] = {t: {"cycle": round(c, 1), "greens": [round(g, 1) for g in gs], "Y": round(y, 3)}
+                                for t, (c, gs, y) in ds.items()}
     if not (cfg.get("merge_parts") or cfg.get("net_file")):
         meta["signal_build"] = signal_build
     meta["lane_rules"] = lane_table      # 실제 적용된 차로 → 진출 도로 표

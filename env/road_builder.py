@@ -384,6 +384,26 @@ def load_od_demand(demand: dict) -> dict:
     return od
 
 
+def load_od_bus(demand: dict) -> dict:
+    """실측 CSV의 버스(중형+대형) OD 교통량 {(출발 방면, 도착 방면): 대/시}.
+
+    demand["bus_vehicles"]["scale"](기본 1.0)을 곱한다. 승용차 배율(demand["scale"])과 따로인 이유:
+    버스는 배차 시간표대로 다니고, BRT 차로는 일반 차로 용량과 상관없기 때문이다.
+    """
+    import csv
+    hour = str(demand["scenarios"][demand["scenario"]]["hour"]).zfill(2)
+    scale = float((demand.get("bus_vehicles") or {}).get("scale", 1.0))
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), demand["csv"])
+    od = {}
+    with open(path, encoding="utf-8-sig", newline="") as f:
+        for row in csv.DictReader(f):
+            if row["hour"] == hour:
+                vph = (float(row["버스중형"]) + float(row["버스대형"])) * scale
+                if vph > 0:
+                    od[(row["from"], row["to"])] = vph
+    return od
+
+
 def _write_tls_program(net_path: str, out_path: str):
     """SIGNAL 설정으로 교차로 nc의 고정 신호 주기를 만든다.
 

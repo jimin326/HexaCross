@@ -1,12 +1,13 @@
-# 학습 지도 스냅숏 (연산교차로 주변, 2026-11-18)
+# 학습 지도 스냅숏 (연산교차로 주변, 2026-11-20 갱신)
 
 `train.py`·`tools/rl/train_routes.py`가 학습을 시작할 때 `env/road_config.py` + OSM으로 만드는 학습 지도(`env/sumo/`, git에 안 올라감)를
 그대로 복사해 둔 것입니다. 지도를 고치려면 이 파일이 아니라 `env/road_config.py`, `env/maps/yeonsan_x6.json`을 고치고 다시 빌드하세요.
 
 - 열어 보기: `sumo-gui -c env/maps/yeonsan_train/highway.sumocfg`
 - `highway.net.xml`: 도로망. 연산교차로 중심 100 m는 정밀 모델 (`env/maps/yeonsan_x6.json`, 아래 차로 구성)
-- `highway.tls.xml`: 신호 프로그램 (연산교차로 동시 녹색 6현시 주기 120초, 시청 인근, 그 밖 신호)
-- `highway.rou.xml`: 배경 교통 (2025 부산시 교통조사 실측 OD × 0.5) + AV 경로 (기본 SW → N)
+- `highway.tls.xml`: 신호 프로그램 (연산교차로 동시 녹색 6현시 주기 120초, 시청 인근, 그 밖 신호).
+  주변 신호 녹색 시간은 배경 수요로 나눈 값입니다 (`SIGNAL["demand_split"]`, 주기 60~150초, `highway.meta.json`의 `demand_split`).
+- `highway.rou.xml`: 배경 교통 (2025 부산시 교통조사 실측 OD × 1.0, 배경차 차로 변경 허용 — main #9) + 버스 (실측 204대/시, `bus_city`·BRT 차로 `bus_brt`) + AV 경로 (기본 SW → N)
 
 ## 연산교차로 차로 구성 (정지선, 차로 1 = 중앙선 쪽)
 

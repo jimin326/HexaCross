@@ -1,0 +1,132 @@
+{
+ "map": "env/maps/yeonsan_train 기준 (주변 신호 수요 분배 + 버스), 관측: 앞 차체 감지(corridor_leader) 켬, 결정적 정책, 경로마다 시드당 15회",
+ "scale_0.7_bus_demandsplit_seeds921-924": {
+  "tags": [
+   "j7a@921",
+   "j7b@922",
+   "j7c@923",
+   "j7d@924"
+  ],
+  "total": {
+   "episodes": 420,
+   "insert_fail": 0,
+   "arrival": 412,
+   "wrong_lane": 4,
+   "collision": 2,
+   "red_light": 2
+  },
+  "per_route": {
+   "S→W→회전교차로→W→E": {
+    "episodes": 60,
+    "insert_fail": 0,
+    "arrival": 60
+   },
+   "N→S": {
+    "episodes": 60,
+    "insert_fail": 0,
+    "arrival": 60
+   },
+   "NE→SW": {
+    "episodes": 60,
+    "insert_fail": 0,
+    "arrival": 57,
+    "wrong_lane": 1,
+    "collision": 1,
+    "red_light": 1
+   },
+   "E→W": {
+    "episodes": 60,
+    "insert_fail": 0,
+    "arrival": 58,
+    "wrong_lane": 2
+   },
+   "S→N": {
+    "episodes": 60,
+    "insert_fail": 0,
+    "arrival": 60
+   },
+   "SW→N": {
+    "episodes": 60,
+    "insert_fail": 0,
+    "arrival": 58,
+    "collision": 1,
+    "wrong_lane": 1
+   },
+   "W→E": {
+    "episodes": 60,
+    "insert_fail": 0,
+    "arrival": 59,
+    "red_light": 1
+   }
+  }
+ },
+ "scale_0.85_bus_demandsplit_seeds921-924_931-934": {
+  "tags": [
+   "j8a@921",
+   "j8b@922",
+   "j8c@923",
+   "j8d@924",
+   "j8e@931",
+   "j8f@932",
+   "j8g@933",
+   "j8h@934"
+  ],
+  "total": {
+   "episodes": 840,
+   "insert_fail": 0,
+   "timeout": 1,
+   "wrong_lane": 14,
+   "arrival": 815,
+   "collision": 5,
+   "red_light": 5
+  },
+  "per_route": {
+   "S→W→회전교차로→W→E": {
+    "episodes": 120,
+    "insert_fail": 0,
+    "timeout": 1,
+    "wrong_lane": 2,
+    "arrival": 117
+   },
+   "N→S": {
+    "episodes": 120,
+    "insert_fail": 0,
+    "arrival": 118,
+    "red_light": 2
+   },
+   "NE→SW": {
+    "episodes": 120,
+    "insert_fail": 0,
+    "arrival": 116,
+    "wrong_lane": 4
+   },
+   "E→W": {
+    "episodes": 120,
+    "insert_fail": 0,
+    "arrival": 113,
+    "wrong_lane": 3,
+    "red_light": 1,
+    "collision": 3
+   },
+   "S→N": {
+    "episodes": 120,
+    "insert_fail": 0,
+    "arrival": 118,
+    "red_light": 2
+   },
+   "SW→N": {
+    "episodes": 120,
+    "insert_fail": 0,
+    "arrival": 114,
+    "wrong_lane": 5,
+    "collision": 1
+   },
+   "W→E": {
+    "episodes": 120,
+    "insert_fail": 0,
+    "arrival": 119,
+    "collision": 1
+   }
+  }
+ }
+}

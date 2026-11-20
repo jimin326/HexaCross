@@ -1,0 +1,132 @@
+{
+ "map": "env/maps/yeonsan_train 기준 (주변 신호 수요 분배 + 버스), 관측: 앞 차체 감지(corridor_leader) 켬, 결정적 정책, 경로마다 시드당 15회. 모델: J8에서 PPO + 모방학습 손실로 75만 스텝 미세조정 (ft1/ens_753k)",
+ "scale_0.7_bus_demandsplit_seeds921-924": {
+  "tags": [
+   "f75s@921",
+   "f75t@922",
+   "f75u@923",
+   "f75v@924"
+  ],
+  "total": {
+   "episodes": 420,
+   "insert_fail": 0,
+   "arrival": 398,
+   "red_light": 13,
+   "collision": 5,
+   "wrong_lane": 4
+  },
+  "per_route": {
+   "S→W→회전교차로→W→E": {
+    "episodes": 60,
+    "insert_fail": 0,
+    "arrival": 60
+   },
+   "N→S": {
+    "episodes": 60,
+    "insert_fail": 0,
+    "arrival": 58,
+    "red_light": 2
+   },
+   "NE→SW": {
+    "episodes": 60,
+    "insert_fail": 0,
+    "arrival": 51,
+    "collision": 1,
+    "red_light": 5,
+    "wrong_lane": 3
+   },
+   "E→W": {
+    "episodes": 60,
+    "insert_fail": 0,
+    "arrival": 54,
+    "red_light": 4,
+    "wrong_lane": 1,
+    "collision": 1
+   },
+   "S→N": {
+    "episodes": 60,
+    "insert_fail": 0,
+    "arrival": 60
+   },
+   "SW→N": {
+    "episodes": 60,
+    "insert_fail": 0,
+    "arrival": 55,
+    "red_light": 2,
+    "collision": 3
+   },
+   "W→E": {
+    "episodes": 60,
+    "insert_fail": 0,
+    "arrival": 60
+   }
+  }
+ },
+ "scale_0.85_bus_demandsplit_seeds921-924_931-934": {
+  "tags": [
+   "f75a@921",
+   "f75b@922",
+   "f75c@923",
+   "f75d@924",
+   "f75e@931",
+   "f75f@932",
+   "f75g@933",
+   "f75h@934"
+  ],
+  "total": {
+   "episodes": 840,
+   "insert_fail": 0,
+   "arrival": 818,
+   "collision": 2,
+   "red_light": 11,
+   "wrong_lane": 9
+  },
+  "per_route": {
+   "S→W→회전교차로→W→E": {
+    "episodes": 120,
+    "insert_fail": 0,
+    "arrival": 116,
+    "wrong_lane": 2,
+    "red_light": 2
+   },
+   "N→S": {
+    "episodes": 120,
+    "insert_fail": 0,
+    "arrival": 118,
+    "red_light": 2
+   },
+   "NE→SW": {
+    "episodes": 120,
+    "insert_fail": 0,
+    "arrival": 117,
+    "red_light": 3
+   },
+   "E→W": {
+    "episodes": 120,
+    "insert_fail": 0,
+    "arrival": 115,
+    "wrong_lane": 3,
+    "red_light": 1,
+    "collision": 1
+   },
+   "S→N": {
+    "episodes": 120,
+    "insert_fail": 0,
+    "arrival": 120
+   },
+   "SW→N": {
+    "episodes": 120,
+    "insert_fail": 0,
+    "arrival": 112,
+    "collision": 1,
+    "red_light": 3,
+    "wrong_lane": 4
+   },
+   "W→E": {
+    "episodes": 120,
+    "insert_fail": 0,
+    "arrival": 120
+   }
+  }
+ }
+}
