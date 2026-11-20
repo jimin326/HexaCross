@@ -399,38 +399,53 @@ TRAFFIC = {
     # speed_dev  : 같은 타입 안에서도 개체별 희망속도 편차 (0~1)
     # color      : GUI에서 구분용 (ego의 빨강은 피할 것)
     # sigma      : Krauss 계열 전용 "운전자 불완전성" (다른 모델은 무시)
+    # keep_lane  : True면 배경차가 차로를 바꾸지 않는다 (직선도로 추월 학습용).
+    #              교차로에서는 False — 빈 옆 차로로 옮겨야 정지선 앞 차로를 고르게 쓴다.
+    #
+    # ※ 2026-11-20 도심 교차로용으로 조정 (전: 직선도로 추월 학습용 값)
+    #   - keep_lane False: 차로변경을 막아 두면 한 차로에만 줄을 서고 옆 차로가 빈다
+    #   - accel 1.8~2.0 → 2.6, tau 1.0~1.5 → 1.0~1.1: 녹색에 출발하는 속도와 차간 (가정값)
+    #   - krauss sigma 0.3 → 0.2, min_gap 2.5 → 2.0
+    #   측정 (python docs/research/check_demand.py, 배율 1.0, 1시간 × 3회,
+    #         traffic/yeonsan-capacity의 주변 신호 수요 분배 포함):
+    #     교차로 통과량 -28% → +3%, 순간이동 153 → 16회, 끝날 때 투입 대기 1,625 → 281대
+    #   이 브랜치(main)만으로는 배율 0.7에서 통과량 -30% → -14%, 투입 대기 938 → 458대.
     # ──────────────────────────────────────────────────────
     "controllers": {
         "krauss": {   # 산만한 인간 운전자
             "probability": 0.35,
             "carFollowModel": "Krauss",
-            "accel": 2.0, "decel": 4.5,
-            "tau": 1.0, "min_gap": 2.5,
-            "sigma": 0.3,
+            "accel": 2.6, "decel": 4.5,
+            "tau": 1.0, "min_gap": 2.0,
+            "sigma": 0.2,
+            "keep_lane": False,
             "max_speed": 14.0, "speed_dev": 0.15,
             "color": "1,1,0",    # 노랑
         },
         "idm": {      # 부드러운 표준 인간 모델
             "probability": 0.30,
             "carFollowModel": "IDM",
-            "accel": 1.8, "decel": 3.5,
-            "tau": 1.2, "min_gap": 2.0,
+            "accel": 2.6, "decel": 3.5,
+            "tau": 1.0, "min_gap": 2.0,
+            "keep_lane": False,
             "max_speed": 16.0, "speed_dev": 0.10,
             "color": "0,1,1",    # 시안
         },
         "eidm": {     # 반응지연 있는 현실적 인간
             "probability": 0.20,
             "carFollowModel": "EIDM",
-            "accel": 2.0, "decel": 4.0,
-            "tau": 1.1, "min_gap": 2.0,
+            "accel": 2.6, "decel": 4.0,
+            "tau": 1.0, "min_gap": 2.0,
+            "keep_lane": False,
             "max_speed": 16.5, "speed_dev": 0.10,
             "color": "1,0.6,0",  # 주황
         },
         "acc": {      # 크루즈 차량
             "probability": 0.15,
             "carFollowModel": "ACC",
-            "accel": 2.0, "decel": 4.0,
-            "tau": 1.5, "min_gap": 2.0,
+            "accel": 2.6, "decel": 4.0,
+            "tau": 1.1, "min_gap": 2.0,
+            "keep_lane": False,
             "max_speed": 19.0, "speed_dev": 0.05,
             "color": "1,0,1",    # 마젠타
         },
