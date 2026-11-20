@@ -1,6 +1,6 @@
-# 연산교차로 7경로 모델 I8 (지금 가장 좋음)
+# 연산교차로 7경로 모델 I8
 
-> 2026-11-20 · 브랜치 `traffic/yeonsan-capacity`
+> 2026-11-20 · 브랜치 `traffic/yeonsan-capacity` · **더 나은 모델: `models/yeonsan_7routes_J8/`**
 
 **모델 구성**
 - 모방학습 + DAgger 6회로 학습한 서로 다른 신경망 8개의 앙상블입니다.
