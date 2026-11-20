@@ -120,7 +120,7 @@ python tools/rl/residual_train.py ft1
 - ft2 마지막 저장본은 0.7에서 나아졌지만, 0.85가 나빠졌습니다.
 - 두 교통량을 평균하면 ft1 753k와 비슷해서(완주 약 96%, 충돌 약 0.8%) 바꾸지 않았습니다.
 - 신호 위반 감점만 올려서는 신호 위반이 확실히 줄지 않았습니다.
-- 원자료는 `docs/experiments/`에 있습니다. 학습 로그는 `train_logs/ft2.log`, 경로별 결과는 `eval_all.csv`의 g50·g75·g80 태그입니다.
+- 원자료는 `docs/experiments/`에 있습니다. 학습 로그는 `train_logs/ft2_train.txt`, 경로별 결과는 `eval_all.csv`의 g50·g75·g80 태그입니다.
 
 ## 파일
 
