@@ -140,7 +140,8 @@ def worker(remote, repo, sdir, seed):
     def _after_step(info):
         if d_p <= 0:
             return
-        if info.get("collided"):
+        # DANGER_RED=1: 신호위반 직전 장면도 위험 장면으로 저장 (황색 딜레마 반복 학습)
+        if info.get("collided") or (os.environ.get("DANGER_RED") == "1" and info.get("red_light")):
             if len(ring) >= 2 and ring[0][1]["rid"]:
                 src, m_ = ring[0]
                 n_ = st["n_saved"] % int(os.environ.get("DANGER_MAX", "150"))
@@ -215,7 +216,7 @@ def main():
               lane_entropy_coef=float(os.environ.get("LANE_ENT", hp.get("lane_entropy_coef", 0.0))), seed=seed, device="cpu")
     keep = {k: os.environ.get(k) for k in ("N_ENVS", "STEPS_PER_ENV", "TIMESTEPS", "SEED", "LR", "N_EPOCHS", "MINIBATCH",
                                            "ENT_COEF", "REWARD_PATCH", "INIT_MODEL", "INIT_ENSEMBLE", "DANGER_P", "RING_N", "VALUE_WARMUP", "LANE_ENT", "INIT_LOG_STD", "MAX_STEPS", "LANE_PLAN_RANGE",
-                                           "OBS_VISIBILITY", "LANE_ARROWS", "INTERNAL_OBS", "BC_DATA", "BC_W", "BC_STEPS", "RESIDUAL_BASE", "RESIDUAL_SCALE", "RESIDUAL_LANE")}
+                                           "OBS_VISIBILITY", "LANE_ARROWS", "INTERNAL_OBS", "BC_DATA", "BC_W", "BC_W_END", "BC_STEPS", "DANGER_P", "DANGER_RED", "ROUTE_SET", "RESIDUAL_BASE", "RESIDUAL_SCALE", "RESIDUAL_LANE")}
     json.dump({"env": keep, "hparams": {k: (list(v) if isinstance(v, tuple) else v) for k, v in hp.items()},
                "reward": _reward()}, open(os.path.join(run_dir, "run_patch.json"), "w"), ensure_ascii=False, indent=1)
     for f in ("env/road_config.py", "env/mdp_config.py", "train.py"):
@@ -338,13 +339,16 @@ def main():
         if bc is not None and not warm:
             # 모방학습 손실을 함께: PPO 업데이트 뒤 전문가 데이터로 BC_STEPS번 (가중치 BC_W) — 모방학습으로 익힌 행동이 흐트러지지 않게
             bo, ba, bl = bc
+            # BC_W_END가 있으면 학습이 진행될수록 모방학습 가중치를 BC_W → BC_W_END로 선형 감소 (강화학습이 점점 주도)
+            w0_ = float(os.environ.get("BC_W", "1.0")); w1_ = float(os.environ.get("BC_W_END", w0_))
+            bc_w_now = w0_ + (w1_ - w0_) * min(1.0, steps / float(os.environ.get("BC_DECAY_STEPS", total)))
             for _ in range(int(os.environ.get("BC_STEPS", "20"))):
                 ix = torch.randint(0, len(bo), (int(os.environ.get("BC_BATCH", "512")),))
                 mu_, _, lg_, _ = agent.policy(bo[ix])
                 lbc = bc_mod.accel_loss(mu_.squeeze(-1), ba[ix], bo[ix]) + torch.nn.functional.cross_entropy(lg_, bl[ix], weight=bc_cw)
-                agent.optimizer.zero_grad(); (float(os.environ.get("BC_W", "1.0")) * lbc).backward()
+                agent.optimizer.zero_grad(); (bc_w_now * lbc).backward()
                 torch.nn.utils.clip_grad_norm_(agent.policy.parameters(), 0.5); agent.optimizer.step()
-            st["bc_loss"] = float(lbc.item())
+            st["bc_loss"] = float(lbc.item()); st["bc_w"] = bc_w_now
         if warm:
             for p_ in agent.policy.parameters():
                 p_.requires_grad_(True)

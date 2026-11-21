@@ -15,6 +15,16 @@ from common import BASE, setup as _setup, reward as _reward
 
 
 def worker(q, repo, sdir, seed, n_ep, model):
+    # 수집 프로세스가 죽으면 본 프로세스가 결과를 영원히 기다리므로, 오류를 큐로 알리고 끝낸다
+    try:
+        _worker(q, repo, sdir, seed, n_ep, model)
+    except BaseException:
+        import traceback
+        q.put(("ERR", sdir, traceback.format_exc()))
+        raise
+
+
+def _worker(q, repo, sdir, seed, n_ep, model):
     _setup(repo)
     import traci, torch
     from env.road_config import ROAD, EGO, TRAFFIC
@@ -54,7 +64,7 @@ def worker(q, repo, sdir, seed, n_ep, model):
     O, A, L, E, R = [], [], [], [], []
     res = {}
     for ep in range(n_ep):
-        rid = f"ego_{(seed + ep) % 7}"
+        rid = f"ego_{(seed + ep) % int(os.environ.get('N_ROUTES', '7'))}"  # 루프 경로 B(ROUTE_SET=loopB)는 N_ROUTES=1
         env.meta["ego_routes"] = [rid]
         for k in range(10):
             try:
@@ -132,7 +142,15 @@ def main():
     ps = [ctx.Process(target=worker, args=(q, repo, os.path.join(base, f"w{i}"), seed * 10 + i, n_ep, model)) for i in range(nw)]
     for p in ps:
         p.start()
-    parts = [q.get() for _ in ps]
+    parts = []
+    for _ in ps:
+        x = q.get()
+        if isinstance(x[0], str) and x[0] == "ERR":
+            print("WORKER ERROR", x[1], x[2], flush=True)
+            for p in ps:
+                p.terminate()
+            sys.exit(1)
+        parts.append(x)
     for p in ps:
         p.join()
     O, A, L, E, R = (np.concatenate([p[k] for p in parts]) for k in range(5))
