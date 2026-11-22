@@ -108,7 +108,7 @@
 | S 월드컵대로 (`x6_S_in1`) | 4 | 3번 칸 = 차로 0·1 | **24번 칸 = 차로 2·3** | – |
 | W, E, NE | 4 | 2 · 4 · 5번 칸 = 전 차로 | – | – |
 
-- 차로 번호는 0 = 맨 오른쪽 (원칙 5). 그룹은 코드(`sumo_env._state_layout`)가 신호 프로그램(sumocfg 추가 파일 `highway.tls.xml`까지 반영)에서 현시마다 녹색인 링크를 비교해 나눈다. 그룹 A = 대표 링크(차로 0)가 속한 그룹, B·C는 진입로 순서(`leg_order`: SW, N, W, S, E, NE)대로 21번부터 번호를 붙인다.
+- 차로 번호는 0 = 맨 오른쪽 (원칙 5). 그룹은 코드(`env/state_layout.py` `lane_groups`)가 신호 프로그램(sumocfg 추가 파일 `highway.tls.xml`까지 반영)에서 현시마다 녹색인 링크를 비교해 나눈다. 그룹 A = 대표 링크(차로 0)가 속한 그룹, B·C는 진입로 순서(`leg_order`: SW, N, W, S, E, NE)대로 21번부터 번호를 붙인다.
 - **v1의 문제:** N 진입로의 대표 링크(31)는 차로 0(시청 방면)이었다. 루프 B AV는 차로 2·3으로 출발하므로, 매 에피소드 첫 신호를 다른 그룹의 색으로 기록했다. v2는 23번 칸으로 AV 그룹을 따로 기록한다.
 - SW는 버스 전용 차로(BRT)를 포함한 7차로다. 신호 프로그램상 차로 6이 일반 차로 3·4와 같은 그룹(B)으로 묶이고 차로 5만 따로(C) 켜진다. 실제 BRT 신호와 맞는지는 신호 가정(`yeonsan_x6.json`)을 만든 승준 확인이 필요하다.
 
@@ -254,7 +254,7 @@ v1 초안(34차원)의 31 신호 색 · 32 정지선 거리 · 33 남은 시간�
 
 | 항목 | 구현 위치 | 상태 |
 |---|---|---|
-| `state.*` (AV, 신호, 주변 차량) | `env/sumo_env.py` `get_privileged_state` · `_signal_state` / 번호표 `_state_layout` → `_number_loop_roads`, `_number_signals` | ✅ `leg` 13~25, 신호 10~24, 차로 그룹, `angle`, 반경 R, "그 밖" 9 |
+| `state.*` (AV, 신호, 주변 차량) | 매 스텝 값: `env/sumo_env.py` `get_privileged_state` · `_signal_state` / 번호표(지도 파일만 읽음): `env/state_layout.py` `build_state_layout` → `number_loop_roads`, `number_signals` | ✅ `leg` 13~25, 신호 10~24, 차로 그룹, `angle`, 반경 R, "그 밖" 9 |
 | `detected_vehicles` | `env/sumo_env.py` `get_detected_vehicles` | 그대로 |
 | `event.*`, `meta.json` | `collect_pomdp_data.py` (`write_meta`) | ✅ 8절 meta 항목 |
 | 루프 B 수집 | `collect_pomdp_data.py` | ✅ `ROUTE_SET`이 있으면 `routes7.apply()` (평가·녹화와 같은 경로·지도·MAX_STEPS) |
