@@ -7,18 +7,27 @@ usage:
     --n N            경로마다 평가 횟수 (기본 100)
     --workers W      동시에 돌릴 SUMO 수 (기본: CPU 코어 수 - 1, 최대 8)
     --seed S         시드 시작값 (기본 905). 경로·묶음마다 다른 시드를 쓴다
-    --routes R       평가할 경로 id (쉼표 구분, 기본: 7개 전부 ego_0..ego_6)
-    --scale X        교통량 배율 (TRAFFIC["demand"]["scale"]). 주면 그 배율로
-                     SUMO 파일을 env/sumo_eval/scale_X/ 에 만들어서 평가한다
+    --routes R       평가할 경로 id (쉼표 구분, 기본: 경로 묶음 전부. 7경로면 ego_0..ego_6)
+    --scale X        교통량 배율 (TRAFFIC["demand"]["scale"]). 주지 않으면 road_config 기본값(1.0).
+                     SUMO 파일을 env/sumo_eval/<경로 묶음>_scale_X/ 에 만들어서 평가한다
     --sumo-dir DIR   이미 만든 SUMO 폴더로 평가 (--scale 대신)
     --rebuild        env/sumo_eval/ 폴더가 있어도 다시 만든다
+                     (도로 설정·지도 파일이 만든 폴더보다 새것이면 저절로 다시 만든다)
     --chunk K        한 작업이 맡는 에피소드 수 (기본 25)
     --label NAME     보고서에 쓸 모델 이름 (기본: 모델 폴더 이름)
     --compare L=JSON 같이 비교할 다른 결과 (여러 번 줄 수 있음, eval_routes 형식 가능)
 
-예 (BC 모델, 실측 교통량 그대로, 경로마다 100회):
-    python tools/rl/eval_parallel.py models/yeonsan_7routes_BC/model.pt results/eval_BC_s1 \\
-        --scale 1.0 --compare BC_s0.5=models/yeonsan_7routes_BC/eval_560.json
+환경변수 (tools/rl/routes7.py와 같다. 작업 프로세스에도 그대로 넘어간다):
+    ROUTE_SET=loopB  7경로 대신 루프 경로 B (넓은 지도 yeonsan_area). MAX_STEPS=6000과 같이 쓴다
+    MAX_STEPS        에피소드 최대 스텝 (기본 3000)
+
+예 (7경로 J8_RL, 교통량 1.0, 경로마다 60회, 먼저 평가한 J8과 비교):
+    python tools/rl/eval_parallel.py models/yeonsan_7routes_J8_RL/model.pt results/eval_J8_RL \\
+        --n 60 --compare J8=results/eval_J8/eval.json
+
+예 (루프 경로 B):
+    ROUTE_SET=loopB MAX_STEPS=6000 python tools/rl/eval_parallel.py \\
+        models/yeonsan_loopB_RL/model.pt results/eval_loopB --n 60
 
 결과 (OUT_DIR):
     eval.json   eval_routes.py와 같은 형식 + "_meta"(조건 기록) + 경로별 "metrics"
@@ -123,6 +132,20 @@ def _headless_copy(src, dst):
     return dst
 
 
+def _stale(built, road):
+    """만들어 둔 SUMO 폴더가 도로 설정·빌더·지도 파일보다 오래됐으면 True."""
+    cfg = os.path.join(built, "highway.sumocfg")
+    if not os.path.exists(cfg):
+        return True
+    srcs = [os.path.join(BASE, "env", f) for f in
+            ("road_config.py", "road_builder.py", "osm_builder.py", "signals.py", "bus_lanes.py")]
+    net = (road.get("osm") or {}).get("net_file")
+    if net:
+        srcs.append(os.path.join(BASE, net))
+    t = os.path.getmtime(cfg)
+    return any(os.path.exists(p) and os.path.getmtime(p) > t for p in srcs)
+
+
 def _mean(xs):
     xs = [x for x in xs if x is not None]
     return (sum(xs) / len(xs), len(xs)) if xs else (None, 0)
@@ -134,6 +157,16 @@ def _git_commit():
                               capture_output=True, text=True).stdout.strip()
     except OSError:
         return ""
+
+
+def _git_dirty():
+    """커밋 안 한 코드 변경(추적 중인 파일)이 있는 상태로 평가했는지 (collect_pomdp_data의 meta와 같은 뜻)."""
+    try:
+        out = subprocess.run(["git", "status", "--porcelain", "--untracked-files=no"], cwd=BASE,
+                             capture_output=True, text=True).stdout
+        return bool(out.strip())
+    except OSError:
+        return None
 
 
 def main():
@@ -158,6 +191,8 @@ def main():
     import routes7
     from env.road_config import ROAD, EGO, TRAFFIC
     from env import road_builder
+    from env.mdp_config import SIMULATION
+    route_set = os.environ.get("ROUTE_SET") or "7routes"
 
     # ── SUMO 폴더 (모든 작업이 같이 읽기만 한다) ──
     if a.sumo_dir:
@@ -172,13 +207,19 @@ def main():
             if not demand:
                 sys.exit("TRAFFIC['demand']가 없어 --scale을 쓸 수 없습니다. --sumo-dir를 쓰세요.")
             demand["scale"] = a.scale
-        built = os.path.join(BASE, "env", "sumo_eval", f"build_scale_{scale}")
-        if a.rebuild or not os.path.exists(os.path.join(built, "highway.sumocfg")):
-            print(f"SUMO 파일 생성: {built} (교통량 배율 {scale})", flush=True)
+        # 경로 묶음마다 지도·경로가 다르므로 폴더를 나눈다 (7경로 폴더를 루프 B 평가에 쓰지 않게)
+        tag = f"{route_set}_scale_{scale}"
+        built = os.path.join(BASE, "env", "sumo_eval", f"build_{tag}")
+        if a.rebuild or _stale(built, ROAD):
+            print(f"SUMO 파일 생성: {built} (경로 묶음 {route_set}, 교통량 배율 {scale})", flush=True)
             road_builder.build(ROAD, EGO, TRAFFIC, built)
-        sumo_dir = _headless_copy(built, os.path.join(BASE, "env", "sumo_eval", f"scale_{scale}"))
+        sumo_dir = _headless_copy(built, os.path.join(BASE, "env", "sumo_eval", tag))
 
-    route_ids = a.routes.split(",") if a.routes else [f"ego_{i}" for i in range(len(routes7.ROUTES))]
+    # 경로 수는 routes7.apply()가 정한 EGO["routes"]를 따른다 (7경로 7개, ROUTE_SET=loopB 1개)
+    route_ids = a.routes.split(",") if a.routes else [f"ego_{i}" for i in range(len(EGO["routes"]))]
+    unknown = [r for r in route_ids if r not in routes7.NAMES]
+    if unknown:
+        sys.exit(f"없는 경로 id: {unknown} (이 경로 묶음의 경로: {list(routes7.NAMES)})")
     tasks = []
     for ri, rid in enumerate(route_ids):
         done = 0
@@ -203,9 +244,10 @@ def main():
 
     res = {"_meta": {
         "model": os.path.relpath(os.path.abspath(a.model), BASE).replace("\\", "/"),
+        "route_set": route_set, "max_steps": int(SIMULATION["max_steps"]),
         "n_per_route": a.n, "seed_start": a.seed, "traffic_scale": scale,
         "sumo_dir": os.path.relpath(sumo_dir, BASE).replace("\\", "/"),
-        "commit": _git_commit(), "date": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "commit": _git_commit(), "git_dirty": _git_dirty(), "date": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
         "minutes": round((time.time() - t0) / 60, 1),
         "libsumo": "libsumo" in str(sys.modules.get("traci")),
     }}

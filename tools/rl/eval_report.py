@@ -13,6 +13,9 @@ usage:
                   "wrong_lane": w, "red_light": r, "timeout": t, ["metrics": {...}]}, ...}
     eval_routes.py 형식(경로가 맨 위) 그대로 읽는다. eval_parallel.py 결과에는
     "_meta"(조건 기록)와 경로별 "metrics"(주행 품질)가 더 들어 있다.
+    여러 조건을 담은 models/*/eval.json은 'LABEL=파일.json#조건'으로 하나를 고른다.
+    예: J8_RL=models/yeonsan_7routes_J8_RL/eval.json#scale_0.7_bus_demandsplit_seeds921-924
+    (조건 이름을 모르면 #없이 주면 목록을 보여 준다.)
 
 출력 (OUT_DIR):
     report.md        결과 요약 표 (모델별 합계, 경로별, 95% 신뢰구간, 기준 판정)
@@ -53,9 +56,28 @@ def wilson(k, n, z=1.96):
 
 
 def load(path):
+    """결과 JSON을 읽는다. 'file.json#조건'이면 여러 조건을 담은 파일에서 그 조건만 고른다."""
+    path, _, cond = path.partition("#")
     with open(path, encoding="utf-8") as f:
         d = json.load(f)
     meta = d.pop("_meta", {})
+    # 여러 조건을 담은 형식 (models/*/eval.json):
+    #   {"map": "설명", "scale_1.0_seeds921-924": {"per_route": {...}, "total": {...}, "tags": [...]}, ...}
+    conds = [k for k, v in d.items() if isinstance(v, dict) and isinstance(v.get("per_route"), dict)]
+    if conds and not isinstance(d.get("per_route"), dict):
+        if not cond:
+            if len(conds) > 1:
+                sys.exit(f"{path}에 평가 조건이 {len(conds)}개 있습니다. 'LABEL={path}#조건' 으로 하나를 고르세요:\n  "
+                         + "\n  ".join(conds))
+            cond = conds[0]
+        if cond not in conds:
+            sys.exit(f"{path}에 조건 '{cond}'가 없습니다. 있는 조건:\n  " + "\n  ".join(conds))
+        meta = {**meta, "condition": cond}
+        if isinstance(d.get("map"), str):
+            meta["map"] = d["map"]
+        d = d[cond]
+    elif cond:
+        sys.exit(f"{path}는 조건이 하나뿐인 형식이라 '#{cond}'를 쓸 수 없습니다.")
     # 여러 시드를 합친 형식: {"seeds": [...], "per_route": {...}, "total": {...}}
     if isinstance(d.get("per_route"), dict):
         if "seeds" in d:
@@ -272,7 +294,7 @@ def main(argv):
         L += ["## 그래프", ""] + [f"![{fn}]({fn})" for fn in figs] + [""]
     with open(os.path.join(out_dir, "report.md"), "w", encoding="utf-8") as f:
         f.write("\n".join(L))
-    print("\n".join(L[:3 + len(models)]))
+    print("\n".join(L[:4 + len(models)]))   # 제목, 빈 줄, 표 머리 2줄 + 모델마다 1줄
     print(f"\n저장: {out_dir}/report.md, summary.csv, per_route.csv" + (", " + ", ".join(figs) if figs else ""))
 
 
