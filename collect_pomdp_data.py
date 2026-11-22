@@ -3,7 +3,7 @@
 저장 단위는 POMDP transition 하나다:
     (o_t, a_t, r_t, o_{t+1}, terminated, truncated, s_t, s_{t+1})
 
-- o_t / o_{t+1}: agent가 실제로 보는 부분관측 (31차원, 신호 관측을 켜면 34차원)
+- o_t / o_{t+1}: agent가 실제로 보는 부분관측 (mdp_config 설정에 따라 차원이 다름. 루프 B 모델은 56차원)
 - a_t: [가감속 raw, 차선변경 raw]
 - lane_change: 실제 환경에 적용된 {-1, 0, +1}
 - s_t / s_{t+1}: SUMO 내부의 privileged simulator state.
@@ -12,15 +12,15 @@
 컬럼 정의는 DATA_FORMAT.md (v2). 모든 값은 숫자다 (문자열 id·신호 문자 없음).
 신호등·도로 번호표는 출력과 같이 저장하는 <name>.meta.json에 적는다.
 
-v2:
+DATA_FORMAT v2:
 - ROUTE_SET=loopB면 평가·녹화와 같은 루프 B 경로·넓은 지도·MAX_STEPS를 쓴다 (tools/rl/routes7.py).
 - 에피소드 번호 = 에피소드 시드 = --seed × 100000 + i. 사람마다 --seed를 다르게 주면
   여러 PC의 파일을 번호를 고치지 않고 합칠 수 있고, 그 시드로 에피소드를 다시 만들 수 있다.
 - state.vehicles는 AV 반경 --state-radius(기본 150 m) 안 차량만, angle 포함.
 
-루프 B 수집 예 (PowerShell은 $env:ROUTE_SET="loopB" 식으로):
+루프 B 수집 예 (사람별 --seed · --name은 DATA_FORMAT.md 8절 분담표, PowerShell은 $env:ROUTE_SET="loopB" 식으로):
     ROUTE_SET=loopB MAX_STEPS=6000 LANE_PLAN_RANGE=300 python collect_pomdp_data.py \\
-        --model models/yeonsan_loopB_RL/model.pt --episodes 900 --workers 7 --seed 1 --name loopB_jimin
+        --model models/yeonsan_loopB_RL/model.pt --episodes 800 --workers 8 --seed 1 --name loopB_jimin
 
 용량을 줄이기 위해:
 - JSONL은 gzip으로 압축해서 쓰고(.jsonl.gz), observation/state/detected_vehicles의
@@ -84,7 +84,7 @@ from env.road_config import ROAD, EGO, TRAFFIC, SIGNAL
 from env.mdp_config import SIMULATION, OBSERVATION, ACTION
 from env import road_builder
 from env.sumo_env import SumoHighwayEnv
-from train import HPARAMS, REWARD  # 학습과 같은 보상 조건 + PPO 네트워크 구조
+from train import REWARD  # 학습과 같은 보상 조건 (PPO 네트워크 구조는 test.load_agent가 train.HPARAMS로 만든다)
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 
@@ -97,6 +97,11 @@ if os.environ.get("ROUTE_SET"):
 
 # 에피소드 번호 = 에피소드 시드 = --seed × EP_STRIDE + i (DATA_FORMAT v2 8절)
 EP_STRIDE = 100000
+
+
+def state_radius(args):
+    """--state-radius (m). 0 이하면 None = 지도 전체 차량."""
+    return args.state_radius if args.state_radius and args.state_radius > 0 else None
 
 
 def detect_algorithm(model_path: str) -> str:
@@ -223,7 +228,7 @@ def collect(args, sumocfg, episodes, worker_id, jsonl_path, npz_path, tag=""):
         gui=args.gui,
         gui_autostart=True,
     )
-    env.state_radius = args.state_radius if args.state_radius and args.state_radius > 0 else None
+    env.state_radius = state_radius(args)
     act = make_policy(args, env, worker_seed)
     try:
         import torch
@@ -436,7 +441,7 @@ def write_meta(path, args, sumocfg, total, workers, jsonl_path, npz_path):
                         "flows": [{"name": f.get("name"), "vph": f.get("vph"), "source": f.get("source")}
                                   for f in loop_cfg.get("flows", [])]}
                        if loop_cfg.get("enabled") and env_meta.get("loop_flows") else {"enabled": False}),
-        "vehicles_radius_m": (args.state_radius if args.state_radius and args.state_radius > 0 else None),
+        "vehicles_radius_m": state_radius(args),
         "lane_index": "0 = 맨 오른쪽 (버스 전용 차로 포함)",
         "angle": "도, 0 = 북쪽, 90 = 동쪽, 시계방향",
         "leg_order": list(env.LEG_ORDER),
