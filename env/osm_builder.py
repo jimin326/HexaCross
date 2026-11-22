@@ -866,6 +866,32 @@ def build_osm(road: dict, ego: dict, traffic: dict, signal: dict,
             cur = v
         return out
 
+    # 순환 도로 배경 흐름 (TRAFFIC["loop_flows"]): 연산교차로를 지나지 않고 루프 주변 도로만 다니는 차.
+    #   연산교차로 실측 OD는 교차로를 지나는 차만 담고 있어서, 루프 경로의 나머지 구간(연수로·중앙천로·
+    #   거제천로 등)이 거의 비어 있었다. 엣지 id는 net_file로 적은 지도 기준이라 그 지도일 때만 넣는다.
+    #   대/시 = vph × loop_flows.scale × demand.scale (연산교차로 수요와 같은 배율을 따름)
+    lf = traffic.get("loop_flows") or {}
+    if lf.get("enabled") and cfg.get("net_file") and \
+            os.path.normpath(cfg["net_file"]) == os.path.normpath(lf.get("net_file", "")):
+        lscale = float(lf.get("scale", 1.0)) * float(demand.get("scale", 1.0))
+        meta["loop_flows"] = {"veh_per_hour": 0.0, "flows": {}}
+        for f in lf.get("flows", []):
+            via = list(f["via"])
+            missing = [e for e in via if not net.hasEdge(e)]
+            if missing:
+                raise RuntimeError(f"loop_flows '{f['name']}': 지도에 없는 엣지 {missing}")
+            vph = float(f["vph"]) * lscale
+            src, dst = net.getEdge(via[0]), net.getEdge(via[-1])
+            p = via_path(src, dst, via[1:-1])
+            if p is None:
+                raise RuntimeError(f"loop_flows '{f['name']}': 연산교차로를 지나지 않는 경로가 없습니다")
+            before = k
+            add_flow(src, dst, vph, finder=lambda s_, t_, p=p: p)
+            if k > before:
+                meta["loop_flows"]["flows"][f"bg_{before}"] = {"name": f["name"], "rate": vph,
+                                                               "source": f.get("source", "")}
+                meta["loop_flows"]["veh_per_hour"] += vph
+
     def ego_path(spec):
         via = None
         if isinstance(spec, dict):       # {"legs": (진입, 진출, 진입, 진출), "via": [엣지...]} — 재진입 전에 들를 엣지
