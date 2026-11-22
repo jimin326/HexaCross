@@ -1,505 +1,597 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>연산교차로 차로 조사</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
 <style>
-/* Layout: 한 열 문서. 위에 교차로 개요도, 아래로 접근로별 "정지선에서 본 차로 단면" 카드, 마지막에 신호 주기 막대 */
+/* 레이아웃: 위 = 진입 방향 칩 + 시간대 토글, 가운데 = 왼쪽 축척 지도 / 오른쪽 진입부 상세, 아래 = 출발·도착 표, 맨 아래 근거·한계 */
 :root {
-  --bg: #f4f5f2;
-  --surface: #ffffff;
-  --fg: #1d2023;
-  --muted: #5c6268;
-  --line: #d9dcd6;
-  --asphalt: #3a3e43;
-  --asphalt-2: #2f3237;
-  --paint: #f3f3ef;
-  --bus-line: #4fa3e0;
-  --island: #6f9a5b;
-  --done: #2f7d4f;
-  --todo: #9a8f7a;
-  --bad: #c0392b;
-  --av: #e2541b;
-  /* 방면(목적지) 색: 지도·차로·신호 막대 모두 같은 색 */
-  --d-n: #e2541b;   /* 교대 · 동래  (AV 도착) */
-  --d-sw: #6b52c8;  /* 시청 · 서면 */
-  --d-s: #0e8a7c;   /* 수영 · 광안리 */
-  --d-ne: #b8860b;  /* 안락 · 반송로 */
-  --d-e: #3b7d34;   /* 연산터널 · 고분로 */
-  --d-w: #b2336c;   /* 거제천 · 법원검찰청 */
-  --chip-fg: #ffffff;
+  color-scheme: dark;
+  --bg: #111418;
+  --surface: #181c21;
+  --surface-2: #1f242a;
+  --fg: #e8eaed;
+  --muted: #9aa3ad;
+  --line: #2b3138;
+  --asphalt: #2e343b;
+  --asphalt-edge: #3a414a;
+  --paint: #e9ecef;
+  --yellow: #e8c547;
+  --bus: #2a4a7a;
+  --bus-line: #6aa8ff;
+  --bad: #ff6b6b;
+  --av: #ff8a4c;
+  --d-n: #6aa5ff;   /* 교대 · 중앙대로 동래 */
+  --d-ne: #5fd39a;  /* 안락 · 반송로 */
+  --d-e: #f2b84b;   /* 연산터널 · 고분로 */
+  --d-s: #b49cff;   /* 수영 · 월드컵대로 남 */
+  --d-sw: #ff8a4c;  /* 시청 · 중앙대로 서면 */
+  --d-w: #ff6fae;   /* 거제 · 월드컵대로 사직 */
   --font-body: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #15171a; --surface: #1d2024; --fg: #e9eae6; --muted: #a2a7ac; --line: #33373c;
-    --asphalt: #2b2e33; --asphalt-2: #24272b; --paint: #e6e6e0; --bus-line: #6bb6ec; --island: #6f9a5b;
-    --done: #5bbf82; --todo: #b3a88f; --bad: #ef6b5b; --av: #ff7a45;
-    --d-n: #f06a33; --d-sw: #8b75e6; --d-s: #23a796; --d-ne: #cf9d1d; --d-e: #55a04b; --d-w: #d0528a;
-    --chip-fg: #ffffff; color-scheme: dark;
-  }
-}
-:root[data-theme="dark"] {
-  --bg: #15171a; --surface: #1d2024; --fg: #e9eae6; --muted: #a2a7ac; --line: #33373c;
-  --asphalt: #2b2e33; --asphalt-2: #24272b; --paint: #e6e6e0; --bus-line: #6bb6ec; --island: #6f9a5b;
-  --done: #5bbf82; --todo: #b3a88f; --bad: #ef6b5b; --av: #ff7a45;
-  --d-n: #f06a33; --d-sw: #8b75e6; --d-s: #23a796; --d-ne: #cf9d1d; --d-e: #55a04b; --d-w: #d0528a;
-  --chip-fg: #ffffff; color-scheme: dark;
-}
 * { box-sizing: border-box; }
 body {
-  background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.6;
+  margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.55;
   padding-left: max(16px, env(safe-area-inset-left, 0px));
   padding-right: max(16px, env(safe-area-inset-right, 0px));
-  padding-block: 28px 64px;
+  padding-block: 28px 56px;
 }
-.wrap { max-width: 980px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px; }
-h1 { font-size: 1.75rem; line-height: 1.25; margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
-h2 { font-size: 1.2rem; margin: 0; text-wrap: balance; }
-h3 { font-size: 0.8rem; margin: 0; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; }
-p { margin: 0; max-width: 68ch; }
-.muted { color: var(--muted); }
-.mono { font-family: var(--font-mono); font-size: 0.82em; }
+.wrap { max-width: 1180px; margin: 0 auto; display: flex; flex-direction: column; gap: 22px; }
+.crumb { color: var(--muted); font-size: .85rem; }
+h1 { font-size: 1.85rem; line-height: 1.2; margin: 4px 0 6px; letter-spacing: -0.01em; }
+.lead { color: var(--muted); margin: 0; max-width: 70ch; }
+.num, .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 
-header { display: flex; flex-direction: column; gap: 10px; }
-.status-row { display: flex; flex-wrap: wrap; gap: 8px; }
-.pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: 0.82rem; border: 1px solid var(--line); background: var(--surface); }
-.pill .dot { width: 8px; height: 8px; border-radius: 50%; }
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; justify-content: space-between; }
+.bar-label { font-size: .8rem; color: var(--muted); margin-right: 4px; }
+.pills { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.pill {
+  display: inline-flex; align-items: center; gap: 8px; padding: 7px 13px 7px 11px; border-radius: 999px;
+  background: var(--surface); border: 1px solid var(--line); color: var(--fg); font: inherit; font-size: .9rem; cursor: pointer;
+}
+.pill small { color: var(--muted); font-size: .78rem; }
+.pill .tot { font-family: var(--font-mono); font-size: .75rem; color: var(--muted); }
+.pill[aria-pressed="true"] { background: var(--surface-2); border-color: var(--c); box-shadow: inset 0 0 0 1px var(--c); }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--c); flex: none; display: inline-block; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.seg button { font: inherit; font-size: .85rem; padding: 6px 12px; background: var(--surface); color: var(--muted); border: 0; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--surface-2); color: var(--fg); font-weight: 600; }
 
-.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.main { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+@media (max-width: 920px) { .main { grid-template-columns: 1fr; } }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; min-width: 0; }
+.map svg { width: 100%; height: auto; display: block; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: .78rem; color: var(--muted); margin-top: 8px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw-line { width: 22px; height: 0; border-top: 3px solid var(--fg); display: inline-block; }
 
-/* 개요 */
-.overview { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 20px; align-items: center; }
-@media (max-width: 720px) { .overview { grid-template-columns: 1fr; } }
-.overview svg { width: 100%; max-width: 440px; height: auto; display: block; margin: 0 auto; }
-.legend { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 14px; }
-.legend div { display: flex; align-items: center; gap: 8px; font-size: 0.88rem; }
-.swatch { width: 14px; height: 14px; border-radius: 3px; flex: none; }
+.panel h4 { margin: 18px 0 8px; font-size: .78rem; color: var(--muted); font-weight: 600; letter-spacing: .04em; }
+.panel .eyebrow { font-size: .8rem; color: var(--muted); }
+.panel h2 { margin: 2px 0 2px; font-size: 1.35rem; }
+.panel .sub { color: var(--muted); font-size: .88rem; }
+.tag { display: inline-block; font-size: .7rem; padding: 1px 7px; border-radius: 6px; font-weight: 600; vertical-align: 2px; margin-left: 6px; }
+.tag.av { background: color-mix(in srgb, var(--av) 22%, transparent); color: var(--av); }
+.tag.as { background: color-mix(in srgb, var(--muted) 20%, transparent); color: var(--muted); }
 
-/* 접근로 카드 */
-.approach-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 8px; }
-.tag { font-size: 0.78rem; padding: 2px 8px; border-radius: 4px; font-weight: 600; }
-.tag.done { color: var(--done); border: 1px solid var(--done); }
-.tag.todo { color: var(--todo); border: 1px dashed var(--todo); }
-.tag.av { color: var(--av); border: 1px solid var(--av); }
+.lanes { display: flex; flex-direction: column; gap: 6px; }
+.lane {
+  display: grid; grid-template-columns: 30px 30px minmax(0,1fr); gap: 10px; align-items: center;
+  padding: 7px 10px; border-radius: 10px; background: var(--surface-2); border: 1px solid transparent; cursor: default;
+}
+.lane:hover, .lane.on { border-color: var(--asphalt-edge); }
+.lane.bus { background: color-mix(in srgb, var(--bus) 55%, var(--surface-2)); }
+.lane.slip { border: 1px dashed var(--asphalt-edge); background: transparent; }
+.lnum {
+  width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: .8rem;
+  background: var(--paint); color: #111;
+}
+.lane.bus .lnum { background: var(--bus-line); color: #0b1a33; }
+.lane.slip .lnum { background: transparent; color: var(--fg); border: 1.5px dashed var(--muted); font-size: .7rem; }
+.arrow svg { width: 28px; height: 28px; display: block; }
+.dests { display: flex; flex-wrap: wrap; gap: 4px 12px; font-weight: 600; font-size: .92rem; }
+.dests span { display: inline-flex; align-items: center; gap: 6px; }
+.note { font-size: .78rem; color: var(--muted); line-height: 1.4; margin-top: 1px; }
 
-.section-label { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
-.road-scroll { overflow-x: auto; padding-bottom: 4px; }
-.road { display: flex; align-items: stretch; min-width: max-content; background: var(--asphalt-2); border-radius: 6px; padding: 6px; gap: 0; }
-.edge { width: 10px; flex: none; }
-.edge.curb { background: repeating-linear-gradient(90deg, #c9b458 0 3px, transparent 3px 10px); opacity: .9; border-radius: 2px; }
-.edge.fence { background: repeating-linear-gradient(180deg, #8a8f95 0 6px, transparent 6px 12px); width: 8px; }
-.lane { width: 104px; flex: none; background: var(--asphalt); color: var(--paint); padding: 10px 8px 12px; display: flex; flex-direction: column; gap: 6px; align-items: stretch; position: relative; }
-.lane .ln { font-family: var(--font-mono); font-size: 0.72rem; opacity: .75; text-align: center; }
-.lane .kind { font-size: 0.72rem; text-align: center; font-weight: 600; letter-spacing: .04em; }
-.lane.bus { background: color-mix(in srgb, var(--asphalt) 82%, var(--bus-line)); }
-.lane.bus .kind { color: var(--bus-line); }
-.lane.slip { width: 112px; background: color-mix(in srgb, var(--asphalt) 90%, var(--paint)); }
-.lane.av::after { content: "AV"; position: absolute; top: 6px; right: 6px; font-size: .64rem; font-weight: 700; color: var(--av); }
-.chip { display: flex; align-items: center; justify-content: center; gap: 4px; font-size: 0.8rem; font-weight: 600; padding: 4px 4px; border-radius: 4px; color: var(--chip-fg); text-align: center; line-height: 1.25; }
-.chip .arr { font-size: 0.95rem; line-height: 1; }
-.chip.n { background: var(--d-n); } .chip.sw { background: var(--d-sw); } .chip.s { background: var(--d-s); }
-.chip.ne { background: var(--d-ne); } .chip.e { background: var(--d-e); } .chip.w { background: var(--d-w); }
-.chip.plain { background: transparent; color: var(--paint); border: 1px dashed color-mix(in srgb, var(--paint) 45%, transparent); font-weight: 500; }
-
-/* 차선(선) 종류 */
-.div { width: 6px; flex: none; position: relative; background: var(--asphalt); }
-.div::before { content: ""; position: absolute; left: 2px; width: 2px; top: 6px; bottom: 6px; }
-.div.dash::before { background: repeating-linear-gradient(180deg, var(--paint) 0 10px, transparent 10px 20px); }
-.div.solid::before { background: var(--paint); }
-.div.bus-dash::before { background: repeating-linear-gradient(180deg, var(--bus-line) 0 10px, transparent 10px 20px); }
-.div.bus-double { width: 10px; }
-.div.bus-double::before { left: 2px; background: var(--bus-line); }
-.div.bus-double::after { content: ""; position: absolute; left: 6px; width: 2px; top: 6px; bottom: 6px; background: var(--bus-line); }
-.div.island { width: 26px; background: var(--island); border-radius: 3px; }
-.div.island::before { display: none; }
-
-.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
-.facts > div { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
-table { border-collapse: collapse; width: 100%; font-size: 0.86rem; }
-th, td { text-align: left; padding: 5px 8px 5px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
-th { color: var(--muted); font-weight: 500; font-size: 0.78rem; }
-td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; padding-right: 0; }
-.bar-cell { width: 34%; }
-.vbar { height: 8px; border-radius: 2px; }
-ul.diff { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; font-size: 0.88rem; }
-ul.diff li::marker { color: var(--bad); }
+.kv { display: grid; grid-template-columns: max-content minmax(0,1fr); gap: 4px 12px; font-size: .88rem; }
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; }
 .ban { color: var(--bad); font-weight: 600; }
-.note { font-size: 0.84rem; color: var(--muted); border-left: 3px solid var(--line); padding-left: 10px; }
 
-/* 신호 막대 */
-.cycle { display: flex; flex-direction: column; gap: 10px; }
-.cycle-row { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 10px; align-items: center; }
-@media (max-width: 520px) { .cycle-row { grid-template-columns: 1fr; gap: 4px; } }
-.cycle-bar { display: flex; height: 30px; border-radius: 4px; overflow: hidden; border: 1px solid var(--line); }
-.seg { display: flex; align-items: center; justify-content: center; color: var(--chip-fg); font-size: 0.72rem; font-weight: 600; min-width: 0; overflow: hidden; white-space: nowrap; }
-.seg.yr { background: repeating-linear-gradient(135deg, #d9b23a 0 4px, #8b8f94 4px 8px); }
-.moves { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: 20px; align-items: center; }
-@media (max-width: 640px) { .moves { grid-template-columns: 1fr; } .moves-map svg { margin: 0 auto; } }
-.moves-text { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
-ul.movelist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 0.9rem; }
-.todo-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
-.todo-card { border: 1px dashed var(--todo); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 6px; font-size: 0.88rem; }
-footer { font-size: 0.8rem; color: var(--muted); }
-:focus-visible { outline: 2px solid var(--av); outline-offset: 2px; }
+.vols { display: flex; flex-direction: column; gap: 6px; }
+.vrow { display: grid; grid-template-columns: 74px minmax(0,1fr) 46px; gap: 8px; align-items: center; font-size: .85rem; cursor: pointer; }
+.vrow .track { height: 16px; background: var(--surface-2); border-radius: 4px; position: relative; overflow: hidden; }
+.vrow .fill { position: absolute; inset: 0 auto 0 0; background: var(--c); opacity: .85; border-radius: 4px; }
+.vrow .lanesTxt { position: absolute; left: 6px; top: 0; font-size: .7rem; line-height: 16px; color: #111; font-weight: 600; white-space: nowrap; }
+.vrow .v { text-align: right; font-family: var(--font-mono); font-size: .8rem; }
+.vrow.dim { opacity: .35; }
+.vsum { font-size: .8rem; color: var(--muted); margin-top: 6px; }
+
+details { margin-top: 14px; font-size: .85rem; }
+summary { cursor: pointer; color: var(--muted); }
+details ul { margin: 8px 0 0; padding-left: 18px; }
+details li { margin: 2px 0; }
+
+.mx-wrap { overflow-x: auto; }
+table.mx { border-collapse: separate; border-spacing: 4px; width: 100%; min-width: 620px; font-size: .82rem; }
+.mx th { font-weight: 600; color: var(--muted); text-align: center; padding: 4px; white-space: nowrap; }
+.mx th.rowh { text-align: left; color: var(--fg); }
+.mx td { text-align: center; border-radius: 8px; padding: 6px 4px; background: var(--surface-2); cursor: pointer; border: 1px solid transparent; }
+.mx td .ln { display: block; font-weight: 600; }
+.mx td .vv { display: block; font-family: var(--font-mono); font-size: .75rem; color: var(--muted); }
+.mx td.same { background: transparent; cursor: default; color: var(--line); }
+.mx td.banned { background: color-mix(in srgb, var(--bad) 12%, var(--surface-2)); color: var(--bad); }
+.mx td.sel { border-color: var(--fg); }
+.mx td.rowsel { box-shadow: inset 0 0 0 1px var(--asphalt-edge); }
+.mx td.tot { background: transparent; font-family: var(--font-mono); cursor: default; }
+.mx-note { font-size: .78rem; color: var(--muted); margin-top: 6px; }
+
+footer { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; font-size: .84rem; color: var(--muted); }
+@media (max-width: 720px) { footer { grid-template-columns: 1fr; } }
+footer h4 { color: var(--fg); margin: 0 0 6px; font-size: .9rem; }
+footer ul { margin: 0; padding-left: 18px; }
+footer li { margin: 3px 0; }
+a { color: var(--d-n); }
 </style>
 
 <div class="wrap">
   <header>
-    <h1>연산교차로 차로 조사</h1>
-    <p class="muted">카카오맵 로드뷰로 읽은 정지선 앞 차로 구성을 PR #2 도로망, 표준노드링크, 부산시 2025 교통조사(PR #1)와 맞춰 본 기록이야. 차로 단면은 교차로를 바라본 운전자 시점으로, 왼쪽이 중앙선(펜스), 오른쪽이 인도야.</p>
-    <div class="status-row">
-      <span class="pill"><span class="dot" style="background:var(--done)"></span>진입부 6 / 6 완료</span>
-      <span class="pill"><span class="dot" style="background:var(--av)"></span>AV 경로 서면 → 동래 확인 완료</span>
-      <span class="pill"><span class="dot" style="background:var(--bad)"></span>좌회전 금지 5개 확인</span>
-      <span class="pill"><span class="dot" style="background:var(--todo)"></span>신호 동시 구조 미확인</span>
-    </div>
+    <div class="crumb">부산 연제구 연산동 · 6지 신호교차로 · 와플 해적단</div>
+    <h1>연산교차로 차로 지도</h1>
+    <p class="lead">정지선 앞 차로마다 어디로 가는지를 로드뷰 노면 글씨·표지판과 표준노드링크로 확인해 그렸습니다. 선 굵기와 숫자는 부산시 2025 교통조사 실측 교통량(대/시)입니다. 진입 방향을 고르거나 아래 표의 칸을 누르면 그 경로가 지도에 표시됩니다.</p>
   </header>
 
-  <section class="panel">
-    <h2>교차로 개요</h2>
-    <div class="overview">
-      <svg viewBox="-270 -215 540 430" role="img" aria-label="연산교차로 6갈래 개요도. AV는 남서쪽 중앙대로 서면 방면에서 들어와 북쪽 중앙대로 동래 방면으로 나간다.">
-        <defs>
-          <marker id="avhead" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
-            <path d="M0,0 L10,5 L0,10 z" style="fill:var(--av)"/>
-          </marker>
-        </defs>
-        <g id="legs"></g>
-        <circle r="34" style="fill:var(--asphalt)"/>
-        <text x="0" y="5" text-anchor="middle" style="fill:var(--paint);font-size:12px;font-weight:600;font-family:var(--font-body)">연산역</text>
-        <path d="M -100 134 L -14 16 Q -6 4 -9 -12 L -33 -158" style="fill:none;stroke:var(--av);stroke-width:5;stroke-linecap:round;stroke-dasharray:2 9" marker-end="url(#avhead)"/>
-        <text x="-6" y="208" text-anchor="middle" style="fill:var(--muted);font-size:11px;font-family:var(--font-body)">북쪽이 위 · 점선 = AV 경로</text>
-      </svg>
-      <div class="legend" id="legend"></div>
+  <div class="bar">
+    <div class="pills" id="pills"><span class="bar-label">진입 방향</span></div>
+    <div class="seg" id="hourSeg" role="group" aria-label="교통량 시간대">
+      <button data-h="12" aria-pressed="true">12시 보통</button>
+      <button data-h="18" aria-pressed="false">18시 혼잡</button>
     </div>
-  </section>
+  </div>
 
-  <div id="approaches" style="display:flex;flex-direction:column;gap:28px"></div>
+  <div class="main">
+    <div class="card map">
+      <svg id="map" viewBox="-385 -345 770 690" role="img" aria-label="연산교차로 축척 차로 지도"></svg>
+      <div class="legend">
+        <span><span class="sw-line"></span>선 색 = 도착 방면, 굵기 = 실측 교통량</span>
+        <span><span class="sw-line" style="border-top:3px dashed var(--bad)"></span>✕ 좌회전 금지</span>
+        <span><span class="dot" style="--c:var(--bus-line)"></span>BRT 버스전용 차로</span>
+        <span>바깥 곡선 = 분리 우회전 차로 (신호 없음, 양보)</span>
+      </div>
+    </div>
+    <div class="card panel" id="panel"></div>
+  </div>
 
-  <section class="panel">
-    <div class="approach-head"><h2>신호 주기</h2><span class="tag todo">동시 신호 구조 미확인</span></div>
-    <p>지금은 PR #2처럼 <b>한 번에 한 도로만 녹색</b>인 6현시를 유지하고, 녹색 시간만 실측 교통량(12시, 이륜차·버스 제외)으로 Webster 계산한 값으로 바꾸는 안이야. 황색 3초와 전적색 2초는 빗금으로 표시했어.</p>
-    <div class="cycle" id="cycle"></div>
-    <p class="note">6개 진입부 모두 정지선 앞에서 차로가 늘어나는 것을 반영하면 포화도는 0.57, 주기는 116초야 (18시 혼잡 기준은 137초). 실제로는 서로 부딪히지 않는 방향끼리 동시에 녹색일 가능성이 높아(추론). 북쪽 진입부에 버스 전용 신호가 따로 있는 것도 확인했어. 남서쪽(AV)과 북쪽이 같이 녹색이면, 북쪽에서 수영 방향으로 가는 차가 교차로 안에서 AV 경로와 엇갈려.</p>
-  </section>
+  <div class="card">
+    <div class="bar" style="margin-bottom:6px">
+      <div><b>출발·도착 한눈에 보기</b> <span class="bar-label" id="mxHour"></span></div>
+    </div>
+    <div class="mx-wrap"><table class="mx" id="mx"></table></div>
+    <div class="mx-note">칸 위 = 정지선 차로 번호 (B = BRT, 분리 = 분리 우회전 차로), 칸 아래 = 실측 교통량(대/시, 이륜차 제외). 칸을 누르면 지도에 그 경로만 표시됩니다.</div>
+  </div>
 
-  <section class="panel">
-    <h2>남은 조사</h2>
-    <div class="todo-grid" id="todo"></div>
-  </section>
-
-  <footer>출처: 카카오맵 로드뷰(지민 판독), 국가교통정보센터 표준노드링크 2026-11-11판(차로 수·회전 제한), 부산광역시 2025년 교통조사 분석용역 결과서 부록1(연산교차로 방향별 교통량), PR #2 도로망(<span class="mono">map/yeonsan-cityhall</span>). 조사일 2026-11-17.</footer>
+  <footer class="card">
+    <div>
+      <h4>근거</h4>
+      <ul>
+        <li>차로·노면 글씨·표지판: 카카오맵 로드뷰 6개 진입부 판독 (2026-11-17, 지민) + 팀원 차로 지도 대조</li>
+        <li>회전 금지·구간 차로 수: 국가교통정보센터 표준노드링크 2026-11-11판 (TURNINFO, MOCT_LINK)</li>
+        <li>교통량: 부산시 2025 교통조사 연산교차로 방향별 시간 교통량 (PR #1 OD), 이륜차 제외</li>
+        <li>녹색 시간: Webster 식, 포화교통류율 1,800대/시/차로, 현시당 손실 5초</li>
+      </ul>
+    </div>
+    <div>
+      <h4>한계</h4>
+      <ul>
+        <li>신호 순서(어느 방향끼리 같이 녹색인지)는 미확인. 시뮬은 진입 방향별 6현시 가정</li>
+        <li>시청 방면 진출 차로, 동래·반송로 들어오는 구간 차로 수는 미확인 (지도에서 가정값)</li>
+        <li>로드뷰 촬영 시점이 달라 현재 노면과 다를 수 있음. 지도 길이는 대략 축척</li>
+        <li>교통량은 버스 포함 전 차종 합계라 BRT 차로 몫이 따로 나뉘어 있지 않음</li>
+      </ul>
+    </div>
+  </footer>
 </div>
 
 <script>
 const LEGS = {
-  n:  { name: "교대 · 동래",    road: "중앙대로 동래 방면",   brg: 348 },
-  ne: { name: "안락 · 반송로",  road: "반송로",              brg: 46 },
-  e:  { name: "연산터널 · 고분로", road: "고분로",            brg: 100 },
-  s:  { name: "수영 · 광안리",   road: "월드컵대로 남쪽",     brg: 158 },
-  sw: { name: "시청 · 서면",    road: "중앙대로 서면 방면",   brg: 217 },
-  w:  { name: "거제천 · 법원",   road: "월드컵대로 사직 방면", brg: 293 },
+  n:  { short: "교대",     od: "부산교대",   road: "중앙대로", dir: "동래 방면",  brg: 348, c: "var(--d-n)" },
+  ne: { short: "안락",     od: "안락교차로", road: "반송로",   dir: "안락 방면",  brg: 46,  c: "var(--d-ne)" },
+  e:  { short: "연산터널", od: "연산터널",   road: "고분로",   dir: "연산터널 방면", brg: 100, c: "var(--d-e)" },
+  s:  { short: "수영",     od: "신리삼거리", road: "월드컵대로", dir: "광안리 방면", brg: 158, c: "var(--d-s)" },
+  sw: { short: "시청",     od: "부산시청",   road: "중앙대로", dir: "서면 방면",  brg: 217, c: "var(--d-sw)" },
+  w:  { short: "거제",     od: "종합운동장", road: "월드컵대로", dir: "사직 방면", brg: 293, c: "var(--d-w)" },
 };
-const STATUS = { sw: "done", n: "done", w: "done", s: "done", ne: "done", e: "done" };
+const ORDER = ["n", "ne", "e", "s", "sw", "w"];
 
-// 개요도
-(function drawOverview(){
-  const g = document.getElementById("legs");
-  const ns = "http://www.w3.org/2000/svg";
-  for (const [k, L] of Object.entries(LEGS)) {
-    const a = L.brg * Math.PI / 180, x = Math.sin(a), y = -Math.cos(a);
-    const road = document.createElementNS(ns, "line");
-    road.setAttribute("x1", 0); road.setAttribute("y1", 0);
-    road.setAttribute("x2", x * 175); road.setAttribute("y2", y * 175);
-    road.setAttribute("style", `stroke:var(--asphalt);stroke-width:${k==="sw"||k==="n"?30:22};stroke-linecap:butt`);
-    g.appendChild(road);
-    const tip = document.createElementNS(ns, "line");
-    tip.setAttribute("x1", x * 150); tip.setAttribute("y1", y * 150);
-    tip.setAttribute("x2", x * 175); tip.setAttribute("y2", y * 175);
-    tip.setAttribute("style", `stroke:var(--d-${k});stroke-width:${k==="sw"||k==="n"?30:22}`);
-    g.appendChild(tip);
-    const lx = x * 198, ly = y * 198 + 4;
-    const t = document.createElementNS(ns, "text");
-    t.setAttribute("x", lx); t.setAttribute("y", ly);
-    t.setAttribute("text-anchor", Math.abs(x) < 0.3 ? "middle" : (x > 0 ? "start" : "end"));
-    t.setAttribute("style", "fill:var(--fg);font-size:12.5px;font-weight:600;font-family:var(--font-body)");
-    t.textContent = L.name.split(" · ")[0] + (STATUS[k] === "done" ? " ✓" : "");
-    g.appendChild(t);
+// 정지선 앞 차로: 중앙(펜스·중앙선) → 인도 순서. id가 B로 시작하면 BRT
+const APP = {
+  sw: {
+    heading: "중앙대로 북동행", av: true,
+    lanes: [
+      { id: "B1", bus: true, to: ["n"], note: "버스 전용 · 파란 이중선으로 분리" },
+      { id: "B2", bus: true, to: ["ne"], note: "버스 전용 · B1·B2 사이 파란 점선" },
+      { id: "1", to: ["n"], note: "노면 화살표 왼쪽 비스듬 · 분홍 유도선 · AV 차로" },
+      { id: "2", to: ["n"], note: "노면 화살표 왼쪽 비스듬 · 분홍 유도선 · AV 차로", solidRight: true },
+      { id: "3", to: ["ne"], note: "2·3 사이 실선, 정지선 약 30m 전부터 차로 변경 금지" },
+      { id: "4", to: ["ne", "e"] },
+      { id: "5", to: ["e"] },
+    ],
+    slip: { to: "s", note: "교통섬으로 분리 · 신호 없음 · 서행 후 합류" },
+    up: { bus: 1, gen: 2, txt: "BRT 1 + 일반 2 → 정지선 약 80m 전부터 일반 5로 늘어남" },
+    out: { bus: 1, gen: 3, txt: "BRT 1 + 일반 3 <span class='tag as'>가정</span> 미확인 (표준노드링크 4차로)" },
+    bans: ["w"], banTxt: "거제(월드컵대로 사직) 방향 좌회전 금지 · 표지판과 표준노드링크 일치",
+    sig: "차량 신호 + BRT 버스 신호. 다른 방향과의 동시 녹색 여부는 미확인",
+    ref: ["AV 출발 진입부. AV 경로는 일반 1·2 → 교대(중앙대로 동래)", "×가 붙은 옛 좌회전 화살표는 금지 전 표시를 지운 흔적"],
+    diff: ["정지선 앞 일반 2차로뿐 (실제 5), 차로가 늘어나지 않음", "BRT 없음", "교대 차로가 왼쪽 1개 (실제 일반 1·2) → AV 차로 선택이 실제보다 빡빡함", "금지된 사직 좌회전이 AV와 같은 왼쪽 차로에 연결됨", "수영이 연결로 외에 교차로 안 오른쪽 차로에서도 연결됨", "edge 512187678#14 → #15(신호) → #16, 연결로 369240560"],
+  },
+  n: {
+    heading: "중앙대로 남행",
+    lanes: [
+      { id: "B", bus: true, to: ["sw"], note: "노면: 경찰청·시청 · 버스 신호 별도 · 들어오며 1→2→1로 갈라졌다 합쳐짐" },
+      { id: "1", to: ["s"], note: "노면: 수영·망미동 (로드뷰 2차로)" },
+      { id: "2", to: ["s"], note: "노면: 수영·망미동 (로드뷰 3차로)", solidRight: true },
+      { id: "3", to: ["sw"], note: "노면: 경찰청·시청 (로드뷰 4차로)" },
+      { id: "4", to: ["sw"], note: "노면: 경찰청·시청 (로드뷰 5차로)" },
+    ],
+    slip: { to: "w", note: "거제천 방면 <span class='tag as'>잠정</span>" },
+    up: null,
+    out: { bus: 1, gen: 2, txt: "BRT 1 + 일반 2 (AV가 나가는 쪽)" },
+    bans: ["ne", "e"], banTxt: "반송로·고분로 좌회전 금지 (표지판 ⊘ 2개, 표준노드링크 일치). 동래 유턴 없음",
+    sig: "수영 방향 차로(1·2)와 시청 방향 차로(3·4) 위 신호등이 따로 있음 → 직진과 우회전이 다른 때 녹색일 가능성. 버스 신호 별도",
+    ref: ["AV 도착 진출부가 이 도로", "좌회전 금지 표지 아래 보조표지 (버스 제외로 추정, 판독 불가)", "수영 방향 차량은 AV 경로와 교차로 안에서 엇갈림 → 동시 녹색이면 AV 양보 상황"],
+    diff: ["진입 일반 2차로 (실제 4 + 연결로)", "금지된 반송로·고분로 좌회전과 동래 유턴이 왼쪽 차로에 연결됨", "BRT 없음", "진출 일반 2차로는 일치", "edge 진입 1381093802#1 → 1494563723#1, 진출 1381093796"],
+  },
+  w: {
+    heading: "월드컵대로 동행",
+    lanes: [
+      { id: "1", to: ["n", "ne"] },
+      { id: "2", to: ["ne", "e"] },
+      { id: "3", to: ["e", "s"] },
+      { id: "4", to: ["s"] },
+    ],
+    slip: { to: "sw", note: "시청 방면 분리 우회전" },
+    up: null,
+    out: { bus: 0, gen: 3, txt: "일반 3 (표준노드링크 3 일치)" },
+    bans: [], banTxt: "없음 (표지판·표준노드링크 일치)",
+    sig: "미확인",
+    ref: ["표준노드링크 구간 3차로 → 정지선 앞 4차로", "교대로 가는 차는 AV와 같은 동래 진출부로 합류"],
+    diff: ["접근 4차로가 교차로 직전 2차로로 줄어듦", "시청이 연결로가 아닌 교차로 안 회전", "진출 2차로 (실제 3)", "edge 517488002#4 → 506009344(신호), 진출 506007334"],
+  },
+  s: {
+    heading: "월드컵대로 북행",
+    lanes: [
+      { id: "1", to: ["sw"], note: "노면: 시청" },
+      { id: "2", to: ["w", "n"], note: "노면: 거제·교대" },
+      { id: "3", to: ["n"], note: "노면: 교대" },
+      { id: "4", to: ["ne"], note: "노면: 안락" },
+    ],
+    slip: { to: "e", note: "연산터널 방면 분리 우회전" },
+    up: { bus: 0, gen: 3, txt: "일반 3 → 교차로 직전 3차로가 3·4로 갈라지고 연결로가 생김" },
+    out: { bus: 0, gen: 3, txt: "일반 3 (표준노드링크 3 일치)" },
+    bans: [], banTxt: "없음 (표지판·표준노드링크 일치)",
+    sig: "미확인",
+    ref: ["가장 많은 교대에 차로 2개, 가장 적은 연산터널은 연결로: 노면 배정과 교통량이 맞음"],
+    diff: ["정지선 앞 3차로 (실제 4 + 연결로)", "연산터널이 연결로가 아닌 교차로 안 회전", "왼쪽 차로가 거제·시청 둘 다, 오른쪽 차로가 연산터널·안락·교대", "진출 3차로는 일치", "edge 795083570(신호), 진출 -795083570"],
+  },
+  e: {
+    heading: "고분로 서행",
+    lanes: [
+      { id: "1", to: ["s", "sw"] },
+      { id: "2", to: ["sw", "w"] },
+      { id: "3", to: ["w", "n"] },
+      { id: "4", to: ["n"] },
+    ],
+    slip: { to: "ne", note: "노면: 안락" },
+    up: { bus: 0, gen: 2, txt: "일반 2 → 교차로 입구에서 1차로가 1·2, 2차로가 3·4로 갈라짐" },
+    out: { bus: 0, gen: 2, txt: "일반 2 (표준노드링크 2 일치)" },
+    bans: [], banTxt: "없음 (표준노드링크)",
+    sig: "미확인",
+    ref: ["많은 시청·거제가 각각 차로 2개, 적은 안락은 연결로"],
+    diff: ["정지선 앞 2차로 (실제 4 + 연결로)", "안락이 연결로가 아닌 교차로 안 회전", "진출 2차로는 일치", "edge 794688378(신호), 진출 -794688378"],
+  },
+  ne: {
+    heading: "반송로 남서행",
+    lanes: [
+      { id: "1", to: ["sw"] },
+      { id: "2", to: ["sw"] },
+      { id: "3", to: ["w"] },
+      { id: "4", to: ["w"] },
+    ],
+    slip: { to: "n", note: "교대 방면 분리 우회전" },
+    up: null,
+    out: { bus: 0, gen: 3, txt: "일반 3 (표준노드링크 2)" },
+    bans: ["s", "e"], banTxt: "수영·연산터널 좌회전 금지 · 노면에도 해당 차로 없음 (표준노드링크 일치)",
+    sig: "미확인",
+    ref: ["가장 많은 시청에 차로 2개, 교대는 연결로"],
+    diff: ["정지선 앞 2차로 (실제 4 + 연결로)", "금지된 수영·연산터널 좌회전이 왼쪽 차로에 연결됨", "교대가 연결로가 아닌 교차로 안 회전", "진출 2차로 (실제 3)", "edge -37400617#0(신호), 진출 37400617#0"],
+  },
+};
+
+// 부산시 2025 교통조사 (PR #1), 이륜차 제외, 대/시
+const VOL = {
+  "12": { sw: { n: 344, ne: 537, e: 165, s: 54 }, s: { sw: 63, w: 169, n: 311, ne: 82, e: 32 }, e: { s: 76, sw: 187, w: 203, n: 73, ne: 41 }, ne: { sw: 483, w: 113, n: 53 }, n: { s: 278, sw: 313, w: 46 }, w: { n: 72, ne: 204, e: 335, s: 186, sw: 87 } },
+  "18": { sw: { n: 414, ne: 709, e: 283, s: 32 }, s: { sw: 60, w: 195, n: 337, ne: 118, e: 30 }, e: { s: 52, sw: 199, w: 198, n: 38, ne: 32 }, ne: { sw: 464, w: 62, n: 32 }, n: { s: 353, sw: 485, w: 51 }, w: { n: 41, ne: 239, e: 372, s: 205, sw: 34 } },
+};
+const GREEN = { "12": { sw: 18, w: 18, s: 13, ne: 13, n: 13, e: 12, cyc: 116 }, "18": { sw: 26, w: 20, s: 17, ne: 12, n: 20, e: 12, cyc: 137 } };
+
+let st = { sel: "sw", hour: "12", dest: null, lane: null };
+try { const h = localStorage.getItem("yeonsan-hour"); if (h === "12" || h === "18") st.hour = h; } catch (e) {}
+
+// ---------- 기하 ----------
+const W = 11, R0 = 118, FL = 70, TP = 26, RL = 300, GAP = 7;
+const rad = d => d * Math.PI / 180;
+const U = b => [Math.sin(rad(b)), -Math.cos(rad(b))];        // 교차로 → 바깥
+const RI = b => [-Math.cos(rad(b)), -Math.sin(rad(b))];      // 진입 차로 쪽 (우측통행)
+const P = (b, r, off) => { const u = U(b), q = RI(b); return [u[0] * r + q[0] * off, u[1] * r + q[1] * off]; };
+const f = p => p[0].toFixed(1) + "," + p[1].toFixed(1);
+const add = (a, b, k = 1) => [a[0] + b[0] * k, a[1] + b[1] * k];
+const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+const nIn = k => APP[k].lanes.length;
+const nOut = k => APP[k].out.bus + APP[k].out.gen;
+const turn = (a, d) => { let t = LEGS[d].brg - (LEGS[a].brg + 180); t = ((t % 360) + 540) % 360 - 180; return t; }; // +우, -좌
+const lanesTo = (a, d) => APP[a].lanes.filter(L => L.to.includes(d)).map(L => L.id);
+const isSlip = (a, d) => APP[a].slip && APP[a].slip.to === d;
+
+function inter(p1, d1, p2, d2) { // 두 직선 교점
+  const den = d1[0] * d2[1] - d1[1] * d2[0];
+  const t = ((p2[0] - p1[0]) * d2[1] - (p2[1] - p1[1]) * d2[0]) / den;
+  return add(p1, d1, t);
+}
+
+// 연결로(분리 우회전) 경로
+function slipPath(a) {
+  const d = APP[a].slip.to, ba = LEGS[a].brg, bd = LEGS[d].brg;
+  const RF = R0 + FL, SG = 5;
+  const inW = nIn(a) * W, outW = nOut(d) * W;
+  const upW = APP[a].up ? (APP[a].up.bus + APP[a].up.gen) * W : inW;
+  const A = P(ba, RF - 6, inW + SG + W / 2), D = P(bd, RF - 6, -(outW + SG + W / 2));
+  const m = [A[0] + D[0], A[1] + D[1]], ml = Math.hypot(m[0], m[1]);
+  const C = [m[0] / ml * (R0 + 58), m[1] / ml * (R0 + 58)];
+  const S1 = P(ba, RF + TP + 18, upW - W / 2), S2 = P(bd, RF + TP + 18, -(outW - W / 2));
+  return { d: `M${f(S1)} L${f(A)} Q${f(C)} ${f(D)} L${f(S2)}`, A, C, D };
+}
+
+// 차로 하나 → 도착 leg 진출 차로까지 곡선
+function movePath(a, laneIdx, d, slot) {
+  const p0 = P(LEGS[a].brg, R0, (laneIdx + 0.5) * W);
+  const o = APP[d].out; const j = o.bus + slot;
+  const p3 = P(LEGS[d].brg, R0, -(j + 0.5) * W);
+  const k = Math.max(30, dist(p0, p3) * 0.42);
+  const p1 = add(p0, U(LEGS[a].brg), -k), p2 = add(p3, U(LEGS[d].brg), -k);
+  return { d: `M${f(p0)} C${f(p1)} ${f(p2)} ${f(p3)}`, p0, p1, p2, p3 };
+}
+const bez = (q, t) => { const m = 1 - t; return [0, 1].map(i => m * m * m * q.p0[i] + 3 * m * m * t * q.p1[i] + 3 * m * t * t * q.p2[i] + t * t * t * q.p3[i]); };
+
+function drawRoads() {
+  let s = "";
+  // 교차로 면
+  const corners = [];
+  for (const k of ORDER) { corners.push(P(LEGS[k].brg, R0, nIn(k) * W)); corners.push(P(LEGS[k].brg, R0, -nOut(k) * W)); }
+  corners.sort((p, q) => Math.atan2(p[1], p[0]) - Math.atan2(q[1], q[0]));
+  s += `<polygon points="${corners.map(f).join(" ")}" fill="var(--asphalt)"/>`;
+  // 연결로 (먼저 깔기)
+  for (const k of ORDER) {
+    const sp = slipPath(k);
+    s += `<path d="${sp.d}" fill="none" stroke="var(--asphalt)" stroke-width="${W + 1}" stroke-linejoin="round"/>`;
   }
-  const lg = document.getElementById("legend");
-  for (const [k, L] of Object.entries(LEGS)) {
-    const d = document.createElement("div");
-    d.innerHTML = `<span class="swatch" style="background:var(--d-${k})"></span><span><b>${L.name}</b><br><span class="muted" style="font-size:.8rem">${L.road}</span></span>`;
-    lg.appendChild(d);
+  for (const k of ORDER) {
+    const b = LEGS[k].brg, A = APP[k], inW = nIn(k) * W, outW = nOut(k) * W;
+    const upW = A.up ? (A.up.bus + A.up.gen) * W : inW;
+    const RF = R0 + FL, RT = RF + TP;
+    s += `<polygon points="${[P(b, R0, -outW), P(b, RL, -outW), P(b, RL, upW), P(b, RT, upW), P(b, RF, inW), P(b, R0, inW)].map(f).join(" ")}" fill="var(--asphalt)"/>`;
+    // BRT 면
+    A.lanes.forEach((L, i) => {
+      if (!L.bus) return;
+      const far = A.up ? (i < A.up.bus ? RL : RF) : RL;
+      s += `<polygon points="${[P(b, R0, i * W), P(b, far, i * W), P(b, far, (i + 1) * W), P(b, R0, (i + 1) * W)].map(f).join(" ")}" fill="var(--bus)"/>`;
+    });
+    for (let j = 0; j < A.out.bus; j++) s += `<polygon points="${[P(b, R0, -j * W), P(b, RL, -j * W), P(b, RL, -(j + 1) * W), P(b, R0, -(j + 1) * W)].map(f).join(" ")}" fill="var(--bus)"/>`;
+    // 진입 차로 경계
+    for (let i = 1; i < A.lanes.length; i++) {
+      const L = A.lanes[i - 1], R = A.lanes[i];
+      const busEdge = L.bus && !R.bus, busBus = L.bus && R.bus;
+      const far = A.up && i >= A.up.bus + A.up.gen ? RF : (A.up ? RF : RL);
+      const col = busEdge || busBus ? "var(--bus-line)" : "var(--paint)";
+      const dash = busEdge ? "" : "6 6";
+      if (busEdge) {
+        s += `<line x1="${P(b, R0, i * W - 1.2)[0]}" y1="${P(b, R0, i * W - 1.2)[1]}" x2="${P(b, far, i * W - 1.2)[0]}" y2="${P(b, far, i * W - 1.2)[1]}" stroke="${col}" stroke-width="1"/>`;
+        s += `<line x1="${P(b, R0, i * W + 1.2)[0]}" y1="${P(b, R0, i * W + 1.2)[1]}" x2="${P(b, far, i * W + 1.2)[0]}" y2="${P(b, far, i * W + 1.2)[1]}" stroke="${col}" stroke-width="1"/>`;
+      } else if (L.solidRight) {
+        const m = R0 + 27;
+        s += `<line x1="${P(b, R0, i * W)[0]}" y1="${P(b, R0, i * W)[1]}" x2="${P(b, m, i * W)[0]}" y2="${P(b, m, i * W)[1]}" stroke="${col}" stroke-width="1.2"/>`;
+        s += `<line x1="${P(b, m, i * W)[0]}" y1="${P(b, m, i * W)[1]}" x2="${P(b, far, i * W)[0]}" y2="${P(b, far, i * W)[1]}" stroke="${col}" stroke-width="1" stroke-dasharray="${dash}"/>`;
+      } else {
+        s += `<line x1="${P(b, R0, i * W)[0]}" y1="${P(b, R0, i * W)[1]}" x2="${P(b, far, i * W)[0]}" y2="${P(b, far, i * W)[1]}" stroke="${col}" stroke-width="1" stroke-dasharray="${dash}" opacity=".8"/>`;
+      }
+    }
+    // 들어오는 구간 차로 경계
+    if (A.up) {
+      const n = A.up.bus + A.up.gen;
+      for (let i = 1; i < n; i++) {
+        const busEdge = i === A.up.bus;
+        const q1 = P(b, RT, i * W), q2 = P(b, RL, i * W);
+        s += `<line x1="${q1[0]}" y1="${q1[1]}" x2="${q2[0]}" y2="${q2[1]}" stroke="${busEdge ? "var(--bus-line)" : "var(--paint)"}" stroke-width="1" ${busEdge ? "" : 'stroke-dasharray="6 6" opacity=".8"'}/>`;
+      }
+    }
+    // 진출 차로 경계
+    for (let j = 1; j < nOut(k); j++) {
+      const busEdge = j === A.out.bus;
+      const q1 = P(b, R0, -j * W), q2 = P(b, RL, -j * W);
+      s += `<line x1="${q1[0]}" y1="${q1[1]}" x2="${q2[0]}" y2="${q2[1]}" stroke="${busEdge ? "var(--bus-line)" : "var(--paint)"}" stroke-width="1" ${busEdge ? "" : 'stroke-dasharray="6 6" opacity=".8"'}/>`;
+    }
+    // 중앙선 (황색 이중)
+    for (const o of [-1.2, 1.2]) { const q1 = P(b, R0, o), q2 = P(b, RL, o); s += `<line x1="${q1[0]}" y1="${q1[1]}" x2="${q2[0]}" y2="${q2[1]}" stroke="var(--yellow)" stroke-width="1"/>`; }
+    // 정지선
+    const s1 = P(b, R0 + 2, 1.5), s2 = P(b, R0 + 2, inW);
+    s += `<line x1="${s1[0]}" y1="${s1[1]}" x2="${s2[0]}" y2="${s2[1]}" stroke="var(--paint)" stroke-width="2.4"/>`;
+    // 이름표
+    const lp = [U(b)[0] * (RL + 16), U(b)[1] * (RL + 16)], ux = U(b)[0];
+    const anchor = Math.abs(ux) < 0.35 ? "middle" : (ux > 0 ? "start" : "end");
+    const ly = lp[1] + (U(b)[1] > 0.5 ? 12 : U(b)[1] < -0.5 ? -4 : 4);
+    s += `<g class="leglabel" data-k="${k}" style="cursor:pointer"><text x="${lp[0]}" y="${ly}" text-anchor="${anchor}" font-size="15" font-weight="700" fill="${LEGS[k].c}">${LEGS[k].short}</text>`;
+    s += `<text x="${lp[0]}" y="${ly + 15}" text-anchor="${anchor}" font-size="11" fill="var(--muted)">${LEGS[k].road}</text></g>`;
   }
-})();
-
-// 차로 단면 데이터. 순서는 중앙(펜스) → 인도. sep = 이 차로 오른쪽 경계선 종류
-const chip = (k, arr, label) => ({ k, arr, label: label || LEGS[k].name.split(" · ")[0] });
-const APPROACHES = [
-  {
-    id: "sw", title: "중앙대로 서면 방면 진입", sub: "남서쪽에서 북동쪽(교차로)을 바라봄", tags: [["done","완료"],["av","AV 출발"]],
-    sections: [
-      { label: "들어오는 구간", note: "편도 3차로", lanes: [
-        { kind: "BRT", bus: true, chips: [{plain:"버스 전용"}], sep: "bus-double" },
-        { kind: "일반 1", av: true, chips: [{plain:"직진"}], sep: "dash" },
-        { kind: "일반 2", av: true, chips: [{plain:"직진"}], sep: "curb" },
-      ]},
-      { label: "정지선 앞", note: "편도 7차로 + 우회전 연결로 · 약 80m 전부터 늘어남", lanes: [
-        { kind: "BRT 1", bus: true, chips: [chip("n","↑")], sep: "bus-dash" },
-        { kind: "BRT 2", bus: true, chips: [chip("ne","↗")], sep: "bus-double" },
-        { kind: "일반 1", av: true, chips: [chip("n","↑")], sep: "dash" },
-        { kind: "일반 2", av: true, chips: [chip("n","↑")], sep: "solid" },
-        { kind: "일반 3", chips: [chip("ne","↗")], sep: "dash" },
-        { kind: "일반 4", chips: [chip("ne","↗"), chip("e","→","연산터널")], sep: "dash" },
-        { kind: "일반 5", chips: [chip("e","→","연산터널")], sep: "island" },
-        { kind: "연결로", slip: true, chips: [chip("s","↘","광안리")], sep: "curb" },
-      ]},
-    ],
-    extra: [["진출부", "미확인 (서면 방향으로 나가는 차로)"], ["좌회전", "<span class='ban'>사직(거제천·법원) 방향 금지</span> · 표지판과 표준노드링크 일치"], ["실선", "일반 2·3 사이, 정지선 약 30m 전부터 차로 변경 금지"]],
-    vol: { s12: { n: 344, ne: 537, e: 165, s: 54, w: 0 }, s18: { n: 414, ne: 709, e: 283, s: 32, w: 0 } },
-    diff: ["정지선 앞 일반 차로 2개뿐 (실제 5개), 차로가 늘어나지 않음", "BRT 없음", "교대 차로가 왼쪽 1개 (실제 일반 1·2 두 개) → AV 차로 선택이 실제보다 빡빡함", "금지된 사직 좌회전이 AV와 같은 왼쪽 차로에 연결됨", "광안리가 연결로 외에 교차로 안 오른쪽 차로에서도 연결됨", "가정 교통량 420대/h (실측 1,100대/h)"],
-    edges: "512187678#14 → #15 (신호) → #16, 연결로 369240560",
-  },
-  {
-    id: "n", title: "중앙대로 동래 방면 진입·진출", sub: "북쪽에서 남쪽(교차로)을 바라봄", tags: [["done","완료"],["av","AV 도착"]],
-    sections: [
-      { label: "진입 · 정지선 앞", note: "BRT 1 + 일반 4 + 우회전 연결로 · 들어오는 구간 미확인", lanes: [
-        { kind: "BRT", bus: true, chips: [chip("sw","↗","시청")], sep: "bus-double" },
-        { kind: "일반 2", chips: [chip("s","↑","수영")], sep: "dash" },
-        { kind: "일반 3", chips: [chip("s","↑","수영")], sep: "solid" },
-        { kind: "일반 4", chips: [chip("sw","↗","시청")], sep: "dash" },
-        { kind: "일반 5", chips: [chip("sw","↗","시청")], sep: "island" },
-        { kind: "연결로", slip: true, chips: [chip("w","→","거제천")], sep: "curb", note: "잠정" },
-      ]},
-      { label: "진출 (AV가 나가는 쪽)", note: "북쪽을 바라봄 · BRT 1 + 일반 2", lanes: [
-        { kind: "BRT", bus: true, chips: [{plain:"버스 전용"}], sep: "bus-double" },
-        { kind: "일반 1", av: true, chips: [chip("n","↑","동래")], sep: "dash" },
-        { kind: "일반 2", av: true, chips: [chip("n","↑","동래")], sep: "curb" },
-      ]},
-    ],
-    extra: [["좌회전", "<span class='ban'>반송로 · 고분로 방향 금지</span> (표지판 ⊘ 2개, 표준노드링크 일치)"], ["신호", "버스 전용 신호 따로 있음 · 좌회전 금지 표지 아래 보조표지(버스 제외로 추정)"], ["BRT", "들어오면서 1 → 2로 갈라졌다가 정지선 앞에서는 1 (지민 관찰)"]],
-    vol: { s12: { s: 278, sw: 313, w: 46, ne: 0, e: 0 }, s18: { s: 353, sw: 485, w: 51, ne: 0, e: 0 } },
-    diff: ["진입 일반 차로 2개 (실제 4개 + 연결로)", "금지된 반송로·고분로 좌회전과 동래 방향 유턴이 왼쪽 차로에 연결됨", "BRT 없음", "진출 일반 2차로는 실제와 일치 ✓"],
-    edges: "진입 1381093802#1 → 1494563723#1, 진출 1381093796",
-  },
-  {
-    id: "w", title: "월드컵대로 사직 방면 진입·진출", sub: "서쪽에서 동쪽(교차로)을 바라봄", tags: [["done","완료"]],
-    sections: [
-      { label: "진입 · 정지선 앞", note: "일반 4 + 우회전 연결로 · BRT 없음", lanes: [
-        { kind: "일반 1", chips: [chip("n","↖","교대"), chip("ne","↖","안락")], sep: "dash" },
-        { kind: "일반 2", chips: [chip("ne","↖","안락"), chip("e","↑","연산터널")], sep: "dash" },
-        { kind: "일반 3", chips: [chip("e","↑","연산터널"), chip("s","↗","수영")], sep: "dash" },
-        { kind: "일반 4", chips: [chip("s","↗","수영")], sep: "island" },
-        { kind: "연결로", slip: true, chips: [chip("sw","↘","시청")], sep: "curb" },
-      ]},
-      { label: "진출", note: "일반 3차로", lanes: [
-        { kind: "일반 1", chips: [{plain:"사직 방면"}], sep: "dash" },
-        { kind: "일반 2", chips: [{plain:"사직 방면"}], sep: "dash" },
-        { kind: "일반 3", chips: [{plain:"사직 방면"}], sep: "curb" },
-      ]},
-    ],
-    extra: [["회전 금지", "없음 (표지판·표준노드링크 일치)"], ["AV 관련", "교대(동래)로 가는 차는 AV와 같은 진출부로 합류 · 동시 녹색일 때만 마주침"]],
-    vol: { s12: { n: 72, ne: 204, e: 335, s: 186, sw: 87 }, s18: { n: 41, ne: 239, e: 372, s: 205, sw: 34 } },
-    diff: ["접근로는 4차로인데 교차로 직전 2차로로 줄어듦", "시청이 연결로가 아닌 교차로 안에서 회전", "진출 2차로 (실제 3)", "가정 교통량 700대/h (실측 884대/h)"],
-    edges: "517488002#4 → 506009344 (신호), 진출 506007334",
-  },
-  {
-    id: "s", title: "월드컵대로 남쪽 진입·진출", sub: "남남동쪽에서 북북서쪽(교차로)을 바라봄", tags: [["done","완료"]],
-    sections: [
-      { label: "들어오는 구간", note: "일반 3차로", lanes: [
-        { kind: "일반 1", chips: [{plain:"직진"}], sep: "dash" },
-        { kind: "일반 2", chips: [{plain:"직진"}], sep: "dash" },
-        { kind: "일반 3", chips: [{plain:"직진"}], sep: "curb" },
-      ]},
-      { label: "정지선 앞", note: "일반 4 + 우회전 연결로 · 3차로가 3·4로 갈라지고 연결로가 생김", lanes: [
-        { kind: "일반 1", chips: [chip("sw","↰","시청")], sep: "dash" },
-        { kind: "일반 2", chips: [chip("w","↖","거제"), chip("n","↑","교대")], sep: "dash" },
-        { kind: "일반 3", chips: [chip("n","↑","교대")], sep: "dash" },
-        { kind: "일반 4", chips: [chip("ne","↗","안락"), chip("n","↑","동래")], sep: "island" },
-        { kind: "연결로", slip: true, chips: [chip("e","→","고분로")], sep: "curb", note: "추정" },
-      ]},
-      { label: "진출", note: "일반 3차로", lanes: [
-        { kind: "일반 1", chips: [{plain:"광안리 방면"}], sep: "dash" },
-        { kind: "일반 2", chips: [{plain:"광안리 방면"}], sep: "dash" },
-        { kind: "일반 3", chips: [{plain:"광안리 방면"}], sep: "curb" },
-      ]},
-    ],
-    extra: [["회전 금지", "없음 (표지판·표준노드링크 일치)"], ["연결로", "오른쪽으로 빠지는 길이라 고분로(연산터널)로 추정, 노면 글씨는 미확인"]],
-    vol: { s12: { n: 311, w: 169, ne: 82, sw: 63, e: 32 }, s18: { n: 337, w: 195, ne: 118, sw: 60, e: 30 } },
-    diff: ["정지선 앞 3차로 (실제 4 + 연결로)", "고분로가 연결로가 아닌 교차로 안 회전", "차로별 방향이 다름: 왼쪽 차로가 거제·시청 둘 다, 오른쪽 차로가 고분로·안락·교대", "진출 3차로는 실제와 일치 ✓", "가정 교통량 560대/h (실측 657대/h)"],
-    edges: "795083570 (신호, 3차로), 진출 -795083570",
-  },
-  {
-    id: "e", title: "고분로 진입·진출", sub: "동쪽에서 서쪽(교차로)을 바라봄", tags: [["done","완료"]],
-    sections: [
-      { label: "들어오는 구간", note: "일반 2차로", lanes: [
-        { kind: "일반 1", chips: [{plain:"→ 1·2차로"}], sep: "dash" },
-        { kind: "일반 2", chips: [{plain:"→ 3·4차로"}], sep: "curb" },
-      ]},
-      { label: "정지선 앞", note: "일반 4 + 우회전 연결로 · 교차로 입구에서 갈라짐", lanes: [
-        { kind: "일반 1", chips: [chip("s","↰","수영"), chip("sw","↖","시청")], sep: "dash" },
-        { kind: "일반 2", chips: [chip("sw","↖","시청"), chip("w","↑","거제")], sep: "dash" },
-        { kind: "일반 3", chips: [chip("w","↑","거제"), chip("n","↗","교대")], sep: "dash" },
-        { kind: "일반 4", chips: [chip("n","↗","교대")], sep: "island" },
-        { kind: "연결로", slip: true, chips: [chip("ne","↱","안락")], sep: "curb" },
-      ]},
-      { label: "진출", note: "일반 2차로", lanes: [
-        { kind: "일반 1", chips: [{plain:"연산터널 방면"}], sep: "dash" },
-        { kind: "일반 2", chips: [{plain:"연산터널 방면"}], sep: "curb" },
-      ]},
-    ],
-    extra: [["회전 금지", "없음 (표준노드링크)"], ["연결로", "노면에 '안락' 글씨 확인"]],
-    vol: { s12: { w: 203, sw: 187, s: 76, n: 73, ne: 41 }, s18: { w: 198, sw: 199, s: 52, n: 38, ne: 32 } },
-    diff: ["정지선 앞 2차로 (실제 4 + 연결로)", "안락이 연결로가 아닌 교차로 안 회전", "진출 2차로는 실제와 일치 ✓", "가정 교통량 220대/h (실측 580대/h, 약 2.6배)"],
-    edges: "794688378 (신호, 2차로), 진출 -794688378",
-  },
-  {
-    id: "ne", title: "반송로 진입·진출", sub: "북동쪽에서 남서쪽(교차로)을 바라봄", tags: [["done","완료"]],
-    sections: [
-      { label: "정지선 앞", note: "일반 4 + 우회전 연결로 · 들어오는 구간 미확인", lanes: [
-        { kind: "일반 1", chips: [chip("sw","↑","시청")], sep: "dash" },
-        { kind: "일반 2", chips: [chip("sw","↑","시청")], sep: "dash" },
-        { kind: "일반 3", chips: [chip("w","↗","거제")], sep: "dash" },
-        { kind: "일반 4", chips: [chip("w","↗","거제")], sep: "island" },
-        { kind: "연결로", slip: true, chips: [chip("n","↱","교대")], sep: "curb" },
-      ]},
-      { label: "진출", note: "일반 3차로", lanes: [
-        { kind: "일반 1", chips: [{plain:"안락 방면"}], sep: "dash" },
-        { kind: "일반 2", chips: [{plain:"안락 방면"}], sep: "dash" },
-        { kind: "일반 3", chips: [{plain:"안락 방면"}], sep: "curb" },
-      ]},
-    ],
-    extra: [["좌회전", "<span class='ban'>수영(광안리) · 연산터널(고분로) 방향 금지</span> · 노면에도 해당 차로 없음 (표준노드링크 일치)"]],
-    vol: { s12: { sw: 483, w: 113, n: 53, s: 0, e: 0 }, s18: { sw: 464, w: 62, n: 32, s: 0, e: 0 } },
-    diff: ["정지선 앞 2차로 (실제 4 + 연결로)", "금지된 수영·연산터널 좌회전이 왼쪽 차로에 연결됨", "교대가 연결로가 아닌 교차로 안 회전", "진출 2차로 (실제 3)", "가정 교통량 220대/h (실측 649대/h, 약 3배)"],
-    edges: "-37400617#0 (신호, 2차로), 진출 37400617#0",
-  },
-];
-
-function laneHTML(L) {
-  const cls = ["lane", L.bus ? "bus" : "", L.slip ? "slip" : "", L.av ? "av" : ""].join(" ");
-  const chips = L.chips.map(c => c.plain
-    ? `<div class="chip plain">${c.plain}</div>`
-    : `<div class="chip ${c.k}"><span class="arr" aria-hidden="true">${c.arr}</span>${c.label}</div>`).join("");
-  const kind = L.bus ? `${L.kind}` : L.kind;
-  return `<div class="${cls}"><div class="kind">${kind}</div>${chips}${L.note ? `<div class="ln">${L.note}</div>` : ""}</div>`;
-}
-function sepHTML(s) {
-  if (s === "curb") return `<div class="edge curb" title="인도 경계"></div>`;
-  return `<div class="div ${s}" title="${{dash:"점선",solid:"실선 (차로 변경 금지)","bus-dash":"버스 차로 사이 파란 점선","bus-double":"버스 차로 경계 파란 이중선",island:"교통섬"}[s]}"></div>`;
-}
-function volTable(v) {
-  const keys = Object.keys(v.s12);
-  const max = Math.max(...keys.map(k => Math.max(v.s12[k], v.s18[k])));
-  const rows = keys.map(k => `<tr><td><span class="swatch" style="display:inline-block;vertical-align:-2px;margin-right:6px;background:var(--d-${k})"></span>${LEGS[k].name.split(" · ")[0]}</td>
-    <td class="num">${v.s12[k] ? v.s12[k].toLocaleString() : '<span class="ban">0 금지</span>'}</td>
-    <td class="num">${v.s18[k] ? v.s18[k].toLocaleString() : '<span class="ban">0</span>'}</td>
-    <td class="bar-cell"><div class="vbar" style="width:${(v.s18[k]/max*100).toFixed(0)}%;background:var(--d-${k})"></div></td></tr>`).join("");
-  const sum = o => Object.values(o).reduce((a,b)=>a+b,0).toLocaleString();
-  return `<table><thead><tr><th>가는 곳</th><th class="num">12시</th><th class="num">18시</th><th class="bar-cell"><span class="muted">18시 비율</span></th></tr></thead><tbody>${rows}
-    <tr><td><b>합계</b></td><td class="num"><b>${sum(v.s12)}</b></td><td class="num"><b>${sum(v.s18)}</b></td><td></td></tr></tbody></table>`;
+  // 북쪽 표시
+  s += `<g transform="translate(340,-300)"><path d="M0,-16 L7,8 L0,3 L-7,8 Z" fill="var(--paint)"/><text y="22" text-anchor="middle" font-size="11" fill="var(--muted)">N</text></g>`;
+  return s;
 }
 
-// 접근로별 이동 방향 미니맵
-const BANNED = { sw: ["w"], n: ["ne", "e"], ne: ["s", "e"] };
-const pt = (b, r) => { const a = b * Math.PI / 180; return [Math.sin(a) * r, -Math.cos(a) * r]; };
-const unit = (v) => { const l = Math.hypot(v[0], v[1]) || 1; return [v[0] / l, v[1] / l]; };
-const rightOf = (d) => [-d[1], d[0]];
-function movePath(from, to, off) {
-  const fb = LEGS[from].brg, tb = LEGS[to].brg;
-  const din = unit(pt(fb, -1)), dout = unit(pt(tb, 1));
-  const ri = rightOf(din), ro = rightOf(dout);
-  const s = pt(fb, 118), e = pt(tb, 112);
-  const S = [s[0] + ri[0] * off, s[1] + ri[1] * off], E = [e[0] + ro[0] * off, e[1] + ro[1] * off];
-  const a = pt(fb, 30), b = pt(tb, 30);
-  const A1 = [a[0] + ri[0] * off, a[1] + ri[1] * off], B1 = [b[0] + ro[0] * off, b[1] + ro[1] * off];
-  return `M ${S[0].toFixed(1)} ${S[1].toFixed(1)} L ${A1[0].toFixed(1)} ${A1[1].toFixed(1)} Q 0 0 ${B1[0].toFixed(1)} ${B1[1].toFixed(1)} L ${E[0].toFixed(1)} ${E[1].toFixed(1)}`;
-}
-function movesOf(A) {
-  const stop = A.sections.find(S => S.label.includes("정지선")) || A.sections[0];
-  const map = {};
-  for (const L of stop.lanes) for (const c of L.chips) {
-    if (c.plain) continue;
-    (map[c.k] = map[c.k] || []).push(L.kind.replace("일반 ", "").replace("연결로", "연결로"));
+function drawMoves() {
+  const a = st.sel, A = APP[a], V = VOL[st.hour][a] || {};
+  let s = "", top = "";
+  // 도착 leg별 진출 차로 배정 (겹침 줄이기)
+  const used = {};
+  const slotFor = (d, laneIdx, bus) => {
+    const o = APP[d].out; const ids = lanesTo(a, d).filter(id => !id.startsWith("B"));
+    if (bus && o.bus) return -o.bus; // 버스는 BRT 진출로
+    const gi = ids.indexOf(A.lanes[laneIdx].id);
+    const t = turn(a, d), n = o.gen;
+    if (gi < 0) return 0;
+    if (t > 30) return Math.min(n - 1, n - ids.length + gi);
+    return Math.min(n - 1, gi);
+  };
+  A.lanes.forEach((L, i) => {
+    for (const d of L.to) {
+      const share = (V[d] || 0) / lanesTo(a, d).length;
+      const sw = 1.6 + share / 55;
+      const q = movePath(a, i, d, slotFor(d, i, L.bus) + (L.bus && APP[d].out.bus ? APP[d].out.bus - 1 : 0));
+      const on = (!st.dest || st.dest === d) && (!st.lane || st.lane === L.id);
+      s += `<path d="${q.d}" fill="none" stroke="${LEGS[d].c}" stroke-width="${sw.toFixed(1)}" stroke-linecap="round" opacity="${on ? 0.92 : 0.12}" ${L.bus ? 'stroke-dasharray="1 4"' : ""}/>`;
+    }
+  });
+  // 연결로
+  if (A.slip) {
+    const d = A.slip.to, sp = slipPath(a), on = (!st.dest || st.dest === d) && (!st.lane || st.lane === "R");
+    const sw = 1.6 + (V[d] || 0) / 55;
+    s += `<path d="${sp.d}" fill="none" stroke="${LEGS[d].c}" stroke-width="${sw.toFixed(1)}" stroke-linecap="round" stroke-linejoin="round" opacity="${on ? 0.92 : 0.12}"/>`;
+    const m = [(sp.A[0] + sp.C[0]) / 2, (sp.A[1] + sp.C[1]) / 2];
+    top += `<circle cx="${m[0]}" cy="${m[1]}" r="6.5" fill="var(--surface)" stroke="var(--muted)" stroke-dasharray="2 2"/><text x="${m[0]}" y="${m[1] + 3}" text-anchor="middle" font-size="8" font-weight="700" fill="var(--fg)">R</text>`;
   }
-  const exitSec = A.sections.find(S => S.label.startsWith("진출"));
-  return { map, banned: BANNED[A.id] || [], exitLanes: exitSec ? exitSec.lanes.length : null };
-}
-function miniMap(A) {
-  const { map, banned } = movesOf(A);
-  const legs = Object.entries(LEGS).map(([k, L]) => {
-    const p = pt(L.brg, 135), lp = pt(L.brg, 158);
-    const anchor = Math.abs(lp[0]) < 40 ? "middle" : (lp[0] > 0 ? "start" : "end");
-    const isMe = k === A.id;
-    return `<line x1="0" y1="0" x2="${p[0].toFixed(1)}" y2="${p[1].toFixed(1)}" style="stroke:var(--asphalt);stroke-width:${isMe ? 26 : 20}"/>
-      <text x="${lp[0].toFixed(1)}" y="${(lp[1] + 4).toFixed(1)}" text-anchor="${anchor}" style="fill:${isMe ? "var(--fg)" : "var(--muted)"};font-size:17px;font-weight:${isMe ? 700 : 500};font-family:var(--font-body)">${L.name.split(" · ")[0]}</text>`;
-  }).join("");
-  const dests = Object.keys(map);
-  const arrows = dests.map(k => {
-    const av = A.id === "sw" && k === "n";
-    return `<path d="${movePath(A.id, k, 6)}" marker-end="url(#mh-${A.id}-${k})" style="fill:none;stroke:var(--d-${k});stroke-width:${av ? 5 : 3.2};stroke-linecap:round;stroke-linejoin:round;opacity:.95"/>`;
-  }).join("");
-  const bans = banned.map(k => {
-    const mid = pt((LEGS[A.id].brg + LEGS[k].brg) / 2 + (Math.abs(LEGS[A.id].brg - LEGS[k].brg) > 180 ? 180 : 0), 22);
-    return `<path d="${movePath(A.id, k, 6)}" style="fill:none;stroke:var(--bad);stroke-width:2;stroke-dasharray:4 4;opacity:.8"/>
-      <g transform="translate(${pt(LEGS[k].brg, 70).map(v => v.toFixed(1)).join(",")})"><circle r="9" style="fill:var(--surface);stroke:var(--bad);stroke-width:2"/><path d="M -4 -4 L 4 4 M 4 -4 L -4 4" style="stroke:var(--bad);stroke-width:2.2"/></g>`;
-  }).join("");
-  const markers = dests.map(k => `<marker id="mh-${A.id}-${k}" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--d-${k})"/></marker>`).join("");
-  const eye = pt(LEGS[A.id].brg, 135);
-  return `<svg viewBox="-235 -190 470 380" role="img" aria-label="${A.title}: 진입 차량이 가는 방향" style="width:100%;max-width:300px;height:auto;display:block">
-    <defs>${markers}</defs>${legs}<circle r="26" style="fill:var(--asphalt)"/>${bans}${arrows}
-    <circle cx="${eye[0].toFixed(1)}" cy="${eye[1].toFixed(1)}" r="7" style="fill:var(--surface);stroke:var(--fg);stroke-width:2"/>
-  </svg>`;
-}
-function moveList(A) {
-  const { map, banned, exitLanes } = movesOf(A);
-  const rows = Object.entries(map).map(([k, lanes]) => `<li><span class="swatch" style="display:inline-block;vertical-align:-2px;margin-right:6px;background:var(--d-${k})"></span><b>${LEGS[k].name}</b> <span class="muted">· ${lanes.map(x => /^\d/.test(x) ? x + "차로" : x).join(", ")}</span>${A.id === "sw" && k === "n" ? ' <span class="tag av" style="font-size:.7rem">AV</span>' : ""}</li>`).join("");
-  const banRows = banned.map(k => `<li><span class="ban">✕ ${LEGS[k].name}</span> <span class="muted">· 좌회전 금지</span></li>`).join("");
-  return `<ul class="movelist">${rows}${banRows}</ul>
-    <p class="muted" style="font-size:.82rem">○ = 로드뷰를 본 위치(진입 쪽). 화살표는 정지선 앞 차로 기준이고, 같은 색 차로가 그 방면으로 가.${exitLanes ? ` 이 도로로 나가는 진출 차로는 일반 ${exitLanes - (A.id === "n" ? 1 : 0)}개야.` : ""}</p>`;
+  // 금지
+  for (const d of A.bans) {
+    const gi = A.lanes.findIndex(L => !L.bus);
+    const q = movePath(a, gi, d, 0), mid = bez(q, 0.5);
+    const on = !st.dest || st.dest === d;
+    s += `<path d="${q.d}" fill="none" stroke="var(--bad)" stroke-width="1.6" stroke-dasharray="5 4" opacity="${on ? 0.85 : 0.15}"/>`;
+    s += `<g opacity="${on ? 1 : 0.2}"><circle cx="${mid[0]}" cy="${mid[1]}" r="7" fill="var(--surface)" stroke="var(--bad)"/><path d="M${mid[0] - 3},${mid[1] - 3} L${mid[0] + 3},${mid[1] + 3} M${mid[0] + 3},${mid[1] - 3} L${mid[0] - 3},${mid[1] + 3}" stroke="var(--bad)" stroke-width="1.8"/></g>`;
+  }
+  // 차로 번호
+  A.lanes.forEach((L, i) => {
+    const p = P(LEGS[a].brg, R0 + 14, (i + 0.5) * W);
+    const on = !st.lane || st.lane === L.id;
+    top += `<g opacity="${on ? 1 : 0.35}"><circle cx="${p[0]}" cy="${p[1]}" r="6" fill="${L.bus ? "var(--bus-line)" : "var(--paint)"}"/><text x="${p[0]}" y="${p[1] + 3}" text-anchor="middle" font-size="${L.id.length > 1 ? 6.5 : 8}" font-weight="700" fill="#111">${L.id}</text></g>`;
+  });
+  // 선택 진입부 테두리 강조
+  const b = LEGS[a].brg, inW = nIn(a) * W;
+  const hl = [P(b, R0, 0), P(b, R0 + FL, 0), P(b, R0 + FL, inW), P(b, R0, inW)];
+  s = `<polygon points="${hl.map(f).join(" ")}" fill="none" stroke="${LEGS[a].c}" stroke-width="1.5" opacity=".9"/>` + s;
+  return s + top;
 }
 
-const host = document.getElementById("approaches");
-for (const A of APPROACHES) {
-  const sec = document.createElement("section");
-  sec.className = "panel"; sec.id = A.id;
-  const tags = A.tags.map(([c,t]) => `<span class="tag ${c}">${t}</span>`).join(" ");
-  const sections = A.sections.map(S => `
-    <div style="display:flex;flex-direction:column;gap:8px;min-width:0">
-      <div class="section-label"><h3>${S.label}</h3><span class="muted" style="font-size:.84rem">${S.note}</span></div>
-      <div class="road-scroll"><div class="road"><div class="edge fence" title="중앙 펜스"></div>${S.lanes.map(L => laneHTML(L) + sepHTML(L.sep)).join("")}</div></div>
-    </div>`).join("");
-  const extra = A.extra.map(([k,v]) => `<tr><th style="width:84px">${k}</th><td>${v}</td></tr>`).join("");
-  sec.innerHTML = `
-    <div class="approach-head"><div><h2>${A.title}</h2><span class="muted" style="font-size:.86rem">${A.sub}</span></div><div>${tags}</div></div>
-    <div class="moves"><div class="moves-map">${miniMap(A)}</div><div class="moves-text"><h3>진입 차량이 가는 방향</h3>${moveList(A)}</div></div>
-    ${sections}
-    <table><tbody>${extra}</tbody></table>
-    <div class="facts">
-      <div><h3>실측 교통량 (대/시간, 이륜차 제외)</h3>${volTable(A.vol)}</div>
-      <div><h3>PR #2와 다른 점</h3><ul class="diff">${A.diff.map(d => `<li>${d}</li>`).join("")}</ul><p class="muted mono">${A.edges}</p></div>
-    </div>`;
-  host.appendChild(sec);
+function arrowSVG(a, tos) {
+  const paths = tos.map(d => {
+    const t = Math.max(-150, Math.min(150, turn(a, d)));
+    const r = rad(t), ex = 14 + Math.sin(r) * 9, ey = 13 - Math.cos(r) * 9;
+    const hx = Math.sin(r), hy = -Math.cos(r);
+    const l = [ex - hx * 5 - hy * 4, ey - hy * 5 + hx * 4], rr = [ex - hx * 5 + hy * 4, ey - hy * 5 - hx * 4];
+    return `<path d="M14,26 L14,15 Q14,13 ${ex.toFixed(1)},${ey.toFixed(1)}" fill="none" stroke="var(--fg)" stroke-width="2.2" stroke-linecap="round"/><path d="M${l[0].toFixed(1)},${l[1].toFixed(1)} L${ex.toFixed(1)},${ey.toFixed(1)} L${rr[0].toFixed(1)},${rr[1].toFixed(1)}" fill="none" stroke="var(--fg)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>`;
+  }).join("");
+  return `<svg viewBox="0 0 28 28" aria-hidden="true">${paths}</svg>`;
+}
+const destHTML = d => `<span><i class="dot" style="--c:${LEGS[d].c}"></i>${LEGS[d].short}</span>`;
+const sum = o => Object.values(o || {}).reduce((x, y) => x + y, 0);
+
+function renderPanel() {
+  const a = st.sel, A = APP[a], Lg = LEGS[a], V = VOL[st.hour][a] || {}, G = GREEN[st.hour];
+  const nGen = A.lanes.filter(L => !L.bus).length, nBus = A.lanes.filter(L => L.bus).length;
+  let h = `<div class="eyebrow">진입 방향</div><h2>${Lg.od} 방면에서 진입${A.av ? '<span class="tag av">AV 출발</span>' : ""}${a === "n" ? '<span class="tag av">AV 도착 도로</span>' : ""}</h2>`;
+  h += `<div class="sub">${A.heading} · 정지선 일반 ${nGen}차로${nBus ? ` + BRT ${nBus}` : ""} · 분리 우회전 1개</div>`;
+  h += `<h4>정지선 앞 차로 (중앙 → 인도)</h4><div class="lanes">`;
+  A.lanes.forEach(L => {
+    h += `<div class="lane${L.bus ? " bus" : ""}" data-lane="${L.id}"><div class="lnum">${L.id}</div><div class="arrow">${arrowSVG(a, L.to)}</div><div><div class="dests">${L.to.map(destHTML).join("")}${L.bus ? '<span class="note" style="font-weight:400">버스 전용</span>' : ""}</div>${L.note ? `<div class="note">${L.note}</div>` : ""}</div></div>`;
+  });
+  if (A.slip) h += `<div class="lane slip" data-lane="R"><div class="lnum">분리</div><div class="arrow">${arrowSVG(a, [A.slip.to])}</div><div><div class="dests">${destHTML(A.slip.to)}</div><div class="note">${A.slip.note}</div></div></div>`;
+  h += `</div>`;
+  h += `<h4>실측 교통량 · ${st.hour}시 (대/시)</h4><div class="vols">`;
+  const dests = ORDER.filter(d => d !== a && (V[d] || A.bans.includes(d)));
+  const vmax = Math.max(...Object.values(VOL["18"]).flatMap(o => Object.values(o)));
+  for (const d of dests) {
+    const v = V[d] || 0, ban = A.bans.includes(d);
+    const ln = ban ? "금지" : isSlip(a, d) ? "분리" : lanesTo(a, d).join("·");
+    h += `<div class="vrow${st.dest && st.dest !== d ? " dim" : ""}" data-dest="${d}"><span>${destHTML(d)}</span><div class="track"><div class="fill" style="--c:${LEGS[d].c};width:${(v / vmax * 100).toFixed(1)}%"></div><span class="lanesTxt" style="${v / vmax < .18 ? "color:var(--muted);left:" + (v / vmax * 100 + 2).toFixed(1) + "%" : ""}">${ln}</span></div><span class="v">${ban ? '<span class="ban">✕</span>' : v.toLocaleString()}</span></div>`;
+  }
+  h += `</div><div class="vsum">합계 <b class="num">${sum(V).toLocaleString()}</b>대/시 · 시뮬 녹색 <b class="num">${G[a]}</b>초 (Webster, 주기 ${G.cyc}초)</div>`;
+  h += `<h4>차로 수</h4><dl class="kv"><dt>들어오는 구간</dt><dd>${A.up ? A.up.txt : "미확인"}</dd><dt>진출</dt><dd>${A.out.txt}</dd></dl>`;
+  h += `<h4>좌회전 금지</h4><div style="font-size:.88rem">${A.bans.length ? `<span class="ban">${A.banTxt}</span>` : A.banTxt}</div>`;
+  h += `<h4>신호등</h4><div style="font-size:.88rem">${A.sig}</div>`;
+  h += `<h4>참고</h4><ul style="margin:0;padding-left:18px;font-size:.88rem">${A.ref.map(x => `<li>${x}</li>`).join("")}</ul>`;
+  h += `<details><summary>PR #2 코드와 다른 점</summary><ul>${A.diff.map(x => `<li>${x}</li>`).join("")}</ul></details>`;
+  const panel = document.getElementById("panel");
+  panel.innerHTML = h;
+  panel.querySelectorAll(".lane").forEach(el => {
+    el.addEventListener("mouseenter", () => { st.lane = el.dataset.lane; drawMap(); });
+    el.addEventListener("mouseleave", () => { st.lane = null; drawMap(); });
+  });
+  panel.querySelectorAll(".vrow").forEach(el => el.addEventListener("click", () => { st.dest = st.dest === el.dataset.dest ? null : el.dataset.dest; render(); }));
 }
 
-// 신호 주기
-const PR2 = [["n",25],["ne",15],["e",15],["s",25],["sw",25],["w",25]];
-const NEW = [["n",13],["ne",13],["e",12],["s",13],["sw",18],["w",18]];
-function cycleRow(label, plan) {
-  const total = plan.reduce((a,[,g]) => a + g + 5, 0);
-  const segs = plan.map(([k,g]) => `<div class="seg" style="flex:${g};background:var(--d-${k})" title="${LEGS[k].name} 녹색 ${g}초">${LEGS[k].name.split(" · ")[0]} ${g}</div><div class="seg yr" style="flex:5" title="황색 3초 + 전적색 2초"></div>`).join("");
-  return `<div class="cycle-row"><div><b>${label}</b><br><span class="muted" style="font-size:.82rem">주기 ${total}초</span></div><div class="cycle-bar" role="img" aria-label="${label} 신호 주기 ${total}초">${segs}</div></div>`;
+function renderMatrix() {
+  const V = VOL[st.hour];
+  document.getElementById("mxHour").textContent = `· ${st.hour}시 실측 (대/시)`;
+  let h = `<tr><th class="rowh">출발 ↓ 도착 →</th>${ORDER.map(d => `<th><i class="dot" style="--c:${LEGS[d].c}"></i> ${LEGS[d].short}</th>`).join("")}<th>합계</th></tr>`;
+  const colTot = {};
+  for (const a of ORDER) {
+    h += `<tr><th class="rowh"><i class="dot" style="--c:${LEGS[a].c}"></i> ${LEGS[a].short}</th>`;
+    for (const d of ORDER) {
+      if (a === d) { h += `<td class="same">—</td>`; continue; }
+      const v = (V[a] || {})[d] || 0; colTot[d] = (colTot[d] || 0) + v;
+      const sel = st.sel === a && st.dest === d ? " sel" : "", rs = st.sel === a ? " rowsel" : "";
+      if (APP[a].bans.includes(d)) { h += `<td class="banned${sel}${rs}" data-a="${a}" data-d="${d}"><span class="ln">✕ 금지</span><span class="vv">0</span></td>`; continue; }
+      const ln = isSlip(a, d) ? "분리" : lanesTo(a, d).join("·");
+      const bg = `background:color-mix(in srgb, ${LEGS[d].c} ${Math.round(6 + v / 709 * 34)}%, var(--surface-2))`;
+      h += `<td class="${sel}${rs}" style="${bg}" data-a="${a}" data-d="${d}"><span class="ln">${ln}${a === "sw" && d === "n" ? ' <span class="tag av" style="margin:0">AV</span>' : ""}</span><span class="vv">${v.toLocaleString()}</span></td>`;
+    }
+    h += `<td class="tot">${sum(V[a]).toLocaleString()}</td></tr>`;
+  }
+  h += `<tr><th class="rowh">합계</th>${ORDER.map(d => `<td class="tot">${(colTot[d] || 0).toLocaleString()}</td>`).join("")}<td class="tot"><b>${ORDER.reduce((x, a) => x + sum(V[a]), 0).toLocaleString()}</b></td></tr>`;
+  const t = document.getElementById("mx");
+  t.innerHTML = h;
+  t.querySelectorAll("td[data-a]").forEach(td => td.addEventListener("click", () => {
+    const same = st.sel === td.dataset.a && st.dest === td.dataset.d;
+    st.sel = td.dataset.a; st.dest = same ? null : td.dataset.d; st.lane = null; render();
+    if (!same && window.innerWidth < 920) document.querySelector(".map").scrollIntoView({ behavior: "smooth", block: "start" });
+  }));
 }
-document.getElementById("cycle").innerHTML = cycleRow("PR #2 (가정)", PR2) + cycleRow("바꿀 안 (실측)", NEW);
 
-// 남은 조사
-const TODO = [
-  ["중앙대로 서면 진출", "서면 방향으로 나가는 차로 수"],
-  ["북쪽 진입 들어오는 구간", "정지선 100m 뒤 BRT·일반 차로 수 (급하지 않음)"],
-  ["동시 신호 구조", "카카오맵 CCTV(교차로 북서쪽)로 2~3주기 관찰. 남서쪽이 갈 때 북쪽도 가는지"],
-];
-document.getElementById("todo").innerHTML = TODO.map(([t,d]) => `<div class="todo-card"><b>${t}</b><span class="muted">${d}</span></div>`).join("");
+function renderPills() {
+  const box = document.getElementById("pills");
+  box.querySelectorAll(".pill").forEach(x => x.remove());
+  for (const k of ORDER) {
+    const b = document.createElement("button");
+    b.className = "pill"; b.style.setProperty("--c", LEGS[k].c);
+    b.setAttribute("aria-pressed", st.sel === k);
+    b.innerHTML = `<i class="dot"></i>${LEGS[k].od} <small>${LEGS[k].road}</small> <span class="tot">${sum(VOL[st.hour][k]).toLocaleString()}</span>`;
+    b.addEventListener("click", () => { st.sel = k; st.dest = null; st.lane = null; render(); });
+    box.appendChild(b);
+  }
+}
+
+const ROADS = drawRoads();
+function drawMap() {
+  const svg = document.getElementById("map");
+  svg.innerHTML = `<g font-family="var(--font-body)">${ROADS}${drawMoves()}</g>`;
+  svg.querySelectorAll(".leglabel").forEach(g => g.addEventListener("click", () => { st.sel = g.dataset.k; st.dest = null; st.lane = null; render(); }));
+}
+function render() { renderPills(); drawMap(); renderPanel(); renderMatrix(); }
+
+document.querySelectorAll("#hourSeg button").forEach(b => b.addEventListener("click", () => {
+  st.hour = b.dataset.h;
+  document.querySelectorAll("#hourSeg button").forEach(x => x.setAttribute("aria-pressed", x === b));
+  try { localStorage.setItem("yeonsan-hour", st.hour); } catch (e) {}
+  render();
+}));
+document.querySelectorAll("#hourSeg button").forEach(x => x.setAttribute("aria-pressed", x.dataset.h === st.hour));
+render();
 </script>
+</html>
