@@ -20,6 +20,7 @@ usage:
 환경변수 (tools/rl/routes7.py와 같다. 작업 프로세스에도 그대로 넘어간다):
     ROUTE_SET=loopB  7경로 대신 루프 경로 B (넓은 지도 yeonsan_area). MAX_STEPS=6000과 같이 쓴다
     MAX_STEPS        에피소드 최대 스텝 (기본 3000)
+    ROAD_DETAILS     도로 디테일 (env/road_details.py). 예: all, bus_stops,parked. SUMO 폴더를 따로 만든다
 
 예 (7경로 J8_RL, 교통량 1.0, 경로마다 60회, 먼저 평가한 J8과 비교):
     python tools/rl/eval_parallel.py models/yeonsan_7routes_J8_RL/model.pt results/eval_J8_RL \\
@@ -138,7 +139,7 @@ def _stale(built, road):
     if not os.path.exists(cfg):
         return True
     srcs = [os.path.join(BASE, "env", f) for f in
-            ("road_config.py", "road_builder.py", "osm_builder.py", "signals.py", "bus_lanes.py")]
+            ("road_config.py", "road_builder.py", "osm_builder.py", "signals.py", "bus_lanes.py", "road_details.py")]
     net = (road.get("osm") or {}).get("net_file")
     if net:
         srcs.append(os.path.join(BASE, net))
@@ -193,6 +194,8 @@ def main():
     from env import road_builder
     from env.mdp_config import SIMULATION
     route_set = os.environ.get("ROUTE_SET") or "7routes"
+    from env import road_details
+    details = road_details.tag()             # 도로 디테일 (ROAD_DETAILS 환경변수 / DETAILS), 기본 "none"
 
     # ── SUMO 폴더 (모든 작업이 같이 읽기만 한다) ──
     if a.sumo_dir:
@@ -208,7 +211,7 @@ def main():
                 sys.exit("TRAFFIC['demand']가 없어 --scale을 쓸 수 없습니다. --sumo-dir를 쓰세요.")
             demand["scale"] = a.scale
         # 경로 묶음마다 지도·경로가 다르므로 폴더를 나눈다 (7경로 폴더를 루프 B 평가에 쓰지 않게)
-        tag = f"{route_set}_scale_{scale}"
+        tag = f"{route_set}_scale_{scale}" + ("" if details == "none" else "_details-" + details.replace("+", "-"))
         built = os.path.join(BASE, "env", "sumo_eval", f"build_{tag}")
         if a.rebuild or _stale(built, ROAD):
             print(f"SUMO 파일 생성: {built} (경로 묶음 {route_set}, 교통량 배율 {scale})", flush=True)
@@ -244,7 +247,7 @@ def main():
 
     res = {"_meta": {
         "model": os.path.relpath(os.path.abspath(a.model), BASE).replace("\\", "/"),
-        "route_set": route_set, "max_steps": int(SIMULATION["max_steps"]),
+        "route_set": route_set, "road_details": details, "max_steps": int(SIMULATION["max_steps"]),
         "n_per_route": a.n, "seed_start": a.seed, "traffic_scale": scale,
         "sumo_dir": os.path.relpath(sumo_dir, BASE).replace("\\", "/"),
         "commit": _git_commit(), "git_dirty": _git_dirty(), "date": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),

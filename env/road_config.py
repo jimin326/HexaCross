@@ -584,3 +584,62 @@ TRAFFIC = {
         ],
     },
 }
+
+# ──────────────────────────────────────────────────────────────
+# 4) 도로 디테일 (env/road_details.py) — 기본은 전부 끔
+#
+# 켜도 AV 관측(56개) 형식은 그대로라 기존 모델을 다시 학습하지 않고 평가할 수 있다.
+# 설정 파일을 안 고치고 켜려면 환경변수: ROAD_DETAILS=all 또는 ROAD_DETAILS=bus_stops,parked,...
+# (환경변수가 있으면 아래 enabled보다 우선). 켠 항목은 highway.meta.json의 "details"에 기록된다.
+# ※ 위치·비율·시간은 모두 가정값이다 (실측 아님). 실측으로 바꾸면 여기 값만 고치면 된다.
+# ──────────────────────────────────────────────────────────────
+DETAILS = {
+    # 길가 자리 고르기 (정류장·주정차·정차 공통)
+    "placement": {
+        "seed": 0,                 # 자리 배치 난수 (같은 값이면 같은 자리)
+        "center_clear_m": 120.0,   # 연산교차로 중심 반경 안에는 두지 않는다 (정밀 모델 x6 구간)
+        "start_gap_m": 25.0,       # 엣지 시작(앞 교차로)에서 이만큼은 비운다
+        "end_gap_m": 60.0,         # 엣지 끝(정지선)까지 이만큼은 비운다 (회전 차로로 옮길 거리)
+        "min_edge_m": 100.0,       # 이보다 짧은 엣지에는 두지 않는다
+    },
+    # 1. 버스 정류장 정차: 실측 버스 노선(TRAFFIC.demand.bus_vehicles)이 정류장에 선다.
+    #    OSM에 정류장 정보가 거의 없어(영역 지도 1곳) 규칙으로 둔다: 노선을 따라 spacing_m마다, 교차로를 지난 직후.
+    #    시내버스는 맨 오른쪽 차로(가로변 버스전용차로 포함), BRT 버스는 BRT 차로에 선다 (BRT 정차는 AV와 무관).
+    "bus_stops": {"enabled": False, "spacing_m": 400.0, "length_m": 30.0, "dwell_s": (15, 40), "sub_flows": 3},
+    # 2-1. 불법 주정차: 에피소드 내내 맨 오른쪽 일반 차로 한 칸을 막고 서 있는 차.
+    #      옆에 일반 차로가 하나 이상 더 있고, 맨 오른쪽 차로로만 갈 수 있는 방향(우회전 전용 등)이 없는 도로에만,
+    #      정지선에서 end_gap_m 이상 떨어진 블록 중간에 둔다. ego_route_share만큼은 AV 경로 위에 먼저 둔다.
+    "parked": {"enabled": False, "per_km": 1.5, "max_count": 40, "ego_route_share": 0.5, "end_gap_m": 60.0},
+    # 2-2. 잠깐 정차 (택배·비상등 켜고 정차): 승용차 OD의 share 비율이 경로 중 한 곳에 dwell_s초 선다.
+    "short_stops": {"enabled": False, "share": 0.02, "dwell_s": (30, 120)},
+    # 3. 택시: 실측 CSV의 택시 대수(승용차 flow에 들어 있던 것)를 택시 차종으로 바꾼다 (총량 그대로).
+    #    stop_share 비율은 손님을 태우거나 내리려고 경로 중 한 곳에 dwell_s초 선다.
+    "taxi": {"enabled": False, "scale": 1.0, "stop_share": 0.3, "dwell_s": (10, 30)},
+    # 4. 운전자 성향: 배경 승용차 분포(TRAFFIC.controllers)에 두 성향을 share만큼 섞는다 (그만큼 기존 비율을 줄임).
+    #    lc*: SUMO 차로 변경 모델 (Assertive 클수록 좁은 틈에 끼어듦, Impatience 클수록 기다리다 무리하게 끼어듦,
+    #         Cooperative 작을수록 양보 안 함). jmDriveAfterYellowTime: 황색이 켜진 뒤 이 시간 안이면 그냥 통과.
+    #    jmDriveAfterRedTime: 적색이 켜진 뒤 이 시간 안이면 그냥 통과 (꼬리물기).
+    "driver_styles": {
+        "enabled": False,
+        "styles": {
+            "aggressive": {"share": 0.12, "carFollowModel": "Krauss", "accel": 3.2, "decel": 5.0, "tau": 0.7,
+                           "min_gap": 1.2, "speed_factor": 1.15, "speed_dev": 0.15, "sigma": 0.5,
+                           "lcAssertive": 2.5, "lcSpeedGain": 3.0, "lcImpatience": 0.8, "lcCooperative": 0.2,
+                           "lcKeepRight": 0, "jmDriveAfterYellowTime": 3.0, "jmDriveAfterRedTime": 0.5,
+                           "color": "1,0.4,0.7"},      # 분홍
+            "cautious": {"share": 0.10, "carFollowModel": "IDM", "accel": 1.8, "decel": 3.0, "tau": 1.6,
+                         "min_gap": 3.0, "speed_factor": 0.9, "speed_dev": 0.05,
+                         "lcAssertive": 0.7, "lcSpeedGain": 0.5, "lcCooperative": 1.0, "lcKeepRight": 0,
+                         "color": "0.6,0.8,0.4"},      # 연두
+        },
+    },
+    # 5. 긴급차량: 경광등 장치(bluelight)가 있어 주변 차가 길을 비켜 주고, 적색에도 천천히 지나간다.
+    #    실측 OD 경로에 대수 비율대로 나눠 보낸다. 대/시는 가정값.
+    "emergency": {"enabled": False, "ambulance_per_hour": 4.0, "firetruck_per_hour": 1.0},
+    # 6. 도로 경사: 고도 기준점(경도·위도·고도 m)을 거리 역가중으로 펴서 도로망 높이를 넣는다.
+    #    버스·소방차는 경사를 반영하는 KraussPS 모델로 바꾼다 (SUMO 기본 Krauss·IDM은 경사를 무시한다.
+    #    확인: 1 km 8% 오르막에서 버스 최고속도 KraussPS 35 km/h, Krauss 60 km/h 그대로).
+    #    AV는 속도를 직접 정하므로 경사 영향이 없다. points가 비어 있으면 켤 수 없다 (ROAD_DETAILS=all에서도 빠짐).
+    #    예: {"lon": 129.0806, "lat": 35.1859, "z": 20.0}  ← 실제 고도로 채워야 한다 (지도 앱·국토지리정보원 수치표고)
+    "slope": {"enabled": False, "points": [], "power": 2.0, "heavy_model": "KraussPS"},
+}
