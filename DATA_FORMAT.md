@@ -285,3 +285,13 @@ nobs = np.stack(tb["next_observation"].to_numpy(zero_copy_only=False))
 - 마지막 행에만 `terminated` 또는 `truncated`가 있는지
 
 시험 수집(17,935행)에서 오류는 0개였다.
+
+### 저장 위치
+
+- Hugging Face 데이터셋 저장소 `hoseob0902/HexaCross-dataset`(비공개)의 `v2/loopB_RL/`
+- 올리는 도구: `tools/data/upload_hf.py` (수집과 동시에 다 쓴 샤드부터 올림)
+
+### 수집 중 메모리
+
+- 처음 버전은 워커마다 25만 행을 파이썬 객체로 들고 있다가 한꺼번에 썼다. 워커 하나에 4 GB를 넘겨 메모리 부족으로 워커가 죽었다(80만 행 손실).
+- 지금은 2만 5천 행(`ROWGROUP_ROWS`)마다 열린 샤드에 row group으로 쓴다. 워커당 수백 MB다.

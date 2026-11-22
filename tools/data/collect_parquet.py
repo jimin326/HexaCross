@@ -11,7 +11,9 @@ usage (저장소 루트에서, 루프 경로 B):
     ROUTE_SET=loopB MAX_STEPS=6000 LANE_PLAN_RANGE=300 \
     python tools/data/collect_parquet.py --model models/yeonsan_loopB_RL/model.pt \
         --transitions 10000000 --workers 4 --out-dir data/v2/loopB_RL
-환경 변수 RADIUS (기본 100), SHARD_ROWS (기본 250000).
+환경 변수 RADIUS (기본 100), SHARD_ROWS (기본 250000: 샤드 파일 하나의 행 수), ROWGROUP_ROWS (기본 25000: 이만큼 모이면 디스크에 씀).
+메모리: 행을 ROWGROUP_ROWS만큼만 들고 있다가 열린 샤드에 row group으로 쓴다 (워커당 수백 MB).
+샤드는 다 쓴 뒤에 .tmp에서 이름을 바꾸므로, 끊겼을 때 남은 .tmp는 다음 실행이 지우고 그만큼 다시 모은다.
 진행 상황: OUT_DIR/progress_w*.json (워커별 누적 행 수·에피소드 수·끝난 이유), 샤드: OUT_DIR/shard_w{워커}_{번호}.parquet
 중간에 끊기면 같은 명령으로 다시 실행하면 이미 쓴 샤드를 세고 이어서 모은다.
 """
@@ -128,22 +130,42 @@ def worker(wid, args, target, start_episode, q):
     shard_rows = int(os.environ.get("SHARD_ROWS", "250000"))
     prog_path = os.path.join(args.out_dir, f"progress_w{wid}.json")
     prog = json.load(open(prog_path)) if os.path.exists(prog_path) else {"rows": 0, "episodes": 0, "shards": 0, "ends": {}}
+    prog = {"rows": prog["rows"], "episodes": prog.get("closed_episodes", prog["episodes"] if prog["rows"] else 0),
+            "shards": prog["shards"], "ends": prog.get("closed_ends", prog["ends"] if prog["rows"] else {})}
+    for f_ in glob.glob(os.path.join(args.out_dir, f"shard_w{wid}_*.parquet.tmp")):
+        os.remove(f_)                          # 끊긴 실행이 다 못 쓴 샤드
+    rowgroup = int(os.environ.get("ROWGROUP_ROWS", "25000"))
     rows = {f.name: [] for f in schema}
-    n_buf, ep, t0 = 0, start_episode + prog["episodes"], time.time()
+    n_buf, n_open, ep, t0, writer = 0, 0, start_episode + prog["episodes"], time.time(), None
+    open_eps, open_ends = 0, {}
+    start_rows = prog["rows"]
 
-    def flush():
-        nonlocal rows, n_buf
+    def write_group():
+        nonlocal rows, n_buf, n_open, writer
         if not n_buf:
             return
-        tbl = pa.Table.from_pydict(rows, schema=schema)
-        path = os.path.join(args.out_dir, f"shard_w{wid}_{prog['shards']:04d}.parquet")
-        pq.write_table(tbl, path + ".tmp", compression="zstd", compression_level=6)
-        os.replace(path + ".tmp", path)
-        prog["rows"] += n_buf; prog["shards"] += 1
-        json.dump(prog, open(prog_path, "w"))
+        if writer is None:
+            writer = pq.ParquetWriter(os.path.join(args.out_dir, f"shard_w{wid}_{prog['shards']:04d}.parquet.tmp"), schema,
+                                      compression="zstd", compression_level=6)
+        writer.write_table(pa.Table.from_pydict(rows, schema=schema))
+        n_open += n_buf
         rows = {f.name: [] for f in schema}; n_buf = 0
 
-    while prog["rows"] + n_buf < target:
+    def close_shard():
+        nonlocal writer, n_open, open_eps, open_ends
+        write_group()
+        if writer is None:
+            return
+        writer.close(); writer = None
+        path = os.path.join(args.out_dir, f"shard_w{wid}_{prog['shards']:04d}.parquet")
+        os.replace(path + ".tmp", path)
+        prog["rows"] += n_open; prog["shards"] += 1; prog["episodes"] += open_eps
+        for k_, v_ in open_ends.items():
+            prog["ends"][k_] = prog["ends"].get(k_, 0) + v_
+        n_open, open_eps, open_ends = 0, 0, {}
+        json.dump(prog, open(prog_path, "w"))
+
+    while prog["rows"] + n_open + n_buf < target:
         mode = ep % 2                         # 0 결정적, 1 확률적
         env.meta["ego_routes"] = ["ego_0"]
         for k in range(10):
@@ -181,16 +203,17 @@ def worker(wid, args, target, start_episode, q):
             obs, s_t, veh_t = nobs, s_n, veh_n
         end = ("collision" if info["collided"] else "red_light" if info.get("red_light") else "wrong_lane" if info.get("wrong_lane")
                else "arrival" if info["arrived"] else "timeout" if tr else "other")
-        prog["episodes"] += 1
+        open_eps += 1
         key = f"{'det' if mode == 0 else 'sto'}_{end}"
-        prog["ends"][key] = prog["ends"].get(key, 0) + 1
+        open_ends[key] = open_ends.get(key, 0) + 1
         ep += 1
-        if n_buf >= shard_rows:
-            flush()
-        else:
-            json.dump({**prog, "buffered": n_buf}, open(prog_path, "w"))
-        q.put((wid, prog["rows"] + n_buf, prog["episodes"], round((prog["rows"] + n_buf) / max(time.time() - t0, 1e-6), 1)))
-    flush()
+        if n_buf >= rowgroup:
+            write_group()
+        if n_open + n_buf >= shard_rows:
+            close_shard()
+        done_rows = prog["rows"] + n_open + n_buf
+        q.put((wid, done_rows, prog["episodes"] + open_eps, round((done_rows - start_rows) / max(time.time() - t0, 1e-6), 1)))
+    close_shard()
     env.close()
     q.put((wid, "done", prog["episodes"], None))
 
