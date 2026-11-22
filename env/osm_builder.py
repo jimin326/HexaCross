@@ -913,7 +913,11 @@ def build_osm(road: dict, ego: dict, traffic: dict, signal: dict,
             if p is None:
                 raise RuntimeError(f"loop_flows '{f['name']}': 연산교차로를 지나지 않는 경로가 없습니다")
             before = k
-            add_flow(src, dst, vph, finder=lambda s_, t_, p=p: p)
+            # 도로 디테일의 잠깐 정차(DETAILS['short_stops'])를 켜면 순환 도로 흐름에서도 같은 비율을 떼어 낸다
+            cut = ({"short_stops": vph * float((details.get("short_stops") or {}).get("share", 0.02))}
+                   if road_details.enabled(details, "short_stops") else {})
+            add_flow(src, dst, vph - sum(cut.values()) if cut else vph, finder=lambda s_, t_, p=p: p)
+            od_paths.append((f"loop_{len(od_paths)}", p, {**cut, "vph": vph}))
             if k > before:
                 meta["loop_flows"]["flows"][f"bg_{before}"] = {"name": f["name"], "rate": vph,
                                                                "source": f.get("source", "")}
