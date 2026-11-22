@@ -16,6 +16,8 @@ model, sdir, out, routes = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4].sp
 seed = int(sys.argv[5]) if len(sys.argv) > 5 else 3
 NAMES = {"ego_0": "S -> W -> roundabout -> W -> E", "ego_1": "N -> S", "ego_2": "NE -> SW", "ego_3": "E -> W",
          "ego_4": "S -> N", "ego_5": "SW -> N", "ego_6": "W -> E"}
+if os.environ.get("ROUTE_SET") == "loopB":   # 루프 경로 B (화면 글씨는 영문)
+    NAMES = {"ego_0": "Loop B: N -> S -> Yeonsu-ro -> roundabout -> E -> W"}
 sim = {**SIMULATION, "gui_delay": 0.0, "gui_zoom": 450.0}
 env = SumoHighwayEnv(cfg_path=os.path.join(sdir, "highway.sumocfg"), road=ROAD, ego=EGO, mdp_sim=sim, mdp_obs=OBSERVATION,
                      action=ACTION, reward=REWARD, traffic=TRAFFIC, gui=True)
