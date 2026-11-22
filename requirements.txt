@@ -1,0 +1,37 @@
+# HexaCross 파이썬 패키지 (평가 · 데이터 수집 · 학습)
+#
+# 설치 (저장소 폴더에서, 가상환경 권장):
+#   python -m venv .venv
+#   (Windows) .venv\Scripts\activate    (macOS) source .venv/bin/activate
+#   python -m pip install -r requirements.txt
+#   GPU가 없으면 torch는 CPU 빌드가 훨씬 작다 (먼저 설치):
+#   python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+#
+# 2026-11-23 Windows 11 · Python 3.12.10에서 이 버전들로 루프 B 평가·수집을 확인했다.
+
+# ---- SUMO: 팀 전체가 1.27.1로 맞춘다 (결과 비교용). 다섯 개 모두 같은 번호여야 한다 ----
+sumolib==1.27.1
+traci==1.27.1
+# libsumo: SUMO를 파이썬 프로세스 안에서 돌린다. 있으면 평가·수집이 traci 대신 자동으로 쓴다
+#   (결과는 traci와 같고, 수집이 약 20배 빠르다). 화면(sumo-gui)은 traci로 자동 전환.
+libsumo==1.27.1
+# eclipse-sumo: sumo · netconvert 1.27.1 실행 파일. 컴퓨터에 다른 버전 SUMO가 깔려 있으면
+#   그쪽이 먼저 쓰이므로, 실행 전에 SUMO_HOME을 이 패키지 폴더로 지정한다:
+#   python -c "import sumo; print(sumo.SUMO_HOME)"   ← 출력된 경로를 SUMO_HOME으로
+#   (Windows PowerShell) $env:SUMO_HOME = "<위 경로>"    (macOS) export SUMO_HOME="<위 경로>"
+#   확인: sumo --version 대신 "<위 경로>/bin/sumo" --version 이 1.27.1이면 된다.
+#   수업 문서 방식(설치 프로그램 · 소스 빌드)으로 1.27.1을 이미 깔았다면 없어도 된다.
+eclipse-sumo==1.27.1
+
+# ---- 모델 · 환경 ----
+torch>=2.5          # 확인한 버전 2.15.0 (CPU)
+numpy>=1.26         # 확인한 버전 2.5.5
+gymnasium>=0.29     # 확인한 버전 1.4.0
+pyproj>=3.6         # 확인한 버전 3.8.0 (지도 좌표 변환)
+
+# ---- 보고서 · 그래프 · 녹화 ----
+matplotlib>=3.8     # 확인한 버전 3.11.2 (평가 보고서 그래프)
+pillow>=10          # 확인한 버전 13.0.0 (녹화 tools/rl/record_routes.py, 지도 그림)
+
+# ---- 학습 곡선 (train.py · train_bc.py, 평가·수집에는 필요 없음) ----
+tensorboard>=2.15

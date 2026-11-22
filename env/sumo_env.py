@@ -102,6 +102,9 @@ class SumoHighwayEnv(gym.Env):
         self.road_legs = list(road.get("legs", []))
         self._layout = None           # 처음 필요할 때 도로 파일에서 한 번 만든다
         self._ego_dist_ref = None     # 에피소드마다 다시 잡는다 (reset)
+        # state.vehicles에 넣을 차량 반경 (m, AV 기준). None이면 지도 전체 (v1 동작).
+        # 데이터 수집(collect_pomdp_data.py --state-radius)이 정한다. 정책 입력과 무관.
+        self.state_radius = None
         # 방사형 교차로 빌더(env/junction_builder.py)가 남긴 경로/진입 도로 정보.
         # 직선 도로 예제에서는 없다 (None).
         meta_path = os.path.join(os.path.dirname(os.path.abspath(cfg_path)),
@@ -303,6 +306,15 @@ class SumoHighwayEnv(gym.Env):
     # ==================================================================
     # 에피소드 초기화
     # ==================================================================
+    @staticmethod
+    def _child_rng():
+        """전역 np.random에서 시드를 뽑아 만든 난수 생성기.
+
+        default_rng()(시드 없음)와 달리, np.random.seed(…) 뒤에는 같은 값을 낸다
+        → 같은 시드면 같은 배경 차량 배치·신호 위상 (에피소드 재현).
+        """
+        return np.random.default_rng(np.random.randint(2**31))
+
     def _prefill_traffic(self):
         """도로 전 구간에 배경차를 일정 간격(±jitter)으로 미리 배치한다.
 
@@ -319,7 +331,7 @@ class SumoHighwayEnv(gym.Env):
           "허용속도 초과"로 거부할 수 있는 문제도 함께 피한다.
         배치된 차들은 SUMO의 각자 컨트롤러(IDM 등)가 정상적으로 운전한다.
         """
-        rng = np.random.default_rng()
+        rng = self._child_rng()
         count = 0
         # 차선별 간격 배율 (없으면 전 차선 동일). 인덱스 0 = 맨 오른쪽.
         factors = (self.traffic.get("prefill", {})
@@ -353,7 +365,7 @@ class SumoHighwayEnv(gym.Env):
         교통량(inflow)에서 계산한다. ego가 출발하는 도로는 시작 구간
         start_offset을 비워둔다.
         """
-        rng = np.random.default_rng()
+        rng = self._child_rng()
         groups = {}
         for rid, info in self.meta["bg_routes"].items():
             groups.setdefault(info["first_edge"], []).append((rid, info["rate"]))
@@ -391,7 +403,7 @@ class SumoHighwayEnv(gym.Env):
 
     def _randomize_signal_phase(self):
         """모든 신호를 (주기 길이에 비례한 확률로) 임의의 위상·잔여시간에서 시작."""
-        rng = np.random.default_rng()
+        rng = self._child_rng()
         for tls in traci.trafficlight.getIDList():
             logic = traci.trafficlight.getAllProgramLogics(tls)
             prog = traci.trafficlight.getProgram(tls)
@@ -1286,30 +1298,89 @@ class SumoHighwayEnv(gym.Env):
             return False
 
     # ==================================================================
-    # 데이터셋용 state (DATA_FORMAT v1). 정책 입력에는 쓰지 않는다.
+    # 데이터셋용 state (DATA_FORMAT v2). 정책 입력에는 쓰지 않는다.
     # ==================================================================
     # 연산교차로 진입부·신호등 번호 0~5 (DATA_FORMAT.md 2절 번호표와 같아야 한다)
     LEG_ORDER = ("SW", "N", "W", "S", "E", "NE")
     LEG_INSIDE = 12        # 교차로 안 (우회전 연결로 포함)
+    LEG_ROUNDABOUT = 19    # AV 경로가 지나는 회전교차로 안
+    # 루프 B 주변 도로 번호: 도로 이름 → (루프 방향, 반대 방향) (_number_loop_roads)
+    LOOP_LEG_CODES = {"연수로": (13, 14), "중앙천로": (15, 16), "신촌로": (17, 18),
+                      "거제천로": (20, 21), "쌍미천로": (22, 23), "세병로": (24, 25)}
     TL_NONE = -1           # 앞에 신호 없음
+    TL_OTHER = 9           # 그 밖의 신호 (지도와 상관없이 고정. 6~8은 시청 인근)
+    TL_ROUTE_FIRST = 10    # AV 경로가 지나는 연산 밖 신호 진입로 (경로 순서, 루프 B는 10~20)
+    TL_GROUP_FIRST = 21    # 연산교차로 진입로 안 차로 그룹 B·C (LEG_ORDER 순)
+
+    def _cfg_input_files(self, key):
+        """sumocfg <input>의 key(route-files, additional-files 등)에 적힌 파일 경로 목록."""
+        import xml.etree.ElementTree as ET
+        try:
+            node = ET.parse(self.cfg_path).getroot().find(f"input/{key}")
+        except (OSError, ET.ParseError):
+            return []
+        cfg_dir = os.path.dirname(os.path.abspath(self.cfg_path))
+        value = (node.get("value") if node is not None else "") or ""
+        return [os.path.join(cfg_dir, f.strip()) for f in value.split(",") if f.strip()]
+
+    def _ego_route_edges(self):
+        """meta의 AV 경로 id들을 경로 파일에서 찾아 [[edge id, ...], ...] (meta 순서)로 돌려준다."""
+        import xml.etree.ElementTree as ET
+        ids = [str(r) for r in ((self.meta or {}).get("ego_routes") or [])]
+        found = {}
+        for path in self._cfg_input_files("route-files"):
+            try:
+                for r in ET.parse(path).getroot().iter("route"):
+                    if r.get("id") in ids and r.get("edges"):
+                        found.setdefault(r.get("id"), r.get("edges").split())
+            except (OSError, ET.ParseError):
+                continue
+        return [found[i] for i in ids if i in found]
+
+    def _tls_programs(self, net):
+        """신호 id → 현시 상태 문자열 목록.
+
+        도로 파일의 기본 프로그램에, sumocfg의 추가 파일(highway.tls.xml 등)에 있는
+        tlLogic을 덮어쓴다 (SUMO도 나중에 읽은 프로그램을 쓴다).
+        """
+        import xml.etree.ElementTree as ET
+        progs = {}
+        for t in net.getTrafficLights():
+            ps = t.getPrograms()
+            if ps:
+                progs[t.getID()] = [ph.state for ph in ps[sorted(ps)[0]].getPhases()]
+        for path in self._cfg_input_files("additional-files"):
+            try:
+                for tl in ET.parse(path).getroot().iter("tlLogic"):
+                    progs[tl.get("id")] = [ph.get("state") for ph in tl.iter("phase")]
+            except (OSError, ET.ParseError):
+                continue
+        return progs
 
     def _state_layout(self) -> dict:
         """연산교차로 기준 도로 번호와 신호 번호표를 도로 파일에서 한 번 만든다.
 
+        번호는 DATA_FORMAT.md 2절 번호표와 같다.
+
         edge_leg  : edge id → 0~5 연산교차로로 들어가는 도로, 6~11 나가는 도로
-                    (진입부 번호 + 6), 12 교차로 안. 표에 없으면 그 밖(-1).
+                    (진입부 번호 + 6), 12 교차로 안, 13~25 루프 B 주변 도로(방향별),
+                    19 회전교차로 안. 표에 없으면 그 밖(-1).
                     들어가는/나가는 도로는 교차로에 붙은 edge에서 같은 이름 도로를
                     따라 도로망 끝까지 이어 간다 (예: SW는 시청 인근 교차로 너머까지).
         lane_count: edge id → 승용차가 다닐 수 있는 차로 수 (버스 전용 차로 제외)
         tl_number : (신호 id, linkIndex) → ego_tl 번호
-                    0~5 연산교차로, 6~ extra_signals 교차로(시청 인근)의 진입 그룹,
-                    other_tl = 그 밖의 신호. 이름 순서는 tl_names (meta.json에 저장)
+                    0~5 연산교차로, 6~8 extra_signals 교차로(시청 인근)의 진입 그룹,
+                    9 그 밖, 10~ AV 경로의 연산 밖 신호, 21~ 연산교차로 차로 그룹 B·C
+        tl_link   : 신호 칸 번호 → (신호 id, 대표 linkIndex) — tl_color_i / tl_remaining_i
+        tl_order  : 신호 칸 번호 → 이름 (meta.json)
+        tl_groups : 신호 칸 번호 → {"edge", "lanes"} (차로 번호 0 = 맨 오른쪽)
         """
         if self._layout is not None:
             return self._layout
         lay = {"edge_leg": {}, "lane_count": {}, "stop_edges": set(),
-               "center_tls": None, "leg_link": {}, "tl_number": {},
-               "tl_names": list(self.LEG_ORDER), "other_tl": len(self.LEG_ORDER)}
+               "center_tls": None, "leg_link": {}, "leg_edges": {}, "tl_number": {},
+               "tl_names": list(self.LEG_ORDER), "other_tl": self.TL_OTHER,
+               "tl_link": {}, "tl_order": {}, "tl_groups": {}, "route_length_m": None}
         self._layout = lay
         if not (self.meta and self.meta.get("layout") == "osm"):
             return lay          # 연산교차로 OSM 도로망이 아니면 번호표 없음 (-1)
@@ -1318,7 +1389,7 @@ class SumoHighwayEnv(gym.Env):
         import sumolib
         net = sumolib.net.readNet(
             os.path.join(os.path.dirname(os.path.abspath(self.cfg_path)), "highway.net.xml"),
-            withInternal=True)
+            withInternal=True, withPrograms=True)
         center_id = str(self.meta["center"])
         cx, cy = net.getNode(center_id).getCoord()
         bearings = {lg["id"]: float(lg["bearing"]) for lg in self.road_legs}
@@ -1362,6 +1433,7 @@ class SumoHighwayEnv(gym.Env):
                 continue
             leg = leg_at(*e.getShape()[0])
             lay["stop_edges"].add(e.getID())
+            lay["leg_edges"].setdefault(leg, []).append(e.getID())
             trace(e, outgoing=False, code=self.LEG_ORDER.index(leg))
             for ln in e.getLanes():
                 for c in ln.getOutgoing():
@@ -1388,6 +1460,14 @@ class SumoHighwayEnv(gym.Env):
             elif "_link" in (e.getType() or "") and min(
                     math.hypot(px - cx, py - cy) for px, py in e.getShape()) < 150.0:
                 lay["edge_leg"][eid] = self.LEG_INSIDE          # 우회전 연결로
+
+        # 루프 B 주변 도로(13~25)와 회전교차로(19). 다른 교차로 안 번호 잇기보다 먼저 한다.
+        route_edges = self._ego_route_edges()
+        if route_edges:
+            lay["route_length_m"] = round(sum(net.getEdge(eid).getLength() for eid in route_edges[0]
+                                              if net.hasEdge(eid)), 1)
+        self._number_loop_roads(net, lay, route_edges)
+
         # 다른 교차로 안(내부 연결)은 들어온 도로의 번호를 이어받는다
         for e in net.getEdges(withInternal=False):
             code = lay["edge_leg"].get(e.getID())
@@ -1415,9 +1495,157 @@ class SumoHighwayEnv(gym.Env):
                         lay["tl_number"][(jid, c.getTLLinkIndex())] = number + k
             lay["tl_names"] += [f"{jid}:{g['road']}@{g['bearing']}" for g in groups]
             number += len(groups)
-        lay["other_tl"] = number
+        if number > self.TL_OTHER:
+            raise ValueError(f"시청 인근 신호 그룹이 너무 많아 번호 {number - 1}이 '그 밖'({self.TL_OTHER})과 겹칩니다")
         lay["tl_names"].append("other")
+        self._number_signals(net, lay, route_edges)
         return lay
+
+    def _number_loop_roads(self, net, lay, route_edges):
+        """루프 B 주변 도로(LOOP_LEG_CODES, 방향별)와 AV 경로의 회전교차로에 leg 번호를 붙인다.
+
+        이미 번호가 있는 edge(연산교차로 도로 0~12)는 건드리지 않는다.
+        방향: AV 경로 edge면 루프 방향, 그 반대편 edge(id 앞 "-" 차이)면 반대 방향,
+        그 밖에는 같은 이름의 가장 가까운 기준 edge와 진행 방향을 비교한다.
+        기준 edge = AV 경로 + 순환 흐름 중 이름에 "(루프 방향)"·"(1)"이 있는 것의 via.
+        """
+        edge_leg = lay["edge_leg"]
+        route_set = {eid for r in route_edges for eid in r}
+        refs_by_name = {}
+        ref_ids = list(route_set)
+        for fl in ((self.traffic or {}).get("loop_flows") or {}).get("flows", []):
+            if "(루프 방향)" in fl.get("name", "") or "(1)" in fl.get("name", ""):
+                ref_ids += fl.get("via", [])
+        for eid in ref_ids:
+            if net.hasEdge(eid):
+                e = net.getEdge(eid)
+                refs_by_name.setdefault(e.getName(), []).append(e)
+
+        for rb in net.getRoundabouts():
+            if not route_set & set(rb.getEdges()):
+                continue                    # AV 경로가 지나는 회전교차로만
+            for eid in rb.getEdges():
+                edge_leg.setdefault(eid, self.LEG_ROUNDABOUT)
+            inner = tuple(f":{nid}_" for nid in rb.getNodes())
+            for e in net.getEdges(withInternal=True):
+                if e.getID().startswith(inner):
+                    edge_leg.setdefault(e.getID(), self.LEG_ROUNDABOUT)
+
+        def mid(e):
+            s = e.getShape()
+            return (s[0][0] + s[-1][0]) / 2.0, (s[0][1] + s[-1][1]) / 2.0
+
+        def vec(e):
+            s = e.getShape()
+            return s[-1][0] - s[0][0], s[-1][1] - s[0][1]
+
+        for e in net.getEdges(withInternal=False):
+            eid = e.getID()
+            codes = self.LOOP_LEG_CODES.get(e.getName())
+            refs = refs_by_name.get(e.getName())
+            if not codes or not refs or eid in edge_leg or not e.allows("passenger"):
+                continue
+            reverse = eid[1:] if eid.startswith("-") else "-" + eid
+            if eid in route_set:
+                same = True
+            elif reverse in route_set:
+                same = False
+            else:
+                mx, my = mid(e)
+                r = min(refs, key=lambda q: (mid(q)[0] - mx) ** 2 + (mid(q)[1] - my) ** 2)
+                (ax, ay), (bx, by) = vec(e), vec(r)
+                same = ax * bx + ay * by >= 0.0
+            edge_leg[eid] = codes[0] if same else codes[1]
+
+        # 이름 없는 연결로(*_link)는 들어오는 도로의 번호를 이어받는다
+        for _ in range(3):
+            for e in net.getEdges(withInternal=False):
+                if e.getID() in edge_leg or e.getName() or "_link" not in (e.getType() or ""):
+                    continue
+                codes = [edge_leg.get(p.getID()) for p in e.getIncoming()]
+                codes = [c for c in codes if c is not None and c != self.LEG_INSIDE]
+                if codes:
+                    edge_leg[e.getID()] = codes[0]
+
+    @staticmethod
+    def _lane_groups(net, edges, tid, phases):
+        """진입 edge들의 차로를 '현시마다 녹색인지' 패턴이 같은 것끼리 묶는다.
+
+        반환: [{"edge", "lanes", "links"}] (edge 순, 가장 오른쪽 차로가 있는 묶음부터)
+        """
+        out = {}
+        for eid in edges:
+            for ln in net.getEdge(eid).getLanes():
+                pats, links = set(), []
+                for c in ln.getOutgoing():
+                    if c.getTLSID() == tid:
+                        li = c.getTLLinkIndex()
+                        links.append(li)
+                        pats.add(tuple(len(p) > li and p[li] in "Gg" for p in phases))
+                if links:
+                    g = out.setdefault((eid, tuple(sorted(pats))), {"edge": eid, "lanes": [], "links": []})
+                    g["lanes"].append(ln.getIndex())
+                    g["links"] += links
+        return sorted(out.values(), key=lambda g: (g["edge"], min(g["lanes"])))
+
+    def _number_signals(self, net, lay, route_edges):
+        """신호 칸 번호를 정한다: tl_link · tl_order · tl_groups, tl_number 보충.
+
+        0~5   연산교차로 진입로 — 대표 링크(leg_link)가 속한 차로 그룹 A
+        10~   AV 경로가 지나는 연산 밖 신호 진입로 (진입 edge마다 하나, 경로 순서)
+        21~   연산교차로 진입로 안 차로 그룹 B·C (LEG_ORDER 순)
+        """
+        center_tls = lay["center_tls"]
+        lay["tl_order"] = {i: n for i, n in enumerate(lay["tl_names"][:-1])}
+        lay["tl_order"][self.TL_OTHER] = "other"
+        center_phases = self._tls_programs(net).get(center_tls) or []
+
+        extra_groups = []                   # (leg, 그룹 A가 아닌 차로 그룹)
+        for i, leg in enumerate(self.LEG_ORDER):
+            link = lay["leg_link"].get(leg)
+            if link is None:
+                continue
+            lay["tl_link"][i] = (center_tls, link)
+            for g in self._lane_groups(net, lay["leg_edges"].get(leg, []), center_tls, center_phases):
+                if link in g["links"]:
+                    lay["tl_groups"][i] = {"edge": g["edge"], "lanes": sorted(g["lanes"])}
+                else:
+                    extra_groups.append((leg, g))
+
+        num = self.TL_ROUTE_FIRST
+        extra_ids = set((self.meta.get("extra_tls") or {}).keys())
+        seen = set()
+        for r in route_edges:
+            for a, b in zip(r, r[1:]):
+                if not (net.hasEdge(a) and net.hasEdge(b)):
+                    continue
+                ea = net.getEdge(a)
+                for c in ea.getConnections(net.getEdge(b)):
+                    tid = c.getTLSID()
+                    if not tid or tid == center_tls or tid in extra_ids or (tid, a) in seen:
+                        continue
+                    seen.add((tid, a))
+                    lanes = set()
+                    for ln in ea.getLanes():
+                        for cc in ln.getOutgoing():
+                            if cc.getTLSID() == tid:
+                                lay["tl_number"].setdefault((tid, cc.getTLLinkIndex()), num)
+                                lanes.add(ln.getIndex())
+                    lay["tl_link"][num] = (tid, c.getTLLinkIndex())
+                    lay["tl_order"][num] = f"{tid}@{a}"
+                    lay["tl_groups"][num] = {"edge": a, "lanes": sorted(lanes)}
+                    num += 1
+
+        num = max(self.TL_GROUP_FIRST, num)
+        count = {}
+        for leg, g in extra_groups:
+            count[leg] = count.get(leg, 0) + 1
+            for li in g["links"]:
+                lay["tl_number"][(center_tls, li)] = num
+            lay["tl_link"][num] = (center_tls, min(g["links"]))
+            lay["tl_order"][num] = f"{leg} 그룹 {'BCDEFG'[count[leg] - 1]}"
+            lay["tl_groups"][num] = {"edge": g["edge"], "lanes": sorted(g["lanes"])}
+            num += 1
 
     def _ego_dist_to_junction(self) -> float:
         """경로를 따라 연산교차로 입구(정지선)까지 남은 거리 (m). 지난 뒤에는 음수.
@@ -1443,29 +1671,38 @@ class SumoHighwayEnv(gym.Env):
         return float(d0 - (traci.vehicle.getDistance(self.ego_id) - odo0))
 
     def _signal_state(self) -> dict:
-        """연산교차로 6개 신호등의 색·남은 시간과 ego 앞 신호 번호·거리 (숫자만)."""
+        """신호 칸(연산 0~5, 경로 신호 10~, 차로 그룹 21~)의 색·남은 시간과
+        ego 앞 신호 번호·거리 (숫자만, DATA_FORMAT v2 3절)."""
         lay = self._state_layout()
         out = {}
-        tls = lay["center_tls"]
-        rgy, phases, idx, base = "", [], 0, 0.0
-        if tls:
-            rgy = traci.trafficlight.getRedYellowGreenState(tls)
-            # 신호 프로그램(현시 목록)은 안 바뀌므로 한 번만 읽어 둔다
-            prog = traci.trafficlight.getProgram(tls)
-            key = ("phases", tls, prog)
-            if key not in lay:
-                logic = next((l for l in traci.trafficlight.getAllProgramLogics(tls)
-                              if l.programID == prog), None)
-                lay[key] = [(p.state, float(p.duration)) for p in logic.phases] if logic else []
-            phases = lay[key]
-            idx = traci.trafficlight.getPhase(tls)
-            base = traci.trafficlight.getNextSwitch(tls) - traci.simulation.getTime()
+        now_t = traci.simulation.getTime()
+        cache = {}
+
+        def tls_info(tid):
+            """(상태 문자열, 현시 목록, 지금 현시 번호, 지금 현시 남은 시간)"""
+            if tid not in cache:
+                try:
+                    rgy = traci.trafficlight.getRedYellowGreenState(tid)
+                    # 신호 프로그램(현시 목록)은 안 바뀌므로 한 번만 읽어 둔다
+                    prog = traci.trafficlight.getProgram(tid)
+                    key = ("phases", tid, prog)
+                    if key not in lay:
+                        logic = next((l for l in traci.trafficlight.getAllProgramLogics(tid)
+                                      if l.programID == prog), None)
+                        lay[key] = [(p.state, float(p.duration)) for p in logic.phases] if logic else []
+                    cache[tid] = (rgy, lay[key], traci.trafficlight.getPhase(tid),
+                                  traci.trafficlight.getNextSwitch(tid) - now_t)
+                except traci.TraCIException:
+                    cache[tid] = ("", [], 0, 0.0)
+            return cache[tid]
 
         def color(ch):
             return 1.0 if ch in "Gg" else (0.5 if ch in "yY" else 0.0)
 
-        for i, leg in enumerate(self.LEG_ORDER):
-            link = lay["leg_link"].get(leg)
+        # 0~5는 v1처럼 항상 칸을 만든다 (연산교차로가 없는 도로면 0 / -1)
+        for i in sorted(set(range(len(self.LEG_ORDER))) | set(lay.get("tl_link", {}))):
+            tid, link = lay.get("tl_link", {}).get(i, (None, None))
+            rgy, phases, idx, base = tls_info(tid) if tid else ("", [], 0, 0.0)
             if link is None or link >= len(rgy):
                 out[f"tl_color_{i}"], out[f"tl_remaining_{i}"] = 0.0, -1.0
                 continue
@@ -1473,7 +1710,7 @@ class SumoHighwayEnv(gym.Env):
             remaining = base      # 지금 현시 남은 시간 + 같은 색이 이어지는 다음 현시들
             for k in range(1, len(phases)):
                 st, dur = phases[(idx + k) % len(phases)]
-                if color(st[link]) != now:
+                if link >= len(st) or color(st[link]) != now:
                     break
                 remaining += dur
             out[f"tl_color_{i}"] = now
@@ -1488,7 +1725,7 @@ class SumoHighwayEnv(gym.Env):
         return out
 
     def get_privileged_state(self) -> dict:
-        """POMDP 데이터셋용 simulator-side state (DATA_FORMAT v1, 숫자만).
+        """POMDP 데이터셋용 simulator-side state (DATA_FORMAT v2, 숫자만).
 
         agent가 실제로 받는 입력은 _get_obs()의 부분관측이고, 이 메서드는
         분석/지도신호용 privileged state만 수집한다. 정책 입력으로 쓰지 않는다.
@@ -1501,14 +1738,21 @@ class SumoHighwayEnv(gym.Env):
             edge_leg = lay["edge_leg"]
             x, y = traci.vehicle.getPosition(self.ego_id)
             road = traci.vehicle.getRoadID(self.ego_id)
+            r2 = None if self.state_radius is None else float(self.state_radius) ** 2
             vehicles = []
             for vid in traci.vehicle.getIDList():
+                if vid == self.ego_id:
+                    continue                # AV 자신은 state.ego_*에만
                 try:
                     vx, vy = traci.vehicle.getPosition(vid)
+                    # 반경 밖 차량은 위치만 읽고 나머지 값은 SUMO에 묻지 않는다 (수집 속도)
+                    if r2 is not None and (vx - x) ** 2 + (vy - y) ** 2 > r2:
+                        continue
                     vehicles.append({
                         "x": float(vx),
                         "y": float(vy),
                         "speed": float(traci.vehicle.getSpeed(vid)),
+                        "angle": float(traci.vehicle.getAngle(vid)),   # 도, 0 = 북, 시계방향
                         "lane": int(traci.vehicle.getLaneIndex(vid)),
                         "lane_pos": float(traci.vehicle.getLanePosition(vid)),
                         "leg": int(edge_leg.get(traci.vehicle.getRoadID(vid), -1)),
@@ -1521,6 +1765,7 @@ class SumoHighwayEnv(gym.Env):
                 "ego_x": float(x),
                 "ego_y": float(y),
                 "ego_speed": float(traci.vehicle.getSpeed(self.ego_id)),
+                "ego_angle": float(traci.vehicle.getAngle(self.ego_id)),   # 도, 0 = 북, 시계방향
                 "ego_lane": int(traci.vehicle.getLaneIndex(self.ego_id)),
                 "ego_lane_pos": float(traci.vehicle.getLanePosition(self.ego_id)),
                 "ego_leg": int(edge_leg.get(road, -1)),
