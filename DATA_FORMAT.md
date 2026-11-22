@@ -4,6 +4,8 @@
 >
 > 이 문서가 확정되기 전에는 대량 수집(10^7)을 시작하지 않는다.
 > 확정 후 컬럼을 바꾸면 버전을 올린다 (v1 → v2).
+
+> **2026-11-22: 대량 수집은 v2(Parquet)로 정했다 (지민 결정).** 5절의 미정 항목 중 차량 범위, 파일 형식, 샤드, 수집 정책을 정했다. 정한 내용과 v1과의 차이는 10절에 있다.
 >
 > v1은 수업 피드백과 FAQ를 반영한 초안이다 (7절 "v0 → v1 변경").
 > 컬럼은 모두 코드에 구현돼 있다 (6절 "구현 상태").
@@ -41,7 +43,7 @@
 |---|---|---|---|
 | `episode` | int | 에피소드 번호 | – |
 | `t` | int | 에피소드 안 스텝 번호 | step |
-| `observation` | float[**41**] | AV가 보는 부분관측. 원본 31 + 진입 도로별 신호 6 + 정지선 거리 1 + 목표 거리 1 + 큰 틀의 경로 안내 2 (아래 4절) | 정규화 [-1, 1] |
+| `observation` | float[**56**] | AV가 보는 부분관측 (아래 4절). 예전 41차원 + 노면 화살표 15 | 정규화 [-1, 1] |
 | `action_raw` | float[2] | 정책 출력 [가감속, 차로변경] | [-1, 1] |
 | `action.accel_raw` | float | 가감속 명령 | [-1, 1] |
 | `action.lane_change_raw` | float | 차로변경 원시값 | [-1, 1] |
@@ -227,3 +229,59 @@ v1 초안(34차원)의 31 신호 색 · 32 정지선 거리 · 33 남은 시간�
 │   └── rule/
 └── sample/              # 1,000 transition 샘플 (git의 data/sample/에도 둠)
 ```
+
+## 10. v2: 대량 수집용 Parquet (2026-11-22)
+
+v1과 **값은 같고 저장 방식만 다르다.**
+- 수집 도구: `tools/data/collect_parquet.py`
+- 검사 도구: `tools/data/check_parquet.py`
+
+### 정한 것 (5절의 미정 항목)
+
+| 항목 | 정한 값 |
+|---|---|
+| 파일 형식 | Parquet (zstd 압축) 샤드. 1행 = 1 transition |
+| 샤드 | 워커마다 약 25만 행(약 100 에피소드)씩. 에피소드는 샤드 경계에서 잘리지 않는다. 이름은 `shard_w{워커}_{번호}.parquet` |
+| `vehicles` 범위 | AV 반경 **100 m** 안의 차량만 (관측 거리 W와 같음). AV 자신은 빼고 `ego_*` 컬럼에 둔다 |
+| 수집 정책 | 루프 경로 B 최종 모델 `models/yeonsan_loopB_RL/model.pt`. 에피소드마다 결정적(μ, argmax 차로)과 확률적(정책 분포에서 샘플)을 번갈아 쓴다 → `policy_mode` 0 / 1 |
+| 교통 | 기본 환경, 교통량 1.0 + 버스. 넓은 지도(`yeonsan_area`), `ROUTE_SET=loopB` |
+| 규모 | 10^7 transition (약 3,900 에피소드, 약 5.5 GB) |
+
+### 컬럼 (v1과 다른 점)
+
+| v2 컬럼 | 타입 | v1에서 |
+|---|---|---|
+| `episode`, `t` | int32 | 같음. `episode`는 워커마다 1,000,000 × (워커+1)부터 |
+| `worker` | int8 | 새로 (수집 워커 번호) |
+| `policy_mode` | int8 | 새로 (0 결정적, 1 확률적) |
+| `observation`, `next_observation` | float32[56] | `next_observation`을 **모든 행에** 저장 (v1은 에피소드 마지막 행만) |
+| `action_raw` | float32[2] | 같음 |
+| `accel_raw`, `lane_change_raw`, `lane_change`, `lane_change_applied` | | v1의 `action.*`를 펼침 |
+| `reward`, `terminated`, `truncated` | | 같음 |
+| `ego_alive` … `ego_tl_dist` (21개) | | v1의 `state.*`(주변 차량 제외)를 펼침 |
+| `next_ego_alive` … `next_ego_tl_dist` (21개) | | v1의 `next_state.*`. **모든 행에** 저장 |
+| `vehicles` | list<struct{x, y, speed, lane, lane_pos, leg, type}> | v1 `state.vehicles`. 반경 100 m 안만 |
+| `detected_vehicles` | list<struct{x, y, rel_pos, speed, lane_offset}> | 같음 |
+| `collided`, `arrived`, `red_light`, `wrong_lane`, `lane_before`, `lane_after` | | v1의 `event.*`를 펼침 |
+
+- AV가 사라진 행(충돌·도착 직후)은 `next_ego_alive`가 False이고, 나머지 `next_ego_*`는 null이다.
+- 번호표(`leg`, `ego_tl`, 신호 색)는 2절과 같다.
+
+### 읽기
+
+```python
+import pyarrow.parquet as pq, numpy as np
+tb = pq.read_table("data/v2/loopB_RL/shard_w0_0000.parquet")
+obs = np.stack(tb["observation"].to_numpy(zero_copy_only=False))        # (N, 56)
+act = np.stack(tb["action_raw"].to_numpy(zero_copy_only=False))         # (N, 2)
+rew = tb["reward"].to_numpy(); done = tb["terminated"].to_numpy() | tb["truncated"].to_numpy()
+nobs = np.stack(tb["next_observation"].to_numpy(zero_copy_only=False))
+```
+
+### 검사 (`tools/data/check_parquet.py`)
+
+- 같은 에피소드 안에서 `next_observation[t] == observation[t+1]`, `next_ego_x[t] == ego_x[t+1]`인지
+- `t`가 0부터 1씩 늘어나는지
+- 마지막 행에만 `terminated` 또는 `truncated`가 있는지
+
+시험 수집(17,935행)에서 오류는 0개였다.
