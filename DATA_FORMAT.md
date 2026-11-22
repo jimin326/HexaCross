@@ -303,6 +303,48 @@ v1 초안(34차원)의 31 신호 색 · 32 정지선 거리 · 33 남은 시간�
 - 같은 커밋·SUMO 1.27.1에서 그 시드로 다시 돌리면 같은 에피소드가 나온다 (`eval/failure-seeds`의 난수 수정 전제). 녹화(`tools/rl/record_routes.py`)에 그대로 쓸 수 있다.
 - `--chunk`처럼 한 프로세스가 여러 에피소드를 이어 돌려도, 워밍업 스냅샷 풀(`warmup_state_pool` = 16)이 차기 전까지만 시드로 재현된다. 워커 하나가 16회를 넘기면 그 뒤 에피소드는 앞 에피소드의 스냅샷을 다시 쓴다 → 수집 때 워커당 에피소드 수를 16 이하로 나누거나, 수집에서는 스냅샷 풀을 끈다 (구현 때 결정).
 
+### 수집 분담표 (초안 — 팀 확정 전)
+
+여러 PC로 나눠 수집할 때 **사람마다 다른 `--seed`**를 쓴다. 같은 시드를 두 사람이 쓰면 같은 에피소드를 중복 수집하고 에피소드 번호도 겹친다.
+시드 번호는 여기서만 정하고, 바꾸면 이 표를 먼저 고친다.
+
+| 사람 | `--seed` | 에피소드 수 | 에피소드 번호 | 파일 이름 (`--name`) | 상태 |
+|---|---|---|---|---|---|
+| 지민 | 1 | 800 | 100000 ~ 100799 | `loopB_jimin` | 대기 |
+| 승준 | 2 | 800 | 200000 ~ 200799 | `loopB_seungjun` | 대기 |
+| 지원 | 3 | 800 | 300000 ~ 300799 | `loopB_jiwon` | 대기 |
+| 서영 | 4 | 800 | 400000 ~ 400799 | `loopB_seoyoung` | 대기 |
+| 호섭 | 5 | 800 | 500000 ~ 500799 | `loopB_hoseop` | 대기 |
+| (예약) | 9 | – | 900000 ~ | 시험 수집용 (2026-11-23 사용). 본 수집에 쓰지 않음 | – |
+
+- 합계 4,000 에피소드 ≈ 1,020만 transition (루프 B 1회 평균 약 2,560스텝) → 10^7 이상.
+- 1인 예상 시간: Ryzen 5 5600X · 워커 8개 · libsumo 기준 403 step/s → 800회 약 1시간 30분. PC마다 다르므로 처음 몇 회의 속도로 다시 계산한다.
+- 상태 칸: 대기 → 수집 중 → 완료(파일 크기, transition 수) → 업로드. 완료하면 `meta.json`의 `episode_ids`가 위 번호와 같은지 확인한다.
+- 평가 시드(`tools/rl/eval_parallel.py --seed`, 기본 905)와는 별개다.
+
+**수집 전 확인 (모든 사람)**
+
+1. 같은 커밋: 이 표가 들어간 브랜치(또는 머지된 main)를 받고 `git status`가 깨끗해야 한다 (`meta.json`의 `git_dirty`가 `false`).
+2. SUMO 1.27.1: `python -m pip install -r requirements.txt` (sumolib · traci · libsumo · eclipse-sumo 1.27.1). 다른 버전 SUMO가 깔려 있으면 `SUMO_HOME`을 eclipse-sumo 폴더로 (requirements.txt 주석).
+3. 처음 1~2분 안에 워커들이 실제로 에피소드를 끝내는지 로그를 본다.
+
+**수집 명령** (`--seed`와 `--name`만 표대로 바꾼다)
+
+```bash
+# macOS / Linux
+ROUTE_SET=loopB MAX_STEPS=6000 LANE_PLAN_RANGE=300 python collect_pomdp_data.py \
+    --model models/yeonsan_loopB_RL/model.pt --episodes 800 --workers 8 --seed 1 --name loopB_jimin
+```
+
+```powershell
+# Windows PowerShell
+$env:ROUTE_SET="loopB"; $env:MAX_STEPS="6000"; $env:LANE_PLAN_RANGE="300"
+python collect_pomdp_data.py --model models/yeonsan_loopB_RL/model.pt --episodes 800 --workers 8 --seed 1 --name loopB_jimin
+```
+
+- `--workers`는 CPU 코어 수 − 1 정도 (컴퓨터가 너무 느려지면 줄인다).
+- 수집이 중간에 끊기면 **같은 시드·같은 이름으로 처음부터 다시** 돌린다 (같은 에피소드가 다시 나오므로 번호 충돌 없음). 파일은 `data/<이름>.jsonl.gz`, `.npz`, `.meta.json` 세 개다.
+
 ### meta.json 예 (v2)
 
 ```json
@@ -375,7 +417,7 @@ v1 초안(34차원)의 31 신호 색 · 32 정지선 거리 · 33 남은 시간�
 |---|---|
 | 11/23 | v2 문서 팀 확인 (서영 · 호섭), 구현 시작 |
 | 11/24 오전 | 구현 마무리 → 시험 수집 10회 (6절 v2 확인 계획) → R 확정, 분담표 |
-| 11/24 오후 ~ 11/26 | 분담 수집 (사람별 `--seed`, 같은 커밋, SUMO 1.27.1 + libsumo 1.27.1). 루프 B 1회 평균 약 2,560스텝 → 10^7 ≈ 3,900 에피소드 |
+| 11/24 오후 ~ 11/26 | 분담 수집 (8절 "수집 분담표": 사람별 `--seed`, 같은 커밋, SUMO 1.27.1 + libsumo 1.27.1). 루프 B 1회 평균 약 2,560스텝 → 10^7 ≈ 3,900 에피소드 |
 | 11/27 | Parquet 변환 · HF 업로드 · 프로젝트 페이지 링크 |
 
 ## 11. v1 → v2 변경
