@@ -1,0 +1,15 @@
+{
+ "loop_run1_seed3.mp4": {
+  "steps": 2125,
+  "end": "arrived",
+  "seconds": 1062
+ },
+ "loop_run2_seed4.mp4": {
+  "steps": 2849,
+  "end": "arrived",
+  "seconds": 1424
+ },
+ "model": "models/yeonsan_loopB_RL/model.pt",
+ "traffic": 1.0,
+ "note": "영상 1초 = 실제 8초"
+}
