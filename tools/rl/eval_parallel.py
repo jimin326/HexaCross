@@ -6,7 +6,8 @@ usage:
 옵션:
     --n N            경로마다 평가 횟수 (기본 100)
     --workers W      동시에 돌릴 SUMO 수 (기본: CPU 코어 수 - 1, 최대 8)
-    --seed S         시드 시작값 (기본 905). 경로·묶음마다 다른 시드를 쓴다
+    --seed S         시드 시작값 (기본 905). 경로 r의 에피소드 i 시드 = S + 1000*r + i
+                     (eval.json의 "failures"에 실패한 에피소드의 시드·마지막 위치가 남는다)
     --routes R       평가할 경로 id (쉼표 구분, 기본: 경로 묶음 전부. 7경로면 ego_0..ego_6)
     --scale X        교통량 배율 (TRAFFIC["demand"]["scale"]). 주지 않으면 road_config 기본값(1.0).
                      SUMO 파일을 env/sumo_eval/<경로 묶음>_scale_X/ 에 만들어서 평가한다
@@ -55,8 +56,13 @@ BASE = os.path.dirname(os.path.dirname(HERE))
 
 
 def _worker(task):
-    """한 작업 = (경로 하나, 에피소드 n개, 시드). 새 프로세스에서 실행된다."""
-    model, sumo_dir, rid, n, seed = task
+    """한 작업 = (경로 하나, 에피소드 n개, 시드 기준값, 첫 에피소드 번호). 새 프로세스에서 실행된다.
+
+    에피소드 i(경로 안에서 0부터)의 시드 = base_seed + i. 에피소드마다 다시 시드를 정하므로
+    record_routes.py에 그 시드를 주면 같은 에피소드를 다시 볼 수 있다 (--chunk 16 이하일 때:
+    워밍업 스냅샷 풀(warmup_state_pool=16)이 차면 앞 에피소드의 스냅샷을 다시 써서 재현되지 않는다).
+    """
+    model, sumo_dir, rid, n, base_seed, first = task
     sys.path.insert(0, HERE)
     import common
     common.setup(BASE)                       # libsumo가 있으면 사용 + 7경로 설정
@@ -70,24 +76,31 @@ def _worker(task):
     env = SumoHighwayEnv(cfg_path=os.path.join(sumo_dir, "highway.sumocfg"), road=ROAD, ego=EGO,
                          mdp_sim=SIMULATION, mdp_obs=OBSERVATION, action=ACTION,
                          reward=common.reward(), traffic=TRAFFIC, gui=False)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
+    import traci                             # common.setup 뒤라 libsumo일 수도 있다
     agent = load_agent(model, env.observation_space.shape[0], 2)
     dt = float(SIMULATION["step_length"])
     env.meta["ego_routes"] = [rid]
     eps, fails = [], 0
     try:
-        for _ in range(n):
+        for j in range(n):
+            ep_seed = base_seed + first + j
+            np.random.seed(ep_seed)
+            torch.manual_seed(ep_seed)
             try:
                 obs, _ = env.reset()
             except RuntimeError:
                 fails += 1
                 continue
             done, steps, speeds, stopped, gaps, info, te = False, 0, [], 0, [], {}, False
+            last = None                      # ego의 마지막 위치 (충돌하면 ego가 지워지므로 직전 스텝 값)
             while not done:
                 obs, _, te, tr, info = env.step(agent.predict(obs, deterministic=True))
                 done = te or tr
                 steps += 1
+                try:
+                    last = (traci.vehicle.getRoadID(env.ego_id), *traci.vehicle.getPosition(env.ego_id))
+                except Exception:
+                    pass
                 if info.get("speed") is not None:
                     speeds.append(float(info["speed"]))
                     stopped += float(info["speed"]) < 0.1
@@ -100,7 +113,11 @@ def _worker(task):
             eps.append({"end": end, "time_s": steps * dt,
                         "mean_speed": sum(speeds) / len(speeds) if speeds else None,
                         "stop_time_s": stopped * dt,
-                        "min_gap": min(gaps) if gaps else None})
+                        "min_gap": min(gaps) if gaps else None,
+                        "seed": ep_seed,
+                        "last_edge": last[0] if last else None,
+                        "x": round(last[1], 1) if last else None,
+                        "y": round(last[2], 1) if last else None})
     finally:
         env.close()
     return rid, eps, fails
@@ -223,12 +240,13 @@ def main():
     tasks = []
     for ri, rid in enumerate(route_ids):
         done = 0
-        k = 0
         while done < a.n:
             m = min(a.chunk, a.n - done)
-            tasks.append((os.path.abspath(a.model), sumo_dir, rid, m, a.seed + 1000 * ri + k))
+            tasks.append((os.path.abspath(a.model), sumo_dir, rid, m, a.seed + 1000 * ri, done))
             done += m
-            k += 1
+    if a.chunk > 16:
+        print(f"주의: --chunk {a.chunk} > 16이면 워밍업 스냅샷을 다시 써서 17번째 이후 에피소드는 "
+              "시드만으로 재현되지 않는다", flush=True)
     print(f"평가: 경로 {len(route_ids)}개 × {a.n}회 = {len(route_ids) * a.n}회, "
           f"작업 {len(tasks)}개, 동시 {a.workers}개", flush=True)
 
@@ -262,6 +280,9 @@ def main():
         mg, mg_n = _mean([e["min_gap"] for e in eps])
         res[routes7.NAMES.get(rid, rid)] = {
             "episodes": len(eps), "insert_fail": per[rid]["fails"], **ends,
+            # 완주 못 한 에피소드: record_routes.py에 seed를 주면 다시 볼 수 있다
+            "failures": sorted(({k: e[k] for k in ("seed", "end", "time_s", "last_edge", "x", "y")}
+                                for e in eps if e["end"] != "arrival"), key=lambda e: e["seed"]),
             "metrics": {"travel_time_s": tt, "travel_time_s_n": tt_n,
                         "mean_speed": sp, "mean_speed_n": sp_n,
                         "stop_time_s": st, "stop_time_s_n": st_n,

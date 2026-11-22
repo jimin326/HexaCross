@@ -9,8 +9,18 @@
 - s_t / s_{t+1}: SUMO 내부의 privileged simulator state.
   정책 입력에는 쓰지 않고 데이터 검증/representation/belief 학습용으로만 저장한다.
 
-컬럼 정의는 DATA_FORMAT.md (v1). 모든 값은 숫자다 (문자열 id·신호 문자 없음).
+컬럼 정의는 DATA_FORMAT.md (v2). 모든 값은 숫자다 (문자열 id·신호 문자 없음).
 신호등·도로 번호표는 출력과 같이 저장하는 <name>.meta.json에 적는다.
+
+v2:
+- ROUTE_SET=loopB면 평가·녹화와 같은 루프 B 경로·넓은 지도·MAX_STEPS를 쓴다 (tools/rl/routes7.py).
+- 에피소드 번호 = 에피소드 시드 = --seed × 100000 + i. 사람마다 --seed를 다르게 주면
+  여러 PC의 파일을 번호를 고치지 않고 합칠 수 있고, 그 시드로 에피소드를 다시 만들 수 있다.
+- state.vehicles는 AV 반경 --state-radius(기본 150 m) 안 차량만, angle 포함.
+
+루프 B 수집 예 (PowerShell은 $env:ROUTE_SET="loopB" 식으로):
+    ROUTE_SET=loopB MAX_STEPS=6000 LANE_PLAN_RANGE=300 python collect_pomdp_data.py \\
+        --model models/yeonsan_loopB_RL/model.pt --episodes 900 --workers 7 --seed 1 --name loopB_jimin
 
 용량을 줄이기 위해:
 - JSONL은 gzip으로 압축해서 쓰고(.jsonl.gz), observation/state/detected_vehicles의
@@ -21,8 +31,9 @@
 - NPZ의 감지 차량 좌표는 object 배열(pickle) 대신 flat (M, 2) + offsets로 저장한다.
 
 속도:
-- headless면 sumo_env가 libsumo(in-process SUMO)를 써서 TraCI 소켓 왕복이 사라진다
-  (pip install libsumo). --workers N으로 SUMO 인스턴스 N개를 병렬로 돌려 더 줄인다.
+- headless면 libsumo(in-process SUMO)를 traci 대신 써서 TraCI 소켓 왕복이 사라진다
+  (pip install libsumo==SUMO 버전, 없으면 traci. USE_LIBSUMO=0이면 강제로 traci).
+  --workers N으로 SUMO 인스턴스 N개를 병렬로 돌려 더 줄인다.
 
 예시:
     python collect_pomdp_data.py --episodes 100
@@ -53,10 +64,21 @@ import multiprocessing
 import os
 import shutil
 import subprocess
+import sys
 import time
 from datetime import datetime
 
 import numpy as np
+
+# 화면 없는 수집은 libsumo(같은 프로세스 안 SUMO)를 traci 대신 쓴다 (pip install libsumo==SUMO 버전).
+# tools/rl/common.setup()과 같은 방식이며, env.sumo_env를 import하기 "전에" 바꿔야 한다.
+# --gui이거나 USE_LIBSUMO=0이면 traci. spawn 워커도 이 모듈을 다시 import하므로 같이 적용된다.
+if "--gui" not in sys.argv and os.environ.get("USE_LIBSUMO", "1") != "0":
+    try:
+        import libsumo
+        sys.modules["traci"] = libsumo
+    except ImportError:
+        pass
 
 from env.road_config import ROAD, EGO, TRAFFIC, SIGNAL
 from env.mdp_config import SIMULATION, OBSERVATION, ACTION
@@ -65,6 +87,16 @@ from env.sumo_env import SumoHighwayEnv
 from train import HPARAMS, REWARD  # 학습과 같은 보상 조건 + PPO 네트워크 구조
 
 BASE = os.path.dirname(os.path.abspath(__file__))
+
+# ROUTE_SET=loopB 등: 평가·녹화 도구(tools/rl/routes7.py)와 같은 경로·지도·MAX_STEPS를 적용한다.
+# spawn 워커도 이 모듈을 다시 import하므로 여기(모듈 맨 위)에서 적용한다.
+if os.environ.get("ROUTE_SET"):
+    sys.path.insert(0, os.path.join(BASE, "tools", "rl"))
+    import routes7
+    routes7.apply()
+
+# 에피소드 번호 = 에피소드 시드 = --seed × EP_STRIDE + i (DATA_FORMAT v2 8절)
+EP_STRIDE = 100000
 
 
 def detect_algorithm(model_path: str) -> str:
@@ -85,13 +117,11 @@ def make_policy(args, env, worker_seed: int):
     train_bc.py가 |action_raw| <= 1을 검증하므로 이 데이터로 바로 BC를 돌릴 수 있다.
     """
     if args.policy == "ppo":
-        # test.py와 동일: train.py의 HPARAMS로 같은 구조를 만든 뒤 가중치만 덮어쓴다.
-        # seed는 워커마다 다르게 (--stochastic 샘플링이 워커 간에 겹치지 않도록).
-        from algorithms.ppo import PPO
-        agent = PPO(obs_dim=env.observation_space.shape[0],
-                    act_dim=env.action_space.shape[0],
-                    **{**HPARAMS, "device": args.device, "seed": worker_seed})
-        agent.load(args.model)
+        # 평가(test.py, tools/rl/eval_parallel.py)와 같은 함수로 불러온다
+        # (PPO state_dict · 앙상블 · 잔차 정책 모두). 샘플링 난수는 에피소드마다 다시 시드한다.
+        from test import load_agent
+        agent = load_agent(args.model, env.observation_space.shape[0],
+                           env.action_space.shape[0])
         deterministic = not args.stochastic   # hybrid: (μ, argmax 차선) / 샘플링
 
         def act(obs):
@@ -181,6 +211,9 @@ def collect(args, sumocfg, episodes, worker_id, jsonl_path, npz_path, tag=""):
         except ImportError:
             pass
 
+    # 워밍업 스냅샷 풀: 켜 두면 앞 에피소드가 만든 스냅샷을 다시 써서, 에피소드를
+    # 시드만으로 재현할 수 없다. 수집은 기본으로 끈다 (--state-pool, DATA_FORMAT v2 8절).
+    SIMULATION["warmup_state_pool"] = int(args.state_pool)
     env = SumoHighwayEnv(
         cfg_path=sumocfg,
         road=ROAD, ego=EGO,
@@ -190,11 +223,12 @@ def collect(args, sumocfg, episodes, worker_id, jsonl_path, npz_path, tag=""):
         gui=args.gui,
         gui_autostart=True,
     )
+    env.state_radius = args.state_radius if args.state_radius and args.state_radius > 0 else None
     act = make_policy(args, env, worker_seed)
-    # sumo_env가 SUMO --seed를 np.random(전역)에서 뽑는다. PPO 생성자가 전역 시드를
-    # HPARAMS["seed"]로 되돌려 놓으므로 정책을 만든 "뒤에" 워커별로 다시 시드해야
-    # 워커들이 같은 교통 패턴을 반복하지 않는다.
-    np.random.seed(worker_seed)
+    try:
+        import torch
+    except ImportError:
+        torch = None
 
     # NPZ는 학습에서 바로 쓰기 좋은 고정 크기 값만 모은다.
     obs_buf, next_obs_buf, action_raw_buf = [], [], []
@@ -210,7 +244,14 @@ def collect(args, sumocfg, episodes, worker_id, jsonl_path, npz_path, tag=""):
         # 느린 대신 보통 20~30% 추가 절감.
         with gzip.open(jsonl_path, "wt", encoding="utf-8", compresslevel=6) as jf:
             for ep in episodes:
-                obs, _ = env.reset(seed=args.seed + ep)
+                # 에피소드마다 시드를 다시 정한다: 번호 = 시드 = seed × EP_STRIDE + ep.
+                # sumo_env는 SUMO --seed, 워밍업 길이, 신호 위상을 전역 np.random에서 뽑으므로
+                # 같은 시드면 (같은 커밋·SUMO 버전에서) 같은 에피소드가 나온다.
+                ep_id = int(args.seed) * EP_STRIDE + int(ep)
+                np.random.seed(ep_id % 2**32)
+                if torch is not None:
+                    torch.manual_seed(ep_id)
+                obs, _ = env.reset(seed=ep_id)
                 state_t = env.get_privileged_state()
                 done = False
                 t = 0
@@ -226,7 +267,7 @@ def collect(args, sumocfg, episodes, worker_id, jsonl_path, npz_path, tag=""):
                     done = terminated or truncated
 
                     record = {
-                        "episode": int(ep),
+                        "episode": ep_id,
                         "t": t,
                         "observation": compact(obs, args.ndigits),
                         # 스칼라 몇 개는 용량에 영향이 없으니 반올림하지 않는다.
@@ -267,7 +308,7 @@ def collect(args, sumocfg, episodes, worker_id, jsonl_path, npz_path, tag=""):
                     reward_buf.append(float(reward))
                     term_buf.append(bool(terminated))
                     trunc_buf.append(bool(truncated))
-                    episode_buf.append(int(ep))
+                    episode_buf.append(ep_id)
                     step_buf.append(t)
                     detected_xy_buf.extend((d["x"], d["y"]) for d in detected)
                     detected_offsets.append(len(detected_xy_buf))
@@ -278,8 +319,12 @@ def collect(args, sumocfg, episodes, worker_id, jsonl_path, npz_path, tag=""):
                     obs = next_obs
                     state_t = state_tp1  # 스텝 끝의 상태 = 다음 스텝 시작의 상태
 
-                print(f"{tag}episode {ep + 1:4d}/{args.episodes} | "
-                      f"steps={t:4d} return={ep_return:8.3f}", flush=True)
+                end = ("collision" if info.get("collided") else
+                       "red_light" if info.get("red_light") and terminated else
+                       "wrong_lane" if info.get("wrong_lane") else
+                       "arrival" if info.get("arrived") else "timeout")
+                print(f"{tag}episode {ep + 1:4d}/{args.episodes} (id {ep_id}) | "
+                      f"steps={t:4d} return={ep_return:8.3f} end={end}", flush=True)
     finally:
         env.close()
 
@@ -350,8 +395,19 @@ def write_meta(path, args, sumocfg, total, workers, jsonl_path, npz_path):
     lay = env._state_layout()
     sumo_version = run([checkBinary("sumo"), "--version"]).splitlines()
     demand = TRAFFIC.get("demand")
+    env_meta = env.meta or {}
+    leg_code = {"0-5": "연산교차로로 들어가는 도로 (leg_order 순)",
+                "6-11": "연산교차로에서 나가는 도로 (leg_order 순 + 6)",
+                "12": "연산교차로 안 (우회전 연결로 포함)"}
+    for name, (fwd, rev) in env.LOOP_LEG_CODES.items():
+        leg_code[str(fwd)] = f"{name} (루프 방향)"
+        leg_code[str(rev)] = f"{name} (반대 방향)"
+    leg_code[str(env.LEG_ROUNDABOUT)] = "회전교차로 안 (AV 경로가 지나는 것)"
+    leg_code["-1"] = "그 밖"
+    loop_cfg = TRAFFIC.get("loop_flows") or {}
+    first = int(args.seed) * EP_STRIDE
     meta = {
-        "format_version": "v1",
+        "format_version": "v2",
         "git_commit": run(["git", "rev-parse", "HEAD"]),
         "git_dirty": bool(run(["git", "status", "--porcelain", "--untracked-files=no"])),
         "policy": args.policy,
@@ -359,22 +415,39 @@ def write_meta(path, args, sumocfg, total, workers, jsonl_path, npz_path):
         "stochastic": bool(args.stochastic),
         "seed": args.seed,
         "episodes": args.episodes,
+        "episode_ids": {"rule": f"seed × {EP_STRIDE} + i (i = 0 … episodes-1)",
+                        "first": first, "last": first + args.episodes - 1},
         "transitions": total,
         "workers": workers,
         "step_length": float(SIMULATION["step_length"]),
+        "max_steps": int(SIMULATION["max_steps"]),
+        "warmup_state_pool": int(args.state_pool),
         "sumo_version": sumo_version[0].split()[-1] if sumo_version else "",
+        "libsumo": "libsumo" in str(sys.modules.get("traci")),
         "created_at": datetime.now().isoformat(timespec="seconds"),
         "files": {"jsonl": os.path.basename(jsonl_path), "npz": os.path.basename(npz_path)},
-        "ego_routes": [list(r) for r in EGO.get("routes", [])],
+        "route_set": os.environ.get("ROUTE_SET") or "default",
+        "route_length_m": lay.get("route_length_m"),
+        "ego_routes": [list(r["legs"]) if isinstance(r, dict) else list(r)
+                       for r in EGO.get("routes", [])],
+        "traffic_scale": (demand or {}).get("scale", 1.0),
+        "loop_flows": ({"enabled": True, "scale": loop_cfg.get("scale", 1.0),
+                        "veh_per_hour": (env_meta.get("loop_flows") or {}).get("veh_per_hour"),
+                        "flows": [{"name": f.get("name"), "vph": f.get("vph"), "source": f.get("source")}
+                                  for f in loop_cfg.get("flows", [])]}
+                       if loop_cfg.get("enabled") and env_meta.get("loop_flows") else {"enabled": False}),
+        "vehicles_radius_m": (args.state_radius if args.state_radius and args.state_radius > 0 else None),
+        "lane_index": "0 = 맨 오른쪽 (버스 전용 차로 포함)",
+        "angle": "도, 0 = 북쪽, 90 = 동쪽, 시계방향",
         "leg_order": list(env.LEG_ORDER),
-        "leg_code": {"0-5": "연산교차로로 들어가는 도로 (leg_order 순)",
-                     "6-11": "연산교차로에서 나가는 도로 (leg_order 순 + 6)",
-                     "12": "교차로 안 (우회전 연결로 포함)", "-1": "그 밖"},
-        "tl_order": lay["tl_names"],
+        "leg_code": leg_code,
+        "tl_order": {str(k): v for k, v in sorted(lay.get("tl_order", {}).items())},
+        "tl_lane_groups": {str(k): v for k, v in sorted(lay.get("tl_groups", {}).items())},
         "tl_color": {"red": 0.0, "yellow": 0.5, "green": 1.0},
         "vehicle_type": {"car": 0, "bus": 1},
+        "signal_structure": env_meta.get("signal_structure"),
         # 실제로 쓴 녹색 시간 (수요 시나리오별 값이면 osm_builder가 meta에 남긴 값)
-        "signal": {"green_s": (env.meta or {}).get("signal_green_s")
+        "signal": {"green_s": env_meta.get("signal_green_s")
                               or {lg["id"]: lg.get("green") for lg in ROAD.get("legs", [])},
                    "yellow_s": SIGNAL.get("yellow"), "all_red_s": SIGNAL.get("all_red")},
         "demand": ({"scenario": demand.get("scenario"),
@@ -413,7 +486,15 @@ def main():
     parser.add_argument("--ndigits", type=int, default=4,
                         help="JSONL의 observation/state/detected float 소수 자릿수 "
                              "(NPZ에는 영향 없음)")
+    parser.add_argument("--state-radius", type=float, default=150.0,
+                        help="state.vehicles에 저장할 주변 차량 반경 (m, AV 기준). "
+                             "0이면 지도 전체 (v1 동작). DATA_FORMAT v2 3절")
+    parser.add_argument("--state-pool", type=int, default=0,
+                        help="워밍업 스냅샷 풀 크기. 0(기본)이면 에피소드마다 새로 워밍업해서 "
+                             "에피소드를 시드로 재현할 수 있다")
     args = parser.parse_args()
+    if args.episodes >= EP_STRIDE:
+        parser.error(f"--episodes는 {EP_STRIDE} 미만이어야 합니다 (에피소드 번호 = seed × {EP_STRIDE} + i)")
     if args.policy in ("ppo", "bc") and args.model is None:
         parser.error(f"--policy {args.policy}에는 --model이 필요합니다.")
     if args.model is not None and not os.path.exists(args.model):
