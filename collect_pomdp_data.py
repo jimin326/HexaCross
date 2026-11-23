@@ -294,6 +294,8 @@ def collect(args, sumocfg, episodes, worker_id, jsonl_path, npz_path, tag=""):
                             "arrived": bool(info["arrived"]),
                             "red_light": bool(info.get("red_light", False)),
                             "wrong_lane": bool(info.get("wrong_lane", False)),
+                            # 막혀서 SUMO가 순간이동시킨 스텝 (이때 red_light는 False)
+                            "teleported": bool(info.get("teleported", False)),
                             "lane_before": info["lane_before"],
                             "lane_after": info["lane_after"],
                         },
@@ -325,6 +327,7 @@ def collect(args, sumocfg, episodes, worker_id, jsonl_path, npz_path, tag=""):
                     state_t = state_tp1  # 스텝 끝의 상태 = 다음 스텝 시작의 상태
 
                 end = ("collision" if info.get("collided") else
+                       "teleported" if info.get("teleported") else
                        "red_light" if info.get("red_light") and terminated else
                        "wrong_lane" if info.get("wrong_lane") else
                        "arrival" if info.get("arrived") else "timeout")
