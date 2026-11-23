@@ -1,0 +1,21 @@
+{
+ "seed": "21",
+ "reward_patch": {
+  "collision_penalty": 50.0,
+  "ttc_penalty": 0.3,
+  "ttc_threshold": 3.0,
+  "blocked_penalty": 0.0,
+  "goal_lane_weight": 0.2,
+  "wrong_lane_penalty": 10.0,
+  "signal_brake_penalty": 0.1,
+  "foe_conflict_penalty": 0.0,
+  "red_light_penalty": 20.0,
+  "idle_mode": "free",
+  "idle_gap": 100.0,
+  "idle_free_min": 10.0,
+  "idle_penalty": 0.03
+ },
+ "lr": "3e-5",
+ "n_steps": "4096",
+ "timesteps": "600000"
+}
