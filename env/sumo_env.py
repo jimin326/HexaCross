@@ -1491,14 +1491,20 @@ class SumoHighwayEnv(gym.Env):
         arrived = (self.ego_id in traci.simulation.getArrivedIDList()) and not collided
         alive = self.ego_id in traci.vehicle.getIDList()
         lane_after = int(traci.vehicle.getLaneIndex(self.ego_id)) if alive else None
+        # SUMO 순간이동(teleport): 차가 time-to-teleport(기본 300초) 넘게 못 움직이면 SUMO가
+        # 경로상 앞쪽 빈 곳으로 옮긴다. AV가 한 행동이 아니므로 신호위반 판정에서 빼고,
+        # "막혀서 실패"로 따로 기록한다. 옮기는 도중에는 도로망에서 잠시 빠지기도 한다(alive=False).
+        teleported = self.ego_id in traci.simulation.getStartingTeleportIDList()
 
         # ----- (3-1) 신호 위반 판정 -----
         # 직전 스텝에 앞에 있던 신호가 이번 스텝에 사라졌다 = 정지선을 넘었다.
         # 넘기 전과 넘은 뒤 모두 적색이었을 때만 위반으로 본다
         # (스텝 도중 녹색으로 바뀐 경우는 봐준다).
+        # 순간이동한 스텝은 보지 않는다: 적색 정지선 앞에서 300초 넘게 서 있다가 교차로 건너편으로
+        # 옮겨지면 "앞 신호가 사라짐 + 적색"이 되어, 움직이지 않았는데도 위반으로 잡히던 오판 방지.
         red_light = False
         signal_after = self._next_signal() if alive else None
-        if alive and signal_before is not None:
+        if alive and signal_before is not None and not teleported:
             tls, link, _, st_before = signal_before
             passed = signal_after is None or signal_after[0] != tls
             # 같은 도로에 그대로 있으면 정지선을 넘은 것이 아니다. 경로로 이어지지 않는 차로로 옮기면
@@ -1520,6 +1526,12 @@ class SumoHighwayEnv(gym.Env):
             terminated = True
         elif arrived:
             reward = float(self.rw["arrival_bonus"])
+            terminated = True
+        elif teleported:
+            # 막혀서 실패: 감점 크기는 teleport_penalty, 없으면 차로 갇힘(wrong_lane_penalty)과 같게.
+            # 감점이 없으면 "계속 서 있다가 에피소드를 끝내는" 행동을 배울 수 있다.
+            reward = -float(self.rw.get("teleport_penalty",
+                                        self.rw.get("wrong_lane_penalty", 5.0)))
             terminated = True
         elif not alive:
             reward = 0.0
@@ -1686,6 +1698,7 @@ class SumoHighwayEnv(gym.Env):
             "lane_after": lane_after,
             "red_light": red_light,
             "wrong_lane": wrong_lane,
+            "teleported": teleported,   # SUMO 순간이동으로 끝남 (막혀서 실패)
             "goal_remaining": self._goal_remaining() if alive else None,
             # 다음 신호 상태 문자 ("G"/"y"/"r" 등, 범위 밖이거나 없으면 None)
             "signal_state": (signal_after[3] if signal_after is not None

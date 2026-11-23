@@ -145,6 +145,7 @@ if __name__ == "__main__":
     print(f"  완주율       : {metrics.success_rate:.0%}")
     print(f"  신호위반율   : {metrics.red_light_rate:.0%}")
     print(f"  경로이탈율   : {metrics.wrong_lane_rate:.0%}")
+    print(f"  막힘(순간이동): {metrics.teleported_rate:.0%}")
     print(f"  시간초과율   : {metrics.timeout_rate:.0%}")
     print(f"  평균 속도    : {metrics.mean_speed:.2f} m/s "
           f"({metrics.mean_speed * 3.6:.1f} km/h)")
