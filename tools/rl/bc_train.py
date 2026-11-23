@@ -15,11 +15,15 @@ os.chdir(BASE)
 
 
 VMAX, ACC, DEC, DT = 13.89, 3.0, 5.0, 0.5
+# 다음 스텝 속도 상한 = 차량 성능 최고속도 (env EGO["max_speed"]). 예전에는 환경이 제한속도(VMAX)에서 속도를 잘라서
+# 여기서도 VMAX로 잘랐는데, 그러면 제한속도에서 가속해도 손실이 0이라 "제한속도에서 계속 가속"을 배웠다.
+# 환경이 더는 자르지 않으므로(2026-11-23, 조교 답변) 손실도 차량 최고속도로 자른다.
+VNEXT_MAX = float(os.environ.get("VNEXT_MAX", "27.78"))
 
 
 def _vnext(a, v):
-    """정규화 가감속 a → 다음 스텝 속도 (환경과 같은 식: a>=0이면 ×최대가속, 아니면 ×최대감속, 0~vmax로 자름)"""
-    return torch.clamp(v + torch.where(a >= 0, a * ACC, a * DEC) * DT, 0.0, VMAX)
+    """정규화 가감속 a → 다음 스텝 속도 (환경과 같은 식: a>=0이면 ×최대가속, 아니면 ×최대감속, 0~차량 최고속도로 자름)"""
+    return torch.clamp(v + torch.where(a >= 0, a * ACC, a * DEC) * DT, 0.0, VNEXT_MAX)
 
 
 def accel_loss(pred, lab, obs):
