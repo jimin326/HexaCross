@@ -210,7 +210,7 @@ def build_radial(road: dict, ego: dict, traffic: dict, signal: dict,
         meta["ego_routes"].append(rid)
     with open(os.path.join(out_dir, "highway.rou.xml"), "w", encoding="utf-8") as f:
         f.write(f"""<routes>
-    <vType id="ego_type" accel="{ego['accel']}" decel="{ego['decel']}" maxSpeed="{ego['max_speed']}" color="1,0,0" vClass="passenger" guiShape="passenger/sedan"/>
+    <vType id="ego_type" accel="{ego['accel']}" decel="{ego['decel']}" maxSpeed="{ego['max_speed']}" speedFactor="1" speedDev="0" color="1,0,0" vClass="passenger" guiShape="passenger/sedan"/>
 {vtypes_block}
 {chr(10).join(route_lines)}
 {chr(10).join(flow_lines)}

@@ -1,0 +1,8 @@
+<connections>
+    <delete from="-88000000200#13" to="-794688391" fromLane="2" toLane="1"/>
+    <delete from="-88000000200#15" to="-37401927#3" fromLane="2" toLane="1"/>
+    <delete from="-88000000200#17" to="37401610#0" fromLane="2" toLane="1"/>
+    <delete from="88000000200#12" to="-794688391" fromLane="2" toLane="1"/>
+    <delete from="88000000200#14" to="-37401927#3" fromLane="2" toLane="2"/>
+    <delete from="88000000200#16" to="37401610#0" fromLane="2" toLane="1"/>
+</connections>
