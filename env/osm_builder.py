@@ -30,6 +30,7 @@ from sumolib import checkBinary
 import sumolib
 
 from env.mdp_config import SIMULATION
+from env import road_details
 
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -710,6 +711,11 @@ def build_osm(road: dict, ego: dict, traffic: dict, signal: dict,
     use_od = bool(od_legs)
     poisson = use_od and demand.get("poisson", True)
     k = 0
+    # 도로 디테일 (road_config.DETAILS / ROAD_DETAILS 환경변수, 기본 전부 끔 → 아래 결과 파일은 예전과 같다)
+    details = road_details.config()
+    details_rng = road_details.rng_for(details)
+    curb = road_details.Curb(net, cx, cy, details)
+    od_paths, details_meta = [], {}
 
     def add_flow(src, dst, rate, finder=None):
         nonlocal k
@@ -746,6 +752,8 @@ def build_osm(road: dict, ego: dict, traffic: dict, signal: dict,
             raise ValueError(f"demand.legs의 leg id가 ROAD['legs']에 없습니다: {unknown}")
         od = load_od_demand(demand)
         leg_total = {a: 0.0 for a in by_id}
+        # 도로 디테일(택시·잠깐 정차)을 켜면 그 대수만큼 승용차 flow에서 떼어 내 따로 만든다 (총량 그대로).
+        carve = road_details.carve_rates(demand, details)
         for (o, d), vph in od.items():
             if o not in od_legs or d not in od_legs:
                 raise ValueError(f"CSV의 방면 '{o}' 또는 '{d}'가 demand.legs에 없습니다.")
@@ -756,7 +764,10 @@ def build_osm(road: dict, ego: dict, traffic: dict, signal: dict,
             if p is None or not passes_center(p):
                 raise RuntimeError(f"실측 OD {o}→{d} ({a}→{b}): 두 간선 도로와 연산교차로만으로 "
                                    f"가는 경로가 없습니다 (연결·금지 회전 확인).")
-            add_flow(leg_in[a], leg_out[b], vph, finder=lambda s_, t_, a=a, b=b: through_path(a, b))
+            cut = carve.get((o, d)) or {}
+            add_flow(leg_in[a], leg_out[b], vph - sum(cut.values()) if cut else vph,
+                     finder=lambda s_, t_, a=a, b=b: through_path(a, b))
+            od_paths.append((f"{a}_{b}", p, {**cut, "vph": vph}))
             leg_total[a] += vph
         meta["demand"] = {"scenario": demand.get("scenario"),
                           "veh_per_hour": round(sum(leg_total.values()), 1)}
@@ -767,8 +778,9 @@ def build_osm(road: dict, ego: dict, traffic: dict, signal: dict,
             if demand.get("include_bus"):
                 raise ValueError("demand.include_bus와 demand.bus_vehicles.enabled를 같이 켜면 버스를 두 번 셉니다.")
             from env.road_builder import load_od_bus
-            vtypes_block += "\n" + bus_vtype_line(bus_cfg)
+            vtypes_block += "\n" + bus_vtype_line(road_details.bus_cfg_with_slope(bus_cfg, details))
             meta["bus"] = {"routes": {}, "veh_per_hour": 0.0}
+            bus_routes = []          # 정류장(DETAILS['bus_stops'])을 켜면 노선을 다 모은 뒤 flow를 만든다
             for (o, d), vph in load_od_bus(demand).items():
                 a, b = od_legs.get(o), od_legs.get(d)
                 if a is None or b is None or (a, b) in banned or a == b:
@@ -780,11 +792,26 @@ def build_osm(road: dict, ego: dict, traffic: dict, signal: dict,
                 rid = f"bus_{len(meta['bus']['routes'])}"
                 route_lines.append(f'    <route id="{rid}" edges="{" ".join(p)}"/>')
                 arrival = (f'period="exp({vph / 3600.0:.6f})"' if poisson else f'vehsPerHour="{vph:.1f}"')
-                flow_lines.append(
-                    f'    <flow id="f_{rid}" type="{"bus_city" if lane is None else "bus_brt"}" route="{rid}" begin="0" end="100000" {arrival} '
-                    f'departLane="{"best" if lane is None else lane}" departSpeed="{traffic.get("depart_speed", "max")}"/>')
+                base = (f'id="f_{rid}@ID@" type="{"bus_city" if lane is None else "bus_brt"}" route="{rid}" begin="0" end="100000"',
+                        f'departLane="{"best" if lane is None else lane}" departSpeed="{traffic.get("depart_speed", "max")}"')
+                if road_details.enabled(details, "bus_stops"):
+                    bus_routes.append((rid, p, lane is not None, vph, base))
+                else:
+                    flow_lines.append(f'    <flow {base[0].replace("@ID@", "")} {arrival} {base[1]}/>')
                 meta["bus"]["routes"][rid] = {"od": [a, b], "rate": vph, "brt": lane is not None}
                 meta["bus"]["veh_per_hour"] += vph
+            if bus_routes:
+                stops, route_stops = road_details.place_bus_stops(
+                    curb, [(r, p_, brt) for r, p_, brt, _, _ in bus_routes], details, details_rng)
+                for rid, p_, brt, vph, (b0, b1) in bus_routes:
+                    flow_lines += road_details.bus_flow_lines(f"{b0} {b1}", vph, poisson, route_stops[rid],
+                                                              details, details_rng)
+                stops_path = os.path.join(out_dir, "highway.stops.xml")
+                with open(stops_path, "w", encoding="utf-8") as f:
+                    f.write("<additional>\n" + road_details.bus_stops_xml(stops) + "\n</additional>\n")
+                additional.append("highway.stops.xml")
+                details_meta["bus_stops"] = {"count": len(stops),
+                                             "per_route": {r: len(s) for r, s in route_stops.items()}}
     else:
         leg_total = {a: float(by_id[a]["inflow"]) for a in by_id}
         for a in by_id:
@@ -866,6 +893,36 @@ def build_osm(road: dict, ego: dict, traffic: dict, signal: dict,
             cur = v
         return out
 
+    # 순환 도로 배경 흐름 (TRAFFIC["loop_flows"]): 연산교차로를 지나지 않고 루프 주변 도로만 다니는 차.
+    #   연산교차로 실측 OD는 교차로를 지나는 차만 담고 있어서, 루프 경로의 나머지 구간(연수로·중앙천로·
+    #   거제천로 등)이 거의 비어 있었다. 엣지 id는 net_file로 적은 지도 기준이라 그 지도일 때만 넣는다.
+    #   대/시 = vph × loop_flows.scale × demand.scale (연산교차로 수요와 같은 배율을 따름)
+    lf = traffic.get("loop_flows") or {}
+    if lf.get("enabled") and cfg.get("net_file") and \
+            os.path.normpath(cfg["net_file"]) == os.path.normpath(lf.get("net_file", "")):
+        lscale = float(lf.get("scale", 1.0)) * float(demand.get("scale", 1.0))
+        meta["loop_flows"] = {"veh_per_hour": 0.0, "flows": {}}
+        for f in lf.get("flows", []):
+            via = list(f["via"])
+            missing = [e for e in via if not net.hasEdge(e)]
+            if missing:
+                raise RuntimeError(f"loop_flows '{f['name']}': 지도에 없는 엣지 {missing}")
+            vph = float(f["vph"]) * lscale
+            src, dst = net.getEdge(via[0]), net.getEdge(via[-1])
+            p = via_path(src, dst, via[1:-1])
+            if p is None:
+                raise RuntimeError(f"loop_flows '{f['name']}': 연산교차로를 지나지 않는 경로가 없습니다")
+            before = k
+            # 도로 디테일의 잠깐 정차(DETAILS['short_stops'])를 켜면 순환 도로 흐름에서도 같은 비율을 떼어 낸다
+            cut = ({"short_stops": vph * float((details.get("short_stops") or {}).get("share", 0.02))}
+                   if road_details.enabled(details, "short_stops") else {})
+            add_flow(src, dst, vph - sum(cut.values()) if cut else vph, finder=lambda s_, t_, p=p: p)
+            od_paths.append((f"loop_{len(od_paths)}", p, {**cut, "vph": vph}))
+            if k > before:
+                meta["loop_flows"]["flows"][f"bg_{before}"] = {"name": f["name"], "rate": vph,
+                                                               "source": f.get("source", "")}
+                meta["loop_flows"]["veh_per_hour"] += vph
+
     def ego_path(spec):
         via = None
         if isinstance(spec, dict):       # {"legs": (진입, 진출, 진입, 진출), "via": [엣지...]} — 재진입 전에 들를 엣지
@@ -897,6 +954,7 @@ def build_osm(road: dict, ego: dict, traffic: dict, signal: dict,
         return full
 
     meta["ego_demo_routes"] = []
+    ego_edges = {}               # ego 경로 id -> 엣지 목록 (도로 디테일이 AV 출발 엣지를 비우는 데 쓴다)
     all_specs = ([(f"ego_{i}", s, "ego_routes") for i, s in enumerate(ego.get("routes", []))]
                  + [(f"ego_demo_{i}", s, "ego_demo_routes")
                     for i, s in enumerate(ego.get("demo_routes", []))])
@@ -926,6 +984,20 @@ def build_osm(road: dict, ego: dict, traffic: dict, signal: dict,
         route_lines.append(f'    <route id="{rid}" edges="{" ".join(p)}"/>')
         meta[key].append(rid)
         meta["ego_depart_pos"][rid] = float(min(max(d0 - acc, 0.0), max(edges[k].getLength() - 10.0, 0.0)))
+        ego_edges[rid] = p
+
+    # 도로 디테일: 택시·잠깐 정차·긴급차량 flow, 불법 주정차 차량 (켠 항목만, 기본 전부 끔)
+    if road_details.any_enabled(details):
+        curb.exclude |= {p_[0] for p_ in ego_edges.values()}       # AV 출발 엣지는 비워 둔다 (투입 실패 방지)
+        if not use_od and (road_details.enabled(details, "taxi") or road_details.enabled(details, "short_stops")):
+            raise ValueError("DETAILS의 taxi·short_stops는 실측 수요(TRAFFIC['demand'])가 켜져 있어야 씁니다.")
+        vt, rl, fl, dm = road_details.extra_traffic(
+            net, curb, od_paths, details, poisson, traffic.get("depart_speed", "max"), details_rng,
+            ego_edges=[e for p_ in ego_edges.values() for e in p_[1:]], car_type=flow_type)
+        vtypes_block += "".join("\n" + v for v in vt)
+        route_lines += rl
+        flow_lines += fl
+        details_meta.update(dm)
 
     with open(os.path.join(out_dir, "highway.rou.xml"), "w", encoding="utf-8") as f:
         f.write(f"""<routes>
@@ -1132,6 +1204,13 @@ def build_osm(road: dict, ego: dict, traffic: dict, signal: dict,
     if not (cfg.get("merge_parts") or cfg.get("net_file")):
         meta["signal_build"] = signal_build
     meta["lane_rules"] = lane_table      # 실제 적용된 차로 → 진출 도로 표
+    # 도로 경사: 마지막에 도로망 높이만 더한다 (연결·신호·차로는 위에서 끝난 그대로)
+    if road_details.enabled(details, "slope"):
+        details_meta["slope"] = road_details.apply_elevation(net_path, net, details)
+    if road_details.any_enabled(details):
+        details_meta["driver_styles"] = (list(((details.get("driver_styles") or {}).get("styles") or {}))
+                                         if road_details.enabled(details, "driver_styles") else None)
+        meta["details"] = {"enabled": road_details.tag(details), **details_meta}
     with open(os.path.join(out_dir, "highway.meta.json"), "w", encoding="utf-8") as f:
         json.dump(meta, f, ensure_ascii=False, indent=1)
 

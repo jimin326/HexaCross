@@ -490,7 +490,6 @@
     <connection from="x6_S_in0" to="x6_S_in1" fromLane="3" toLane="3"/>
 
     <connection from="x6_S_in1" to="x6_NE_out0" fromLane="0" toLane="0"/>
-    <connection from="x6_S_in1" to="x6_N_out0" fromLane="0" toLane="0"/>
     <connection from="x6_S_in1" to="x6_N_out0" fromLane="1" toLane="0"/>
     <connection from="x6_S_in1" to="x6_N_out0" fromLane="2" toLane="1"/>
     <connection from="x6_S_in1" to="x6_W_out0" fromLane="2" toLane="2"/>

@@ -187,9 +187,15 @@ def make_vtypes_block(traffic: dict, keep_strategic: bool = False):
         # probability 합이 1이 아니어도 되도록 자동 정규화
         total_p = sum(float(c.get("probability", 1.0))
                       for c in controllers.values())
+        # 도로 디테일의 운전자 성향(DETAILS['driver_styles'], 기본 끔): 켜면 그 몫만큼 기존 컨트롤러 비율을 줄인다
+        from env import road_details
+        details = road_details.config()
+        style_share = road_details.style_share(details)
         vtype_lines = []
         for name, c in controllers.items():
             prob = float(c.get("probability", 1.0)) / total_p
+            if style_share:
+                prob *= 1.0 - style_share
             attrs = [
                 f'id="car_{name}"',
                 f'probability="{prob:.4f}"',
@@ -234,6 +240,8 @@ def make_vtypes_block(traffic: dict, keep_strategic: bool = False):
                 # 우측 차로로 돌아가려는 성향만 끈다 (도심 다차로에서 오른쪽에 몰리지 않게).
                 attrs.append('lcKeepRight="0"')
             vtype_lines.append("        <vType " + " ".join(attrs) + "/>")
+        if style_share:
+            vtype_lines += road_details.style_vtype_lines(traffic, details, 1.0 - style_share)
         vtypes_block = ('    <vTypeDistribution id="carDist">\n'
                         + "\n".join(vtype_lines)
                         + "\n    </vTypeDistribution>")
