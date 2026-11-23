@@ -22,7 +22,7 @@
 | `reward`, `terminated`, `truncated` | ✅ | 그대로 |
 | `state` | ✅ | **v2에서 확장** (3절) |
 | `detected_vehicles` | ✅ | 그대로 |
-| `event.collided`, `event.arrived`, `event.lane_before`, `event.lane_after` | ✅ | + `red_light`, `wrong_lane` (v1부터) |
+| `event.collided`, `event.arrived`, `event.lane_before`, `event.lane_after` | ✅ | + `red_light`, `wrong_lane` (v1부터), `teleported` (v2) |
 | `next_observation`, `next_state` | ✅ | 에피소드 마지막 스텝에만 저장 (수업 방식과 같음) |
 | npz: `observation / action_raw / lane_change / reward / next_observation / terminated / truncated / episode / t / detected_xy / detected_offsets` | ✅ | `collect_pomdp_data.py`에 모두 있음 (2026-11-23 확인) |
 
@@ -195,6 +195,7 @@
 | `event.arrived` | bool | 목적지 도착 (충돌한 스텝은 False) |
 | `event.red_light` | bool | 적색 신호에 정지선 통과 (신호 위반) |
 | `event.wrong_lane` | bool | 경로상 갈 수 없는 차로에 갇힘 (차로 선택 실패) |
+| `event.teleported` | bool | 막혀서 실패: AV가 300초(SUMO `time-to-teleport` 기본값) 넘게 못 움직여 SUMO가 경로 앞쪽으로 순간이동시킨 스텝. 이 스텝은 `red_light` = False, `terminated` = True (v2) |
 | `event.lane_before` / `lane_after` | int | 차로변경 전후 차로 번호 |
 
 ### v2에서 넣지 않기로 한 것
@@ -262,6 +263,7 @@ v1 초안(34차원)의 31 신호 색 · 32 정지선 거리 · 33 남은 시간�
 | 환경 난수 재현 | `env/sumo_env.py` `_child_rng()` | ✅ 차량 배치·신호 위상 난수가 전역 시드를 따름 (같은 시드 → 같은 결과) |
 | libsumo | `collect_pomdp_data.py` (맨 위) | ✅ 설치돼 있으면 traci 대신 사용, `--gui`면 traci |
 | `event.arrived` 충돌 스텝 False | `env/sumo_env.py` `step` (PR #2) | 그대로 |
+| `event.teleported`, 순간이동 스텝 신호위반 제외 | `env/sumo_env.py` `step` (`getStartingTeleportIDList`) | ✅ 감점은 `teleport_penalty`, 없으면 `wrong_lane_penalty`와 같음 |
 
 - 번호표는 연산교차로 OSM 도로망(`ROAD["osm"]["enabled"] = True`)에서만 만든다. 다른 도로에서는 `leg` = -1, `tl_color_*` = 0, `tl_remaining_*` = -1, `ego_dist_to_junction` = 0.
 - v1 확인 기록 (2026-11-18): AV 경로를 끝까지 주행하며 703스텝 검사. `ego_leg` 0 → 12 → 7, `ego_tl` 7 → 0 → 9 → -1 순서, `ego_dist_to_junction` 계속 감소, 관측 31·32번과 불일치 0. 수집 속도 16 step/s, JSONL은 transition당 약 36% 감소.
@@ -435,3 +437,4 @@ python collect_pomdp_data.py --model models/yeonsan_loopB_RL/model.pt --episodes
 | `episode` = `seed × 100000 + i` (에피소드별 시드) | 여러 PC 데이터를 그대로 합치기 + 시드로 에피소드 재현 |
 | meta: `route_set`, `route_length_m`, `loop_flows`, `traffic_scale`, `max_steps`, `libsumo`, `vehicles_radius_m`, `lane_index`, `angle`, `tl_lane_groups`, `signal_structure` | 수집 조건과 번호표 (동료평가 "수집 규모, 조건") |
 | observation 표기 41 → 56 정리 | 문서 안에서 41 / 56이 섞여 있었음. 루프 B 모델은 56차원 |
+| `event.teleported` 추가, 순간이동 스텝은 `red_light` False | 적색 정지선에서 300초 넘게 서 있던 AV를 SUMO가 교차로 너머로 순간이동시키면, v1 코드는 "정지선을 넘었다"로 보고 신호 위반으로 기록했음 (재현 3건 모두). AV가 한 행동이 아니므로 "막혀서 실패"로 따로 기록 |

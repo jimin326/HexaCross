@@ -108,6 +108,7 @@ def _worker(task):
                 if info.get("gap") is not None:
                     gaps.append(float(info["gap"]))
             end = ("collision" if info.get("collided") else
+                   "teleported" if info.get("teleported") else   # 막혀서 SUMO가 순간이동 (신호위반 아님)
                    "red_light" if info.get("red_light") and te else
                    "wrong_lane" if info.get("wrong_lane") else
                    "arrival" if info.get("arrived") else "timeout")

@@ -10,7 +10,8 @@ usage:
 
 입력: tools/rl/eval_routes.py 또는 tools/rl/eval_parallel.py가 만든 JSON.
     {"경로 이름": {"episodes": N, "insert_fail": k, "arrival": a, "collision": c,
-                  "wrong_lane": w, "red_light": r, "timeout": t, ["metrics": {...}]}, ...}
+                  "wrong_lane": w, "red_light": r, "teleported": p, "timeout": t, ["metrics": {...}]}, ...}
+    (teleported: AV가 300초 넘게 못 움직여 SUMO가 순간이동시켜 끝남. 없는 예전 결과는 0으로 본다)
     eval_routes.py 형식(경로가 맨 위) 그대로 읽는다. eval_parallel.py 결과에는
     "_meta"(조건 기록)와 경로별 "metrics"(주행 품질)가 더 들어 있다.
     여러 조건을 담은 models/*/eval.json은 'LABEL=파일.json#조건'으로 하나를 고른다.
@@ -39,6 +40,7 @@ OUTCOMES = [  # (키, 한국어, 색)
     ("collision", "충돌", "#C0392B"),
     ("red_light", "신호 위반", "#E07A2E"),
     ("wrong_lane", "차로 갇힘", "#3A6EA5"),
+    ("teleported", "막힘(순간이동)", "#7B5EA7"),
     ("timeout", "시간 초과", "#8A8F98"),
 ]
 COLLISION_LIMIT = 0.05
@@ -255,8 +257,8 @@ def main(argv):
 
     # ── report.md ──
     L = ["# 주행 평가 결과", ""]
-    L.append("| 모델 | 평가 횟수 | 완주 | 충돌 | 신호 위반 | 차로 갇힘 | 시간 초과 | 충돌률 기준(5% 미만) |")
-    L.append("|---|---:|---|---|---|---|---|---|")
+    L.append("| 모델 | 평가 횟수 | " + " | ".join(kr for _, kr, _ in OUTCOMES) + " | 충돌률 기준(5% 미만) |")
+    L.append("|---|---:|" + "---|" * len(OUTCOMES) + "---|")
     for lab, (_, routes) in models.items():
         t = total(routes); n = t["episodes"]
         cells = []
@@ -282,13 +284,12 @@ def main(argv):
         if meta:
             L.append("조건: " + ", ".join(f"{k}={v}" for k, v in meta.items()))
             L.append("")
-        L.append("| 경로 | 평가 | 완주 | 충돌 | 신호 위반 | 차로 갇힘 | 시간 초과 | 투입 실패 |")
-        L.append("|---|---:|---:|---:|---:|---:|---:|---:|")
+        L.append("| 경로 | 평가 | " + " | ".join(kr for _, kr, _ in OUTCOMES) + " | 투입 실패 |")
+        L.append("|---|---:|" + "---:|" * len(OUTCOMES) + "---:|")
         for nm, r in routes.items():
             c = r["counts"]; n = c["episodes"]
             f = lambda k: f"{c[k]} ({pct(c[k] / n)})" if n else "–"
-            L.append(f"| {nm} | {n} | {f('arrival')} | {f('collision')} | {f('red_light')} | "
-                     f"{f('wrong_lane')} | {f('timeout')} | {c['insert_fail']} |")
+            L.append(f"| {nm} | {n} | " + " | ".join(f(k) for k, _, _ in OUTCOMES) + f" | {c['insert_fail']} |")
         L.append("")
     if figs:
         L += ["## 그래프", ""] + [f"![{fn}]({fn})" for fn in figs] + [""]
