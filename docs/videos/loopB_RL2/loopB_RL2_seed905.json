@@ -1,0 +1,10 @@
+{
+ "source": "sumo-gui screenshots",
+ "slow_frac": 0.34213381555153705,
+ "base_mult": 13.382183908045977,
+ "fast_mult": 40.146551724137936,
+ "seconds": 56.28,
+ "steps": 2765,
+ "end": "arrival",
+ "seed": 905
+}
