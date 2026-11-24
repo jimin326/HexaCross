@@ -1,8 +1,9 @@
 {
- "slow_frac": 0.30560578661844484,
- "base_mult": 12.801724137931034,
- "fast_mult": 38.4051724137931,
- "seconds": 56.4,
+ "source": "sumo-gui screenshots",
+ "slow_frac": 0.34213381555153705,
+ "base_mult": 13.382183908045977,
+ "fast_mult": 40.146551724137936,
+ "seconds": 56.28,
  "steps": 2765,
  "end": "arrival",
  "seed": 905

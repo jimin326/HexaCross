@@ -93,6 +93,73 @@ def do_log(model, sumo_dir, seed, out):
     print("logged", len(steps), "steps, end", end, flush=True)
 
 
+# ───────────────────────── 1b) sumo-gui 실제 화면 캡처 + 기록 ─────────────────────────
+def do_gui(model, sumo_dir, seed, out_pkl, frames_dir, w=1100, h=900, max_steps=0):
+    """sumo-gui로 같은 에피소드를 돌리며 매 스텝 화면을 캡처하고(frames_dir/00000.png …) 상태도 기록한다.
+    화면 i = i번째 env.step 뒤 상태 (스크린샷은 다음 simulationStep 때 써지므로 마지막에 한 스텝 더 돈다)."""
+    os.environ["USE_LIBSUMO"] = "0"
+    sys.path.insert(0, HERE); sys.path.insert(0, BASE); os.chdir(BASE)
+    import routes7; routes7.apply()
+    import torch
+    torch.set_num_threads(1)
+    from env.road_config import ROAD, EGO, TRAFFIC
+    from env.mdp_config import SIMULATION, OBSERVATION, ACTION
+    from env.sumo_env import SumoHighwayEnv
+    from test import load_agent
+    import common
+    import traci
+    sim = {**SIMULATION, "gui_delay": 0.0}
+    env = SumoHighwayEnv(cfg_path=os.path.join(sumo_dir, "highway.sumocfg"), road=ROAD, ego=EGO, mdp_sim=sim,
+                         mdp_obs=OBSERVATION, action=ACTION, reward=common.reward(), traffic=TRAFFIC, gui=True)
+    agent = load_agent(model, env.observation_space.shape[0], 2)
+    env.meta["ego_routes"] = ["ego_0"]
+    np.random.seed(seed); torch.manual_seed(seed)
+    obs, _ = env.reset()
+    view = "View #0"
+    traci.gui.trackVehicle(view, env.ego_id)
+    traci.gui.setZoom(view, float(os.environ.get("ZOOM", "1400")))
+    traci.vehicle.highlight(env.ego_id, (255, 0, 255, 255), 6, 255, 100000, 0)
+    route = list(traci.vehicle.getRoute(env.ego_id))
+    shutil.rmtree(frames_dir, ignore_errors=True); os.makedirs(frames_dir)
+    steps, done, info, k = [], False, {}, 0
+    while not done:
+        act = agent.predict(obs, deterministic=True)
+        o_before = np.asarray(obs, dtype=np.float32)
+        obs, r, te, tr, info = env.step(act)
+        done = te or tr
+        rec = {"k": k, "obs": o_before, "r": float(r), "lc": int(info.get("lane_change", 0) or 0)}
+        try:
+            ex, ey = traci.vehicle.getPosition(env.ego_id)
+            ln = traci.vehicle.getLaneID(env.ego_id)
+            rec.update(x=ex, y=ey, ang=traci.vehicle.getAngle(env.ego_id), v=traci.vehicle.getSpeed(env.ego_id),
+                       lane=ln, edge=traci.vehicle.getRoadID(env.ego_id), vmax=traci.lane.getMaxSpeed(ln), veh=[])
+        except Exception:
+            last = steps[-1] if steps else None
+            if last is None:
+                break
+            rec.update({kk: last[kk] for kk in ("x", "y", "ang", "v", "lane", "edge", "vmax")}, veh=[])
+        steps.append(rec)
+        traci.gui.screenshot(view, os.path.join(frames_dir, f"{k:05d}.png"), w, h)
+        k += 1
+        if max_steps and k >= max_steps:
+            break
+    try:
+        traci.simulationStep()          # 마지막 캡처가 써지도록
+    except Exception:
+        pass
+    end = ("collision" if info.get("collided") else "teleported" if info.get("teleported") else
+           "red_light" if info.get("red_light") else "wrong_lane" if info.get("wrong_lane") else
+           "arrival" if info.get("arrived") else "timeout")
+    pickle.dump({"steps": steps, "route": route, "end": end, "seed": seed, "model": model, "dt": 0.5,
+                 "road_details": os.environ.get("ROAD_DETAILS", "")}, open(out_pkl, "wb"))
+    print("gui logged", len(steps), "steps, end", end, flush=True)
+    try:
+        traci.close(False)
+    except Exception:
+        pass
+    os._exit(0)
+
+
 # ───────────────────────── 2) 그리기 ─────────────────────────
 def _offset_poly(shape, width):
     """차로 중심선 + 폭 → 다각형 (양쪽으로 width/2)."""
@@ -426,8 +493,156 @@ def _set_base(b):
     frames_base = b
 
 
+# ───────────────────────── 3) sumo-gui 화면 + 지도 패널 합성 ─────────────────────────
+def gui_mask(steps):
+    """천천히 보여 줄 스텝 (gui 기록용: 앞차 거리는 관측 9번(앞차 거리/100 m)으로 판단)."""
+    n = len(steps)
+    m = np.zeros(n, bool)
+    for i, s in enumerate(steps):
+        o, v = s["obs"], s["v"]
+        sig_d = 150.0 * float(o[37]) ** 2 if o[37] < 0.999 else 999.0
+        turn_d = 300.0 * float(o[40]) if o[40] < 0.999 else 999.0
+        front = float(o[9]) < 0.12
+        dv = abs(steps[i + 1]["v"] - v) / 0.5 if i + 1 < n else 0.0
+        moving = v > 0.5
+        m[i] = (moving and (sig_d < 30.0 or s["lane"].startswith(":") or turn_d < 25.0 or (front and v > 1.0))
+                or s["lc"] != 0 or dv > 1.5)
+    w = 6
+    mm = m.copy()
+    for i in np.where(m)[0]:
+        mm[max(0, i - w):i + w + 1] = True
+    gap = 0
+    for i in range(n):
+        if not mm[i]:
+            gap += 1
+        else:
+            if 0 < gap <= 6:
+                mm[i - gap:i] = True
+            gap = 0
+    return mm
+
+
+def compose_chunk(args):
+    (pkl, geo_pkl, frames_dir, frames, out_dir, start_idx, base) = args
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from matplotlib.collections import LineCollection
+    from matplotlib import font_manager
+    from PIL import Image, ImageDraw, ImageFont
+    fpath = None
+    for f in font_manager.findSystemFonts():
+        if "wqy-zenhei" in f.lower():
+            fpath = f
+            font_manager.fontManager.addfont(f)
+    plt.rcParams["font.family"] = ["WenQuanYi Zen Hei", "DejaVu Sans"]
+    F = lambda sz: ImageFont.truetype(fpath, sz) if fpath else ImageFont.load_default()
+    f_big, f_mid, f_small = F(26), F(20), F(15)
+    D = pickle.load(open(pkl, "rb")); G = pickle.load(open(geo_pkl, "rb"))
+    steps = D["steps"]; n = len(steps)
+    BG, INK, MUTED, ACC, EGO = "#1d2421", "#eef1ee", "#9aa39c", "#58b4ff", "#ff3d7f"
+    PW, PH = 500, 900
+    fig = plt.figure(figsize=(PW / 100, PH / 100), dpi=100, facecolor=BG)
+    axm = fig.add_axes([0.04, 0.36, 0.92, 0.58]); axm.set_facecolor(BG)
+    axh = fig.add_axes([0.06, 0.02, 0.90, 0.32]); axh.set_facecolor(BG)
+    for a in (axm, axh):
+        a.set_xticks([]); a.set_yticks([])
+        for sp in a.spines.values():
+            sp.set_visible(False)
+    segs = [e[0] for e in G["edges"]]
+    lw = [0.5 + 0.35 * min(e[2], 4) for e in G["edges"]]
+    axm.add_collection(LineCollection(segs, colors="#3c4540", linewidths=lw))
+    rp = G["route_pts"]
+    axm.plot(rp[:, 0], rp[:, 1], color=ACC, lw=2.2, alpha=0.4, solid_capstyle="round")
+    axm.plot(rp[0, 0], rp[0, 1], "o", color=ACC, ms=7); axm.plot(rp[-1, 0], rp[-1, 1], "^", color=ACC, ms=8)
+    axm.text(rp[0, 0] + 40, rp[0, 1], "출발", color=INK, fontsize=10, va="center")
+    axm.text(rp[-1, 0] + 40, rp[-1, 1] - 30, "도착", color=INK, fontsize=10, va="center")
+    pad = 120
+    axm.set_xlim(rp[:, 0].min() - pad, rp[:, 0].max() + pad); axm.set_ylim(rp[:, 1].min() - pad, rp[:, 1].max() + pad)
+    axm.set_aspect("equal")
+    axm.set_title("전체 경로 (6.7 km, 북쪽 위)", color=INK, fontsize=13, loc="left")
+    trail, = axm.plot([], [], color=ACC, lw=3.0, solid_capstyle="round")
+    egodot, = axm.plot([], [], "o", color=EGO, ms=11, mec="white", mew=1.5)
+    exy = np.array([[s["x"], s["y"]] for s in steps])
+    names = G["names"]
+    for fi, (i, _a, mult) in enumerate(frames):
+        j = min(i + 1, n - 1)                 # 스크린샷 i = (i+1)번째 스텝 뒤 화면
+        s = steps[j]
+        trail.set_data(exy[:j + 1, 0], exy[:j + 1, 1]); egodot.set_data([s["x"]], [s["y"]])
+        axh.cla(); axh.set_facecolor(BG); axh.set_xticks([]); axh.set_yticks([]); axh.set_xlim(0, 1); axh.set_ylim(0, 1)
+        for sp in axh.spines.values():
+            sp.set_visible(False)
+        rname = names.get(s["edge"], "") or ("교차로 안" if s["edge"].startswith(":") else "")
+        prog = 100.0 * (1 - float(s["obs"][38]))
+        axh.text(0, 0.97, "최종 모델 RL2 · 루프 경로 B", color=INK, fontsize=14, fontweight="bold", va="top")
+        axh.text(0, 0.80, f"속도  {s['v'] * 3.6:4.0f} km/h   (제한 {s['vmax'] * 3.6:.0f})", color=INK, fontsize=13, va="top")
+        axh.text(0, 0.65, f"도로  {rname}", color=INK, fontsize=13, va="top")
+        axh.text(0, 0.50, f"진행  {prog:3.0f}%", color=INK, fontsize=13, va="top")
+        axh.add_patch(plt.Rectangle((0.32, 0.405), 0.66, 0.07, color="#3c4540"))
+        axh.add_patch(plt.Rectangle((0.32, 0.405), 0.66 * max(0, min(prog, 100)) / 100, 0.07, color=ACC))
+        axh.text(0, 0.28, "SUMO 1.27.1 (sumo-gui 실제 화면)", color=MUTED, fontsize=10.5, va="top")
+        axh.text(0, 0.17, "순환 교통 + 운전자 성향·택시·잠깐 정차", color=MUTED, fontsize=10.5, va="top")
+        axh.text(0, 0.06, f"평가 시드 {D['seed']} · 결과: 완주", color=MUTED, fontsize=10.5, va="top")
+        fig.canvas.draw()
+        panel = Image.frombuffer("RGBA", fig.canvas.get_width_height(), fig.canvas.buffer_rgba()).convert("RGB")
+        try:
+            shot = Image.open(os.path.join(frames_dir, f"{i:05d}.png")).convert("RGB")
+        except Exception:
+            shot = Image.new("RGB", (1100, 900), (0, 0, 0))
+        img = Image.new("RGB", (1600, 900), BG)
+        img.paste(shot.resize((1100, 900)), (0, 0)); img.paste(panel, (1100, 0))
+        d = ImageDraw.Draw(img, "RGBA")
+        t_sim = (j + 1) * D["dt"]
+        d.rectangle([0, 0, 1100, 50], fill=(20, 24, 22, 215))
+        d.text((16, 10), f"{int(t_sim // 60):02d}:{int(t_sim % 60):02d}  주행 시간", font=f_big, fill=(238, 241, 238))
+        slow = mult < 1.5 * base
+        lab = f"실제의 ×{mult:.0f}  " + ("차량·교차로 구간" if slow else ("빠르게 (신호 대기)" if s["v"] < 0.5 else "빠르게 (직진)"))
+        col = (47, 208, 111) if slow else (255, 204, 51)
+        tw = d.textlength(lab, font=f_mid)
+        d.text((1100 - 16 - tw, 14), lab, font=f_mid, fill=col)
+        d.rectangle([0, 868, 1100, 900], fill=(20, 24, 22, 200))
+        d.text((14, 873), "AV = 분홍 원 안의 빨간 차   ·   SUMO 화면이 AV를 따라감   ·   건물 = 분홍 면", font=f_small, fill=(200, 205, 200))
+        img.save(os.path.join(out_dir, f"c{start_idx + fi:05d}.png"))
+    plt.close(fig)
+    return len(frames)
+
+
+def do_compose(pkl, frames_dir, sumo_dir, out_mp4, seconds=58.0, fast=3.0, workers=4, fps=25):
+    import multiprocessing as mp
+    D = pickle.load(open(pkl, "rb"))
+    G = build_geometry(sumo_dir, D["route"])
+    mask = gui_mask(D["steps"])
+    nshots = len([f for f in os.listdir(frames_dir) if f.endswith(".png")])
+    frames, base = plan_frames(mask, D["dt"], seconds, fast, fps)
+    frames = [(min(i, nshots - 1), a, m) for (i, a, m) in frames]
+    print(f"steps {len(D['steps'])}, 화면 {nshots}, 느린 구간 {mask.mean() * 100:.0f}%, 배속 ×{base:.1f} / ×{base * fast:.1f}, "
+          f"프레임 {len(frames)} ({len(frames) / fps:.1f}초)", flush=True)
+    tmp = out_mp4 + "_frames"
+    shutil.rmtree(tmp, ignore_errors=True); os.makedirs(tmp)
+    geo_pkl = os.path.join(tmp, "geo.pkl"); pickle.dump(G, open(geo_pkl, "wb"))
+    per = math.ceil(len(frames) / workers)
+    tasks = [(pkl, geo_pkl, frames_dir, frames[k:k + per], tmp, k, base) for k in range(0, len(frames), per)]
+    with mp.get_context("fork").Pool(workers) as pool:
+        pool.map(compose_chunk, tasks)
+    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-framerate", str(fps), "-i", os.path.join(tmp, "c%05d.png"),
+                    "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "24", "-preset", "medium", "-movflags", "+faststart",
+                    out_mp4], check=True)
+    shutil.rmtree(tmp, ignore_errors=True)
+    info = {"source": "sumo-gui screenshots", "slow_frac": float(mask.mean()), "base_mult": float(base),
+            "fast_mult": float(base * fast), "seconds": len(frames) / fps, "steps": len(D["steps"]), "end": D["end"], "seed": D["seed"]}
+    print("wrote", out_mp4, f"{os.path.getsize(out_mp4) / 1e6:.1f} MB", info, flush=True)
+    return info
+
+
 if __name__ == "__main__":
     cmd = sys.argv[1]
+    if cmd == "compose":
+        import json
+        info = do_compose(sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5])
+        json.dump(info, open(os.path.splitext(sys.argv[5])[0] + ".json", "w"), ensure_ascii=False, indent=1)
+    if cmd == "gui":
+        do_gui(sys.argv[2], sys.argv[3], int(sys.argv[4]), sys.argv[5], sys.argv[6],
+               max_steps=int(os.environ.get("MAX_REC", "0")))
     if cmd == "log":
         do_log(sys.argv[2], sys.argv[3], int(sys.argv[4]), sys.argv[5])
     elif cmd == "render":
