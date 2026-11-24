@@ -413,6 +413,8 @@ def write_meta(path, args, sumocfg, total, workers, jsonl_path, npz_path):
     leg_code[str(env.LEG_ROUNDABOUT)] = "회전교차로 안 (AV 경로가 지나는 것)"
     leg_code["-1"] = "그 밖"
     loop_cfg = TRAFFIC.get("loop_flows") or {}
+    from env import road_details
+    details_cfg = road_details.config()
     first = int(args.seed) * EP_STRIDE
     meta = {
         "format_version": "v2",
@@ -458,6 +460,8 @@ def write_meta(path, args, sumocfg, total, workers, jsonl_path, npz_path):
         "signal": {"green_s": env_meta.get("signal_green_s")
                               or {lg["id"]: lg.get("green") for lg in ROAD.get("legs", [])},
                    "yellow_s": SIGNAL.get("yellow"), "all_red_s": SIGNAL.get("all_red")},
+        # 도로 디테일 (env/road_details.py, ROAD_DETAILS 환경변수). 켠 항목만 적는다
+        "road_details": [k for k in road_details.ALL if road_details.enabled(details_cfg, k)],
         "demand": ({"scenario": demand.get("scenario"),
                     "hour": demand.get("scenarios", {}).get(demand.get("scenario"), {}).get("hour"),
                     "scale": demand.get("scale", 1.0)}

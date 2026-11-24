@@ -159,7 +159,7 @@ def build(road: dict, ego: dict, traffic: dict, out_dir: str) -> str:
 
     with open(os.path.join(out_dir, "highway.rou.xml"), "w") as f:
         f.write(f"""<routes>
-    <vType id="ego_type" accel="{ego['accel']}" decel="{ego['decel']}" maxSpeed="{ego['max_speed']}" color="1,0,0" vClass="passenger" guiShape="passenger/sedan"/>
+    <vType id="ego_type" accel="{ego['accel']}" decel="{ego['decel']}" maxSpeed="{ego['max_speed']}" speedFactor="1" speedDev="0" color="1,0,0" vClass="passenger" guiShape="passenger/sedan"/>
 {vtypes_block}
     <route id="r0" edges="e0 e1"/>
     <route id="r1" edges="c0 c1"/>

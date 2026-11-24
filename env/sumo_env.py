@@ -158,6 +158,8 @@ class SumoHighwayEnv(gym.Env):
         #   a = +1 → +max_accel (풀 액셀),  a = -1 → -max_decel (풀 브레이크)
         self.max_accel = float(ego["accel"])   # m/s^2
         self.max_decel = float(ego["decel"])   # m/s^2 (양수로 저장, 부호는 계산 시)
+        # 속도 상한 = 차량 성능 최고속도 (제한속도 아님). 제한속도 초과는 보상으로 다룬다 (overspeed_penalty)
+        self.ego_max_speed = float(ego.get("max_speed", self.vmax))
 
         # ----- MDP 설정 -----
         self.step_length = float(mdp_sim["step_length"])
@@ -1476,7 +1478,7 @@ class SumoHighwayEnv(gym.Env):
                          if accel_raw >= 0.0 else accel_raw * self.max_decel)
             dv = accel_cmd * self.step_length
             traci.vehicle.setSpeed(
-                self.ego_id, float(np.clip(v + dv, 0.0, self.vmax)))
+                self.ego_id, float(np.clip(v + dv, 0.0, self.ego_max_speed)))
 
             lane_change_applied = self._apply_lane_change(lane_change)
 
@@ -1542,6 +1544,17 @@ class SumoHighwayEnv(gym.Env):
             if same_lane_leader is not None:
                 ego_gap = same_lane_leader[0]
             reward = float(self.rw["speed_weight"]) * ego_speed / self.vmax
+
+            # ---- 과속 감점: 지금 차로의 제한속도를 넘은 비율만큼 (행동은 자르지 않는다) ----
+            op = float(self.rw.get("overspeed_penalty", 0.0))
+            if op > 0.0:
+                try:
+                    limit = float(traci.lane.getMaxSpeed(traci.vehicle.getLaneID(self.ego_id)))
+                except traci.TraCIException:
+                    limit = self.vmax
+                if limit > 0.0 and ego_speed > limit:
+                    overspeed = ego_speed - limit
+                    reward -= op * overspeed / limit
 
             # ---- TTC(충돌까지 남은 시간) 감점: 앞차와 이대로 가면 몇 초 뒤 부딪히는가 ----
             # TTC = 차간거리 / (내 속도 − 앞차 속도). ttc_threshold초보다 짧아질수록
