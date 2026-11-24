@@ -36,3 +36,4 @@ env/maps/*.netccfg
 
 # 모방학습 도구(tools/rl/expert_collect.py, dagger_collect.py)가 만드는 SUMO 폴더
 env/sumo_expert/
+env/sumo_expert_*/
