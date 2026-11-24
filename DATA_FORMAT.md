@@ -264,6 +264,7 @@ v1 초안(34차원)의 31 신호 색 · 32 정지선 거리 · 33 남은 시간�
 | libsumo | `collect_pomdp_data.py` (맨 위) | ✅ 설치돼 있으면 traci 대신 사용, `--gui`면 traci |
 | `event.arrived` 충돌 스텝 False | `env/sumo_env.py` `step` (PR #2) | 그대로 |
 | `event.teleported`, 순간이동 스텝 신호위반 제외 | `env/sumo_env.py` `step` (`getStartingTeleportIDList`) | ✅ 감점은 `teleport_penalty`, 없으면 `wrong_lane_penalty`와 같음 |
+| 가속 명령 상한 = 차량 최고속도, 제한속도 초과 감점 (조교 답변 14조 4번) | `env/sumo_env.py` `step`, `env/road_config.py` `EGO["max_speed"]` (27.78 m/s), `env/mdp_config.py` `REWARD["overspeed_penalty"]` (0.5) | ✅ 예전에는 가속 명령을 제한속도(13.89 m/s)에서 잘랐다. 지금은 `reward`에 −0.5 × (속도 − 차로 제한속도) / 차로 제한속도가 스텝마다 더해진다. `models/yeonsan_loopB_RL2`와 HF `v2/loopB/`가 이 환경 |
 
 - 번호표는 연산교차로 OSM 도로망(`ROAD["osm"]["enabled"] = True`)에서만 만든다. 다른 도로에서는 `leg` = -1, `tl_color_*` = 0, `tl_remaining_*` = -1, `ego_dist_to_junction` = 0.
 - v1 확인 기록 (2026-11-18): AV 경로를 끝까지 주행하며 703스텝 검사. `ego_leg` 0 → 12 → 7, `ego_tl` 7 → 0 → 9 → -1 순서, `ego_dist_to_junction` 계속 감소, 관측 31·32번과 불일치 0. 수집 속도 16 step/s, JSONL은 transition당 약 36% 감소.
