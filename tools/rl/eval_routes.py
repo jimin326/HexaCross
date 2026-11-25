@@ -4,6 +4,13 @@ import os, sys, json, time
 import numpy as np, torch
 BASE = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, BASE); sys.path.insert(0, os.path.dirname(os.path.abspath(__file__))); os.chdir(BASE)
+if os.environ.get("EVAL_TRACI") != "1":   # libsumo(같은 프로세스 안 SUMO)가 TraCI보다 훨씬 빠름. EVAL_TRACI=1이면 예전 방식
+    try:
+        import sumo, libsumo
+        os.environ.setdefault("SUMO_HOME", sumo.SUMO_HOME)
+        sys.modules["traci"] = libsumo
+    except ImportError:
+        pass
 import routes7 as routes_cfg
 routes_cfg.apply()
 from env.road_config import ROAD, EGO, TRAFFIC
@@ -15,8 +22,10 @@ model, sdir, n, out = sys.argv[1], sys.argv[2], int(sys.argv[3]), sys.argv[4]
 env = SumoHighwayEnv(cfg_path=os.path.join(sdir, "highway.sumocfg"), road=ROAD, ego=EGO, mdp_sim=SIMULATION,
                      mdp_obs=OBSERVATION, action=ACTION, reward=REWARD, traffic=TRAFFIC, gui=False)
 NAMES = routes_cfg.NAMES   # ROUTE_SET=loopB면 ego_0 하나 (루프 경로 B)
-_sd = int(os.environ.get("SEED", "777")); np.random.seed(_sd); torch.manual_seed(_sd)
 agent = load_agent(model, env.observation_space.shape[0], 2)
+# 시드는 모델을 불러온 뒤에 건다: load_agent가 만드는 PPO가 np.random.seed(고정값)를 다시 걸어
+# SEED가 무시되고 모든 시드가 같은 에피소드가 됐다 (main #16부터 교통 난수가 np.random을 따름).
+_sd = int(os.environ.get("SEED", "777")); np.random.seed(_sd); torch.manual_seed(_sd)
 res, t0 = {}, time.time()
 for rid in (os.environ["ONLY"].split(",") if os.environ.get("ONLY") else [f"ego_{i}" for i in range(len(EGO["routes"]))]):
     env.meta["ego_routes"] = [rid]
@@ -31,7 +40,8 @@ for rid in (os.environ["ONLY"].split(",") if os.environ.get("ONLY") else [f"ego_
         done = False
         while not done:
             obs, rew, te, tr, info = env.step(agent.predict(obs, deterministic=True)); done = te or tr
-        end = ("collision" if info["collided"] else "red_light" if info.get("red_light") and te else
+        end = ("collision" if info["collided"] else "teleported" if info.get("teleported") else
+               "red_light" if info.get("red_light") and te else
                "wrong_lane" if info.get("wrong_lane") else "arrival" if info["arrived"] else "timeout")
         ends[end] = ends.get(end, 0) + 1
     res[NAMES[rid]] = {"episodes": sum(ends.values()), "insert_fail": fails, **ends}
