@@ -1,0 +1,30 @@
+{
+ "seeds_921-954": {
+  "episodes": 240,
+  "insert_fail": 0,
+  "arrival": 235,
+  "red_light": 5
+ },
+ "seeds_961-994": {
+  "episodes": 240,
+  "insert_fail": 0,
+  "arrival": 233,
+  "red_light": 6,
+  "collision": 1
+ },
+ "total": {
+  "episodes": 480,
+  "insert_fail": 0,
+  "arrival": 468,
+  "red_light": 11,
+  "collision": 1
+ },
+ "rates_pct": {
+  "arrival": 97.5,
+  "collision": 0.21,
+  "red_light": 2.29,
+  "wrong_lane": 0.0,
+  "timeout": 0.0
+ },
+ "conditions": "ROUTE_SET=loopC MAX_STEPS=6000, 교통량 1.0, 결정적 정책, libsumo, 시드당 15회"
+}

@@ -1,0 +1,43 @@
+{
+ "model": "lc_ft7 snap_802k",
+ "traffic": 1.0,
+ "policy": "deterministic",
+ "sets": {
+  "a": {
+   "seeds": "921~954",
+   "episodes": 240,
+   "insert_fail": 0,
+   "arrival": 230,
+   "red_light": 9,
+   "collision": 1
+  },
+  "b": {
+   "seeds": "961~994",
+   "episodes": 240,
+   "insert_fail": 0,
+   "red_light": 8,
+   "arrival": 232
+  },
+  "c": {
+   "seeds": "1001~1034",
+   "episodes": 240,
+   "insert_fail": 0,
+   "arrival": 232,
+   "red_light": 8
+  },
+  "d": {
+   "seeds": "1041~1074",
+   "episodes": 240,
+   "insert_fail": 0,
+   "arrival": 229,
+   "red_light": 11
+  }
+ },
+ "total": {
+  "episodes": 960,
+  "insert_fail": 0,
+  "arrival": 923,
+  "red_light": 36,
+  "collision": 1
+ }
+}

@@ -153,11 +153,41 @@ def worker(remote, repo, sdir, seed):
         if st["k"] % ring_every == 0 and env.ego_id in traci.vehicle.getIDList():
             _snap()
 
+    # ── 설 수 있었던 황색 통과 감점 (YELLOW_PEN > 0) ──
+    # 황색을 처음 본 순간 정지선까지 편안한 감속(≤ YELLOW_BCOMF m/s², 기본 4)으로 설 수 있었는데 황색에 정지선을
+    # 넘으면 감점한다 (relabel_yellow.py와 같은 규칙). 적색 통과는 환경의 red_light_penalty가 따로 감점한다.
+    # 관측만 쓴다: [0]=속도/13.89, [31]=내 신호(+1 녹/0 황/-1 적), [37]=sqrt(정지선 거리/150). 정책 입력은 그대로.
+    y_pen, y_b = float(os.environ.get("YELLOW_PEN", "0")), float(os.environ.get("YELLOW_BCOMF", "4.0"))
+    ys = {"po": None, "ok": None}
+
+    def _is_y(o_):
+        return abs(float(o_[31])) < 0.01 and float(o_[37]) < 0.999
+
+    def _yellow_pen(o_):
+        if y_pen <= 0:
+            return 0.0
+        po, pen = ys["po"], 0.0
+        ys["po"] = o_
+        if po is None:
+            return 0.0
+        d0, d1 = float(po[37]) ** 2 * 150.0, float(o_[37]) ** 2 * 150.0
+        if _is_y(po) and ys["ok"] is None:          # 이번 신호에서 황색을 처음 본 스텝
+            v = float(po[0]) * 13.89
+            ys["ok"] = v > 0.5 and v * v / (2 * max(d0 - 2.0, 0.1)) <= y_b
+        if d1 > d0 + 5.0:                            # 정지선을 넘음 (다음 신호로 바뀜)
+            if _is_y(po) and ys["ok"]:
+                pen = y_pen
+            ys["ok"] = None
+        elif float(o_[31]) > 0.5:                    # 녹색으로 바뀜
+            ys["ok"] = None
+        return pen
+
     remote.send(env.observation_space.shape[0] + (2 if res_base is not None else 0))
     while True:
         cmd, data = remote.recv()
         if cmd == "reset":
-            remote.send(_aug(_reset()))
+            o0 = _reset(); ys["po"], ys["ok"] = o0, None
+            remote.send(_aug(o0))
         elif cmd == "step":
             lane_ok = os.environ.get("RESIDUAL_LANE") == "1"
             if res_base is not None and lane_ok and max_veto > 0:
@@ -166,6 +196,7 @@ def worker(remote, repo, sdir, seed):
             # 거부권 비용: 기본 운전자가 차로를 바꾸려는데 잔차가 막으면 매 스텝 조금 감점 (꼭 위험할 때만 막도록)
             veto = res_base is not None and lane_ok and float(cur_b[1]) != 0.0 and float(data[1]) != 0.0
             o, r, te, tr, info = env.step(act)
+            r -= _yellow_pen(o)
             if veto:
                 r -= float(os.environ.get("VETO_COST", "0.0"))
             if res_base is not None:
@@ -178,7 +209,8 @@ def worker(remote, repo, sdir, seed):
             if te or tr:
                 for k in range(5):
                     try:
-                        nxt = _aug(_reset())
+                        n0 = _reset(); ys["po"], ys["ok"] = n0, None
+                        nxt = _aug(n0)
                         break
                     except RuntimeError:
                         if k == 4:
@@ -216,7 +248,7 @@ def main():
               lane_entropy_coef=float(os.environ.get("LANE_ENT", hp.get("lane_entropy_coef", 0.0))), seed=seed, device="cpu")
     keep = {k: os.environ.get(k) for k in ("N_ENVS", "STEPS_PER_ENV", "TIMESTEPS", "SEED", "LR", "N_EPOCHS", "MINIBATCH",
                                            "ENT_COEF", "REWARD_PATCH", "INIT_MODEL", "INIT_ENSEMBLE", "DANGER_P", "RING_N", "VALUE_WARMUP", "LANE_ENT", "INIT_LOG_STD", "MAX_STEPS", "LANE_PLAN_RANGE",
-                                           "OBS_VISIBILITY", "LANE_ARROWS", "INTERNAL_OBS", "BC_DATA", "BC_W", "BC_W_END", "BC_STEPS", "DANGER_P", "DANGER_RED", "ROUTE_SET", "RESIDUAL_BASE", "RESIDUAL_SCALE", "RESIDUAL_LANE")}
+                                           "OBS_VISIBILITY", "LANE_ARROWS", "INTERNAL_OBS", "BC_DATA", "BC_W", "BC_W_END", "BC_STEPS", "DANGER_P", "DANGER_RED", "YELLOW_PEN", "YELLOW_BCOMF", "ROUTE_SET", "RESIDUAL_BASE", "RESIDUAL_SCALE", "RESIDUAL_LANE")}
     json.dump({"env": keep, "hparams": {k: (list(v) if isinstance(v, tuple) else v) for k, v in hp.items()},
                "reward": _reward()}, open(os.path.join(run_dir, "run_patch.json"), "w"), ensure_ascii=False, indent=1)
     for f in ("env/road_config.py", "env/mdp_config.py", "train.py"):

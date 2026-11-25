@@ -4,6 +4,13 @@ import os, sys, json, time
 import numpy as np, torch
 BASE = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, BASE); sys.path.insert(0, os.path.dirname(os.path.abspath(__file__))); os.chdir(BASE)
+if os.environ.get("EVAL_TRACI") != "1":   # libsumo(같은 프로세스 안 SUMO)가 TraCI보다 훨씬 빠름. EVAL_TRACI=1이면 예전 방식
+    try:
+        import sumo, libsumo
+        os.environ.setdefault("SUMO_HOME", sumo.SUMO_HOME)
+        sys.modules["traci"] = libsumo
+    except ImportError:
+        pass
 import routes7 as routes_cfg
 routes_cfg.apply()
 from env.road_config import ROAD, EGO, TRAFFIC

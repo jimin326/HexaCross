@@ -59,6 +59,8 @@ def _worker(q, repo, sdir, seed, n_ep, model):
         agent = _Ens(open(model).read().split())
     else:
         agent = _mk(model)
+    # 모델을 만든 PPO가 np.random.seed(고정값)를 다시 걸므로 시드를 다시 건다 (안 하면 워커들이 같은 에피소드를 모음)
+    np.random.seed(seed); random.seed(seed); torch.manual_seed(seed)
     beta = float(os.environ.get("BETA", "0")); stoch = os.environ.get("STOCH") == "1"
     dt = env.step_length
     O, A, L, E, R = [], [], [], [], []
@@ -136,7 +138,7 @@ def main():
     _setup(repo)
     nw = int(os.environ.get("N_WORKERS", "4"))
     seed = int(os.environ.get("SEED", "0"))
-    base = os.path.join(BASE, "env", "sumo_expert")
+    base = os.environ.get("SUMO_BASE") or os.path.join(BASE, "env", "sumo_expert")   # w0..w{N-1} 폴더가 있는 곳
     ctx = mp.get_context("spawn")
     q = ctx.Queue()
     ps = [ctx.Process(target=worker, args=(q, repo, os.path.join(base, f"w{i}"), seed * 10 + i, n_ep, model)) for i in range(nw)]
