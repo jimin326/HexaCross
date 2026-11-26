@@ -167,7 +167,7 @@
 | `state.ego_tl_dist` | float | 그 신호 정지선까지 거리. 관측 32번과 달리 150 m 제한 없음 (-1 = 신호 없음) | m |
 
 - 연산교차로 신호는 동시 녹색 6현시(가정, `env/maps/yeonsan_x6.json`의 `signal_plan_concurrent`)다. 녹색인 칸이 동시에 2개 이상일 수 있다.
-- 칸 수: 색 17 + 남은 시간 17 = 34칸 (v1은 12칸). 루프 B 지도에 없는 6~9번은 칸을 만들지 않는다.
+- 칸 수: 색 21 + 남은 시간 21 = 42칸 (`i` = 0~5, 10~24. v1은 12칸. 본 수집 parquet에서 확인). 루프 B 지도에 없는 6~9번은 칸을 만들지 않는다.
 - "지금 몇 번 현시인지"는 따로 저장하지 않는다 (색에서 알 수 있음, 원칙 4).
 
 ### state — 주변 차량
@@ -418,25 +418,24 @@ python collect_pomdp_data.py --model models/yeonsan_loopB_RL2/model.pt --episode
 
 ```
 hoseob0902/HexaCross-dataset
-├── README.md            # 데이터셋 카드: 수집 조건, 컬럼, 읽는 법, 통계
+├── README.md            # 데이터셋 카드: 수집 방법, 모든 컬럼 설명, 읽는 법
 └── v2/
-    ├── loopB/           # ★ 제출용 본 데이터셋 (2026-11-24). 이 문서 v2 형식
-    │   ├── loopB_RL2_s11.jsonl.gz / .npz / .parquet / .meta.json
-    │   ├── ...          # 400회 묶음마다 같은 4개 파일
-    │   └── loopB_RL2_s19.*
-    └── loopB_RL/        # 예전 수집 (2026-11-22). 아래 표처럼 조건이 달라 제출용이 아님
+    └── loopB/           # 제출용 본 데이터셋 (2026-11-24). 이 문서 v2 형식
+        ├── loopB_RL2_s11.jsonl.gz / .npz / .parquet / .meta.json
+        ├── ...          # 400회 묶음마다 같은 4개 파일
+        └── loopB_RL2_s19.*
 ```
 
-| | `v2/loopB/` (제출용) | `v2/loopB_RL/` (예전) |
-|---|---|---|
-| 모델 | `models/yeonsan_loopB_RL2` | `models/yeonsan_loopB_RL` (가속 명령을 제한속도에서 자르던 환경) |
-| 수집 도구 | `collect_pomdp_data.py` → `tools/data/jsonl_to_parquet.py` | `tools/data/collect_parquet.py` |
-| 정책 | 결정적 | 에피소드마다 결정적 / 샘플 번갈아 (`policy_mode` 컬럼) |
-| 주변 차량 반경 | 150 m | 100 m (`RADIUS` 기본값) |
-| `next_observation` · `next_state` | 에피소드 마지막 행에만 (수업 방식) | 모든 행 (`next_` 접두 컬럼) |
-| 규모 | 10,647,162행 · 3,600 에피소드 | 10,007,808행 · 4,055 에피소드 |
-| 파일 | 9묶음 × (jsonl.gz · npz · parquet · meta.json). 합계 jsonl.gz 9.66 GB · npz 0.81 GB · parquet 6.92 GB | Parquet 샤드 40개, 4.80 GB |
+| 항목 | `v2/loopB/` |
+|---|---|
+| 모델 | `models/yeonsan_loopB_RL2` (결정적 정책) |
+| 수집 도구 | `collect_pomdp_data.py` → `tools/data/jsonl_to_parquet.py` |
+| 주변 차량 반경 | 150 m |
+| `next_observation` · `next_state` | 에피소드 마지막 행에만 (수업 방식) |
+| 규모 | 10,647,162행 · 3,600 에피소드 |
+| 파일 | 9묶음 × (jsonl.gz · npz · parquet · meta.json). 합계 jsonl.gz 9.66 GB · npz 0.81 GB · parquet 6.92 GB |
 
+- 예전 수집(`v2/loopB/` 이전, 2026-11-22, 다른 모델·형식)은 HF에서 지웠다 (2026-11-26). 최신 데이터만 남긴다.
 - 발표 · 제출 · 프로젝트 페이지의 데이터셋 숫자는 **`v2/loopB/`** 기준이다.
 
 ## 10. 일정
