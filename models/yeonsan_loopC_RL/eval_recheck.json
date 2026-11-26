@@ -1,0 +1,116 @@
+{
+ "C_old": {
+  "model": "model.pt",
+  "env_commit": "94b3de7 (이 README의 환경)",
+  "seeds": "921~1074 (eval.json과 같은 시드)",
+  "seed_order": "eval_routes.py와 같은 순서",
+  "episodes": 960,
+  "counts": {
+   "arrival": 923,
+   "red_light": 34,
+   "collision": 3
+  },
+  "arrival_pct": 96.15,
+  "collision_pct": 0.31
+ },
+ "C_fresh": {
+  "model": "model.pt",
+  "env_commit": "94b3de7",
+  "seeds": "2001~2128 (선택에 안 쓴 시드)",
+  "seed_order": "고친 순서",
+  "episodes": 1920,
+  "counts": {
+   "arrival": 1859,
+   "red_light": 57,
+   "collision": 4
+  },
+  "arrival_pct": 96.82,
+  "collision_pct": 0.21
+ },
+ "C1_fresh": {
+  "model": "rl_init_1400k.pt",
+  "env_commit": "94b3de7",
+  "seeds": "2001~2064",
+  "seed_order": "고친 순서",
+  "episodes": 960,
+  "counts": {
+   "arrival": 907,
+   "red_light": 45,
+   "collision": 8
+  },
+  "arrival_pct": 94.48,
+  "collision_pct": 0.83
+ },
+ "C_new": {
+  "model": "model.pt",
+  "env_commit": "65d0d85 (#21 이후 main)",
+  "seeds": "921~1074",
+  "seed_order": "고친 순서",
+  "episodes": 960,
+  "counts": {
+   "arrival": 713,
+   "red_light": 169,
+   "collision": 78
+  },
+  "arrival_pct": 74.27,
+  "collision_pct": 8.12
+ },
+ "C_newdet": {
+  "model": "model.pt",
+  "env_commit": "65d0d85 + ROAD_DETAILS=driver_styles,taxi,short_stops",
+  "seeds": "921~1074",
+  "seed_order": "고친 순서",
+  "episodes": 960,
+  "counts": {
+   "red_light": 194,
+   "arrival": 668,
+   "collision": 95,
+   "wrong_lane": 3
+  },
+  "arrival_pct": 69.58,
+  "collision_pct": 9.9
+ },
+ "r1_buggy": {
+  "model": "rl_init_1400k.pt",
+  "env_commit": "48d6f62 (#16 이전, 1단계를 처음 평가한 환경)",
+  "seeds": "921~994 중 480회",
+  "seed_order": "버그 순서 (시드 → 모델 로드)",
+  "episodes": 480,
+  "counts": {
+   "arrival": 459,
+   "red_light": 20,
+   "collision": 1
+  },
+  "arrival_pct": 95.62,
+  "collision_pct": 0.21
+ },
+ "r1_fixed": {
+  "model": "rl_init_1400k.pt",
+  "env_commit": "48d6f62",
+  "seeds": "921~994 중 480회",
+  "seed_order": "고친 순서",
+  "episodes": 480,
+  "counts": {
+   "arrival": 457,
+   "red_light": 20,
+   "collision": 3
+  },
+  "arrival_pct": 95.21,
+  "collision_pct": 0.62
+ },
+ "r1_fresh": {
+  "model": "rl_init_1400k.pt",
+  "env_commit": "48d6f62",
+  "seeds": "2001~2064",
+  "seed_order": "고친 순서",
+  "episodes": 960,
+  "counts": {
+   "arrival": 915,
+   "red_light": 35,
+   "collision": 10
+  },
+  "arrival_pct": 95.31,
+  "collision_pct": 1.04
+ },
+ "_conditions": "11-25 맥(M5 Pro)에서 다시 잼. 교통량 1.0, 결정적 정책, libsumo, 시드당 15회, MAX_STEPS=6000."
+}
