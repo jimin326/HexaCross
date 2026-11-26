@@ -1,0 +1,47 @@
+{
+ "_meta": {
+  "model": "../r8_snap_102k.pt",
+  "route_set": "loopB",
+  "road_details": "none",
+  "max_steps": 6000,
+  "n_per_route": 240,
+  "seed_start": 905,
+  "traffic_scale": 1.0,
+  "sumo_dir": "env/sumo_eval/loopB_scale_1.0",
+  "commit": "6200b25",
+  "git_dirty": false,
+  "date": "2026-11-26 17:13",
+  "minutes": 15.9,
+  "libsumo": true
+ },
+ "루프B N→S→회전교차로→E→W": {
+  "episodes": 240,
+  "insert_fail": 0,
+  "arrival": 239,
+  "collision": 1,
+  "failures": [
+   {
+    "seed": 1052,
+    "end": "collision",
+    "time_s": 99.5,
+    "last_edge": "-26005519",
+    "x": 828.1,
+    "y": 1190.7
+   }
+  ],
+  "metrics": {
+   "travel_time_s": 1410.2426778242677,
+   "travel_time_s_n": 239,
+   "mean_speed": 5.221408318953326,
+   "mean_speed_n": 240,
+   "stop_time_s": 542.8333333333334,
+   "stop_time_s_n": 240,
+   "min_gap": 0.7258647901605169,
+   "min_gap_n": 240,
+   "stop_gap_veh": 4.5,
+   "stop_gap_veh_n": 7472,
+   "stop_gap_line": 1.6,
+   "stop_gap_line_n": 2510
+  }
+ }
+}
