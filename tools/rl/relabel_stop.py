@@ -8,7 +8,7 @@
 규칙 (관측만 씀): 서 있는(또는 거의 선) 앞차나 적색 정지선 앞에서 **기어가는 속도(V_RULE 미만)일 때**,
     v_des = clip(K · 남은 거리, 0, V_CREEP)   남은 거리 = 앞차 간격 − GAP_VEH  또는  정지선 거리 − GAP_LINE
 로 다가가게 정답을 바꾼다. 정답 가감속 = clip((v_des − v) / 0.5 s, −DEC_MAX, ACC_MAX), 정규화는 가속 3, 감속 5.
-  - 남은 거리에 비례해 속도를 줄이므로 목표에 가까울수록 정답이 0에 가깝다. 목표를 넘으면(남은 거리 ≤ 0) 멈춤.
+  - 남은 거리에 비례해 속도를 줄이고, 목표 STOP_ZONE(0.6 m) 안에서는 확실히 멈춤(−3 m/s², 서 있으면 계속 제동).
     (계단처럼 "기어가기 → 멈춤"으로 바뀌는 첫 규칙은 관측 해상도(앞차 간격 / 100 m)로 경계를 구분하지 못해
      목표를 지나서도 다시 기어가다 앞차에 닿았다: bcstop 40회 중 충돌 11, 8건이 쌍미천로 신호 앞 대기 줄)
   - V_RULE 이상에서는 원래 정답(SUMO 안전 속도로 줄인 감속)을 그대로 둔다. 다가가는 속도를 V_CREEP(2 m/s)로 묶어서
@@ -27,6 +27,7 @@ VMAX, AMAX, DMAX, DT = 13.89, 3.0, 5.0, 0.5
 GAP_VEH, GAP_LINE = 1.5, 1.5         # 목표: 앞차 범퍼 4.0 m (getLeader 1.5 m, 충돌 판정은 0), 정지선 1.5 m. 3.25·3.5 m는 대기 줄에서 다시 기어가다 충돌 (bcstop 40회 중 11·7, 뒤차 무작위 복사를 더한 뒤에도 3.5 m는 7, 4.0 m는 1)
 ACC_MAX, DEC_MAX = 1.0, 4.5
 LEAD_SLOW, V_RULE, V_CREEP, RANGE, K, AUG = 0.5, 2.5, 2.0, 25.0, 0.5, 2
+STOP_ZONE, HOLD = 0.6, 0.6
 
 
 def relabel(d):
@@ -46,6 +47,10 @@ def relabel(d):
     v_des = np.clip(K * rem, 0.0, V_CREEP)
     acc = np.clip((v_des - v) / DT, -DEC_MAX, ACC_MAX)
     lab = np.where(acc >= 0, acc / AMAX, acc / DMAX)
+    # 목표 STOP_ZONE m 안에서는 확실히 멈추라는 정답(−HOLD × 5 m/s²). 비례 정답만 쓰면 목표 근처에서 정답이
+    # 0에 가까워(예: 0.06 m/s → −0.02) 신경망 오차로 계속 기어가다 앞차에 닿았다
+    # (r6 102k 960회 충돌 10 중 8이 0.2 → 0.06 m/s로 줄면서 끝내 안 서고 앞차·버스에 닿음).
+    lab = np.where(rem < STOP_ZONE, np.minimum(lab, -HOLD), lab)
     A[m] = lab[m]
     return A, veh, line, m, rem
 

@@ -426,7 +426,7 @@ def render_chunk(args):
         v = s["v"] + (s2["v"] - s["v"]) * a
         lim = s.get("vmax", 13.89)
         prog = 100.0 * (1 - float(s["obs"][38])) if len(s["obs"]) > 38 else 0
-        axh.text(0.0, 0.92, "최종 모델 RL2 (yeonsan_loopB_RL2) · 루프 경로 B", color=INK, fontsize=13, fontweight="bold", va="top")
+        axh.text(0.0, 0.92, os.environ.get("VIDEO_TITLE", "최종 모델 RL2 (yeonsan_loopB_RL2)") + " · 루프 경로 B", color=INK, fontsize=13, fontweight="bold", va="top")
         axh.text(0.0, 0.72, f"속도 {v * 3.6:4.0f} km/h   (제한 {lim * 3.6:.0f})", color=INK, fontsize=12, va="top")
         axh.text(0.0, 0.54, f"도로  {rname}", color=INK, fontsize=12, va="top")
         axh.text(0.0, 0.36, f"진행 {prog:4.0f}%", color=INK, fontsize=12, va="top")
@@ -574,7 +574,7 @@ def compose_chunk(args):
             sp.set_visible(False)
         rname = names.get(s["edge"], "") or ("교차로 안" if s["edge"].startswith(":") else "")
         prog = 100.0 * (1 - float(s["obs"][38]))
-        axh.text(0, 0.97, "최종 모델 RL2 · 루프 경로 B", color=INK, fontsize=14, fontweight="bold", va="top")
+        axh.text(0, 0.97, os.environ.get("VIDEO_TITLE", "최종 모델 RL2") + " · 루프 경로 B", color=INK, fontsize=14, fontweight="bold", va="top")
         axh.text(0, 0.80, f"속도  {s['v'] * 3.6:4.0f} km/h   (제한 {s['vmax'] * 3.6:.0f})", color=INK, fontsize=13, va="top")
         axh.text(0, 0.65, f"도로  {rname}", color=INK, fontsize=13, va="top")
         axh.text(0, 0.50, f"진행  {prog:3.0f}%", color=INK, fontsize=13, va="top")
