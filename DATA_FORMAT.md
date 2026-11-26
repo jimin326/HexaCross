@@ -1,14 +1,13 @@
-# 데이터 포맷 (초안 v2 — 확정 전)
+# 데이터 포맷 v2 (확정)
 
 > 담당: 지민 · 확인: 서영(obs · reward 정의), 호섭(학습에 쓰는 컬럼)
 >
-> 이 문서가 확정되기 전에는 대량 수집(10^7)을 시작하지 않는다.
-> 확정 후 컬럼을 바꾸면 버전을 올린다 (v2 → v3).
+> **v2로 확정 (2026-11-24).** 제출용 10^7 데이터셋(HF `v2/loopB/`, 10,647,162 transition)을 이 형식으로 모았다 (8절, 9절).
+> 앞으로 컬럼을 바꾸면 버전을 올린다 (v2 → v3).
 >
-> **v2는 루프 경로 B(`ROUTE_SET=loopB`, 순환 흐름 포함) 수집을 위한 초안이다 (11절 "v1 → v2 변경").**
+> **v2는 루프 경로 B(`ROUTE_SET=loopB`, 순환 흐름 포함) 데이터 형식이다 (11절 "v1 → v2 변경").**
 > v1은 연산교차로 주변만 번호표가 있어서, 루프 B 경로 6,666 m 중 3,624 m(54%)가 `leg = -1`, 연산 밖 신호 11개가 모두 "그 밖"으로 기록됐다.
-> **v2에서 바꾸는 것은 `state`와 `meta`뿐이다. `observation`과 `action`은 그대로다** (모델 재학습 불필요).
-> v2는 코드에 구현했고 루프 B 시험 수집으로 확인했다 (6절). 팀 확인(서영 · 호섭) 뒤 확정한다.
+> **v1 → v2에서 바뀐 것은 `state`와 `meta`뿐이다. `observation`과 `action`은 그대로다.**
 
 ## 0. 수업 기본 항목 대조
 
@@ -29,8 +28,8 @@
 ## 1. 저장 단위
 
 - **1줄 = 1 transition = SUMO 1스텝 (0.5초)**
-- 목표: **10^7 transition 이상** (루프 B 1회 ≈ 2,800 스텝 → 약 3,600 에피소드)
-- 수집: `collect_pomdp_data.py --workers N` (SUMO N개 병렬), 여러 PC에 나눠 수집 (8절 시드 규칙)
+- 목표: **10^7 transition 이상** → **결과: 10,647,162 transition, 3,600 에피소드** (루프 B 1회 평균 2,958스텝)
+- 수집: `collect_pomdp_data.py --workers N` (SUMO N개 병렬). 본 수집은 시드 11~19로 400회씩 9묶음 (8절)
 
 ## 2. 원칙
 
@@ -133,9 +132,9 @@
 | `action.accel_raw` | float | 가감속 명령 | [-1, 1] |
 | `action.lane_change_raw` | float | 차로변경 원시값 | [-1, 1] |
 | `action.lane_change` | int | 양자화된 명령 (-1 오른쪽 / 0 유지 / +1 왼쪽) | – |
-| `action.lane_change_applied` | bool | 안전 게이트를 통과해 실제로 실행됐는지 | – |
+| `action.lane_change_applied` | bool | 명령이 실제로 실행됐는지. 없는 차로 · 버스 전용 차로 · 교차로 안이면 False (안전 게이트 `lane_change_safety`는 루프 B 최종 환경에서 꺼져 있음) | – |
 | `reward` | float | 스텝 보상 | – |
-| `terminated` | bool | 충돌 · 완주 · 신호위반 · 차로 갇힘으로 끝남 | – |
+| `terminated` | bool | 충돌 · 완주 · 신호위반 · 차로 갇힘 · 순간이동(막힘)으로 끝남 | – |
 | `truncated` | bool | 시간 초과로 끝남 | – |
 | `state` | object | 시뮬레이터 절대 상태 (아래) | – |
 | `detected_vehicles` | list | 관측 범위(시야 W = 100 m) 안에서 감지된 차량. 원소: `x, y, rel_pos, speed, lane_offset` | m, m/s |
@@ -175,7 +174,7 @@
 
 | 컬럼 | 타입 | 내용 | 단위 |
 |---|---|---|---|
-| `state.vehicles[]` | list | **AV 반경 R m 안의 차량** (v2: 반경 제한. R은 5절에서 결정). AV 자신은 빼고 저장 | – |
+| `state.vehicles[]` | list | **AV 반경 150 m 안의 차량** (v2: 반경 제한, 5절. 값은 `meta.vehicles_radius_m`). AV 자신은 빼고 저장 | – |
 | ↳ `x`, `y` | float | 좌표 | m |
 | ↳ `speed` | float | 속도 | m/s |
 | ↳ **`angle`** | float | **진행 방향 (v2 추가)** | 도 (0 = 북, 시계방향) |
@@ -207,9 +206,9 @@
 | `ego_route_dist` (출발 후 달린 거리) | 관측 38번(남은 거리 비율) × 경로 길이(`meta.route_length_m`)로 계산됨 → 원칙 4 |
 
 
-## 4. observation 56차원 (v2 변경 없음, 서영 확정 필요)
+## 4. observation 56차원 (v2 변경 없음)
 
-지금 코드 기준 (`env/sumo_env.py` `_get_obs`, 레이아웃 주석은 `env/mdp_config.py`). 루프 B 모델(`models/yeonsan_loopB_RL`)도 56차원이다 (2026-11-23 확인).
+지금 코드 기준 (`env/sumo_env.py` `_get_obs`, 레이아웃 주석은 `env/mdp_config.py`). 루프 B 모델(`models/yeonsan_loopB_RL`)과 최종 모델(`models/yeonsan_loopB_RL2`, 본 수집에 쓴 모델)도 56차원이다.
 신호는 "AV 앞 신호 하나"가 아니라 **다음 신호 교차로의 진입 도로마다 하나씩** column으로 넣는다
 (연산교차로는 6지 교차로라 6개 도로 = 6개 column, 2절 원칙 2와 같은 방향).
 
@@ -233,31 +232,34 @@
 `mdp_config.OBSERVATION["traffic_light"]["remaining_time"] = True`면 37 다음에 "내 신호 남은 시간" 1차원이 추가된다 (57차원). 루프 B 모델은 쓰지 않는다.
 v1 초안(34차원)의 31 신호 색 · 32 정지선 거리 · 33 남은 시간은 31–37로 바뀌었다 (기본은 남은 시간 없음).
 
-서영 확인 필요:
+공지 · 조교 답변 대조 (최종 모델 RL2 기준):
 - **21–25, 39–40 (2026-11-18 바꿈, 프로젝트 공지 반영)**: 예전 21–25는 차로마다 "그 차로로 내 경로를 따라 갈 수 있는 거리"(차로 단위 경로 안내)였고, 39–40은 교차로 안 상충 차량(다른 차의 진행 방향을 이용한 도움 정보)이었다. 공지("어떤 차선으로 주행해야 하는지 등 세밀한 주행 정보 금지", "보조 규칙·도움 요소 금지")에 따라 21–25는 차로 유무만, 39–40은 큰 틀의 경로 안내(다음 교차로 회전 각도·거리)로 바꿨다. 예전 동작은 `mdp_config.OBSERVATION["lane_route_info"] = True`, `junction_foes.enabled = True`, `route_turn.enabled = False`.
-- **31–36**: 진입 도로별로 칸을 나눴지만 한 칸에 세 색(−1/0/+1)을 섞었다. FAQ대로 녹·황·적을 칸으로 더 나눌지 정한다 (그러면 차원이 늘어 재학습 필요).
+  - 조교 답변(조교 Q&A 14조, 2026-11-23): 차로마다 "경로를 따라가려면 몇 번 바꿔야 하는지"를 주는 관측은 **빼야 한다**. 우리는 위처럼 이미 뺐다.
+- **31–36**: 진입 도로별로 칸을 나눴고 한 칸에 세 색(−1/0/+1)을 넣는다. 최종 모델(RL2)은 이 관측으로 학습했으므로 그대로 둔다. 데이터셋의 `state`는 FAQ 예시대로 신호등·차로 그룹별 칸에 0 / 0.5 / 1로 저장한다 (3절).
 - **38**: 목표까지 남은 거리는 큰 틀의 경로 정보라 공지 범위 안으로 본다.
-- **41–55 (노면 화살표, 2026-11-19 추가, 호섭 결정)**: 운전자가 정지선 앞에서 보는 노면 화살표다. "내 경로가 몇 차로로 가야 하는지"는 알려 주지 않는다 (AV는 39–40의 큰 틀 경로 안내와 화살표를 스스로 맞춰야 한다). 공지 "세밀한 주행 정보 금지"에 해당하는지 **컨설팅·조교 확인 필요**.
+- **41–55 (노면 화살표, 2026-11-19 추가, 호섭 결정)**: 운전자가 정지선 앞에서 보는 노면 화살표다. "내 경로가 몇 차로로 가야 하는지"는 알려 주지 않는다 (AV는 39–40의 큰 틀 경로 안내와 화살표를 스스로 맞춰야 한다). **조교에게 따로 확인받지 않았다.** 14조 답변에서 대신 써도 된다고 한 정보는 "내 차로가 앞 50 m 안에서 끝나는지", "다음 갈림길까지 거리·방향"이었다.
 - 중앙대로 BRT 버스 전용 차로는 관측에서 "없는 차로"로 본다 (`sumo_env._ego_lane_ok`, `_approach_groups`가 버스 전용 차로를 뺀다).
 
-## 5. 정한 것과 남은 것
+## 5. 정한 것
 
-| 항목 | 선택지 | 지금 (팀 확인 전) |
+| 항목 | 선택지 | 결정 (본 수집, 2026-11-24) |
 |---|---|---|
-| **`state.vehicles` 반경 R** | 전체 차량 / AV 반경 R m 안 | **150 m** (관측 거리 100 m + 여유, `--state-radius` 기본값). 시험 수집에서 평균 47대 · 용량 약 0.9 KB / transition |
-| 파일 형식 | jsonl.gz + npz (수업 기본) / + Parquet | 수집은 수업 기본 형식 그대로. **HF 업로드 때 Parquet로 변환**해 같이 올림 (HF 로딩에 유리, `tl_color_i`처럼 펼친 컬럼이 다루기 쉬움) |
-| 샤드 크기 | 파일 하나에 N 에피소드 | 사람별 수집 파일 = 샤드 (8절 시드 규칙으로 겹치지 않음). **남은 것:** HF 단일 파일 크기 제한 확인 |
-| 수집 정책 | PPO / BC / 규칙 기반 / 혼합 | **루프 B 모델(`models/yeonsan_loopB_RL/model.pt`), 결정적 정책** |
-| 교통 시나리오 | 순환 흐름 켬 / 끔 | **켬 (4,550대/시)**. 조건은 컬럼이 아니라 `meta.json`에 (FAQ "시나리오별 칼럼은 하나로") |
+| **`state.vehicles` 반경 R** | 전체 차량 / AV 반경 R m 안 | **150 m** (관측 거리 100 m + 여유, `--state-radius` 기본값, `meta.vehicles_radius_m`). 시험 수집에서 평균 47대 · 용량 약 0.9 KB / transition |
+| 파일 형식 | jsonl.gz + npz (수업 기본) / + Parquet | 수집은 수업 기본 형식(jsonl.gz + npz + meta.json) 그대로. **HF에는 같은 값을 Parquet(zstd)로 바꾼 파일도 같이 올림** (`tools/data/jsonl_to_parquet.py`. HF 로딩에 유리, `state.tl_color_i`처럼 펼친 컬럼이 다루기 쉬움) |
+| 샤드 크기 | 파일 하나에 N 에피소드 | **400회 묶음 = 파일 하나** (`loopB_RL2_s11` ~ `loopB_RL2_s19`, 9묶음). 8절 시드 규칙으로 번호가 겹치지 않음 |
+| 수집 정책 | PPO / BC / 규칙 기반 / 혼합 | **최종 모델 `models/yeonsan_loopB_RL2/model.pt`, 결정적 정책** (`stochastic: false`). 조교 답변(조교 Q&A 4조): 제출 데이터는 최종 정책이 주행한 데이터로만 구성해도 됨 |
+| 교통 시나리오 | 순환 흐름 켬 / 끔 | **켬 (4,550대/시)** + 도로 디테일 `ROAD_DETAILS=driver_styles,taxi,short_stops` (학습 조건과 같음). 조건은 컬럼이 아니라 `meta.json`에 (`loop_flows`, `road_details`. FAQ "시나리오별 칼럼은 하나로") |
 | 신호 인코딩 (state) | 신호등·그룹별 0 / 0.5 / 1 | v1과 같음 (FAQ 예시와 같은 방식) |
+| raw 정보 범위 | 일부 행만 / 모든 행 | **모든 행에 `state`** (조교 답변(조교 Q&A 4조): "raw 정보 다 포함해야 합니다"). 본 수집에서 `state`가 빈 행 0 |
 
 ## 6. 구현 상태
 
 | 항목 | 구현 위치 | 상태 |
 |---|---|---|
-| `state.*` (AV, 신호, 주변 차량) | 매 스텝 값: `env/sumo_env.py` `get_privileged_state` · `_signal_state` / 번호표(지도 파일만 읽음): `env/state_layout.py` `build_state_layout` → `number_loop_roads`, `number_signals` | ✅ `leg` 13~25, 신호 10~24, 차로 그룹, `angle`, 반경 R, "그 밖" 9 |
+| `state.*` (AV, 신호, 주변 차량) | 매 스텝 값: `env/sumo_env.py` `get_privileged_state` · `_signal_state` / 번호표(지도 파일만 읽음): `env/state_layout.py` `build_state_layout` → `number_loop_roads`, `number_signals` | ✅ `leg` 13~25, 신호 10~24, 차로 그룹, `angle`, 반경 150 m, "그 밖" 9 |
 | `detected_vehicles` | `env/sumo_env.py` `get_detected_vehicles` | 그대로 |
-| `event.*`, `meta.json` | `collect_pomdp_data.py` (`write_meta`) | ✅ 8절 meta 항목 |
+| `event.*`, `meta.json` | `collect_pomdp_data.py` (`write_meta`) | ✅ 8절 meta 항목. 켠 도로 디테일은 `road_details` (2026-11-23 추가) |
+| JSONL → Parquet 변환 (HF 업로드용) | `tools/data/jsonl_to_parquet.py` | ✅ 값은 JSONL과 같음. 컬럼 이름 = JSONL 키 경로(`state.ego_x`, `event.collided` …). `next_observation` · `next_state.*`는 JSONL처럼 에피소드 마지막 행에만 값, 나머지는 null |
 | 루프 B 수집 | `collect_pomdp_data.py` | ✅ `ROUTE_SET`이 있으면 `routes7.apply()` (평가·녹화와 같은 경로·지도·MAX_STEPS) |
 | 에피소드 시드 | `collect_pomdp_data.py` | ✅ 에피소드마다 `np.random.seed(episode)`, 워밍업 스냅샷 풀 기본 끔 (`--state-pool 0`) |
 | 환경 난수 재현 | `env/sumo_env.py` `_child_rng()` | ✅ 차량 배치·신호 위상 난수가 전역 시드를 따름 (같은 시드 → 같은 결과) |
@@ -279,6 +281,11 @@ v1 초안(34차원)의 31 신호 색 · 32 정지선 거리 · 33 남은 시간�
   워커 8개로 16회(40,936스텝): **403 step/s** → 10^7이면 이 PC(Ryzen 5 5600X) 한 대로 약 7시간.
   워커 8개로 돌린 에피소드 900000도 워커 1개 결과와 같았다 (스텝 수 2,601, return 95.795).
   16회 전체에서도 `ego_leg = -1` 0%, `ego_tl` 순서 같음, 관측 31번과 불일치 0 / 26,847스텝, 반경 밖 차량 0대, 에피소드 번호 900000~900015 겹침 없음.
+- **본 수집 결과 (2026-11-24 01:57 ~ 07:28, 기록은 `진행상황.md`):**
+  - 조건: 모델 `models/yeonsan_loopB_RL2`, 결정적 정책, SUMO · libsumo 1.27.1, 순환 흐름 켬, `ROAD_DETAILS=driver_styles,taxi,short_stops`, 커밋 7e9a66f (`git_dirty = false`), 워커 4개, 초당 약 550 transition, 5시간 31분
+  - 규모: **10,647,162 transition, 3,600 에피소드** (시드 11~19 × 400회, 평균 2,958스텝)
+  - 끝난 이유: 완주 3,537 (98.25%) · 충돌 21 (0.58%) · 신호위반 38 (1.06%) · 순간이동(막힘) 2 · 차로 이탈 2
+  - 검사: 에피소드마다 `t`가 0부터 1씩 증가, 끝 표시는 마지막 행에만, 에피소드 번호 = `meta.json` (3,600개 통과), `state`가 빈 행 0, Parquet ↔ JSONL 대조 불일치 0
 
 ## 7. v0 → v1 변경
 
@@ -308,24 +315,25 @@ v1 초안(34차원)의 31 신호 색 · 32 정지선 거리 · 33 남은 시간�
 - 워밍업 스냅샷 풀(`mdp_config` `warmup_state_pool` = 16)을 켜 두면, 한 프로세스가 16회를 넘긴 뒤의 에피소드는 앞 에피소드의 스냅샷을 다시 써서 시드만으로 재현되지 않는다.
   그래서 **수집은 스냅샷 풀을 끈다** (`--state-pool 0`, 기본값). 평가(`tools/rl/eval_parallel.py`)는 `--chunk`를 16 이하로 쓴다.
 
-### 수집 분담표 (초안 — 팀 확정 전)
+### 시드 배정표
 
 여러 PC로 나눠 수집할 때 **사람마다 다른 `--seed`**를 쓴다. 같은 시드를 두 사람이 쓰면 같은 에피소드를 중복 수집하고 에피소드 번호도 겹친다.
 시드 번호는 여기서만 정하고, 바꾸면 이 표를 먼저 고친다.
+**본 수집은 시드 11~19 한 번으로 10^7을 채웠다.** 사람별 분담(시드 1~5)은 하지 않았고, 시드 1~5는 추가 수집용으로 남겨 둔다.
 
 | 사람 | `--seed` | 에피소드 수 | 에피소드 번호 | 파일 이름 (`--name`) | 상태 |
 |---|---|---|---|---|---|
-| 지민 | 1 | 800 | 100000 ~ 100799 | `loopB_jimin` | 대기 |
-| 승준 | 2 | 800 | 200000 ~ 200799 | `loopB_seungjun` | 대기 |
-| 지원 | 3 | 800 | 300000 ~ 300799 | `loopB_jiwon` | 대기 |
-| 서영 | 4 | 800 | 400000 ~ 400799 | `loopB_seoyoung` | 대기 |
-| 호섭 | 5 | 800 | 500000 ~ 500799 | `loopB_hoseop` | 대기 |
+| 지민 | 1 | 800 | 100000 ~ 100799 | `loopB_jimin` | 안 함 (추가 수집용) |
+| 승준 | 2 | 800 | 200000 ~ 200799 | `loopB_seungjun` | 안 함 (추가 수집용) |
+| 지원 | 3 | 800 | 300000 ~ 300799 | `loopB_jiwon` | 안 함 (추가 수집용) |
+| 서영 | 4 | 800 | 400000 ~ 400799 | `loopB_seoyoung` | 안 함 (추가 수집용) |
+| 호섭 | 5 | 800 | 500000 ~ 500799 | `loopB_hoseop` | 안 함 (추가 수집용) |
 | (예약) | 9 | – | 900000 ~ | 시험 수집용 (2026-11-23 사용). 본 수집에 쓰지 않음 | – |
 | 클라우드 (지민 브랜치) | 11 ~ 19 | 400 × 9 = 3,600 | 1,100,000 ~ 1,900,399 | `loopB_RL2_s11` ~ `loopB_RL2_s19` | **완료·업로드 (11-24)**: 10,647,162 transition, 모델 `models/yeonsan_loopB_RL2`, `ROAD_DETAILS=driver_styles,taxi,short_stops`, 커밋 7e9a66f. HF `v2/loopB/` |
 
-- 합계 4,000 에피소드 ≈ 1,020만 transition (루프 B 1회 평균 약 2,560스텝) → 10^7 이상.
-- 1인 예상 시간: Ryzen 5 5600X · 워커 8개 · libsumo 기준 403 step/s → 800회 약 1시간 30분. PC마다 다르므로 처음 몇 회의 속도로 다시 계산한다.
-- 상태 칸: 대기 → 수집 중 → 완료(파일 크기, transition 수) → 업로드. 완료하면 `meta.json`의 `episode_ids`가 위 번호와 같은지 확인한다.
+- 본 수집: 3,600 에피소드 × 평균 2,958스텝 = 10,647,162 transition → 10^7 이상 (6절 "본 수집 결과").
+- 예상 시간 참고: Ryzen 5 5600X · 워커 8개 · libsumo 기준 403 step/s → 800회 약 1시간 30분. 본 수집은 워커 4개로 초당 약 550 transition, 5시간 31분 걸렸다.
+- 완료하면 `meta.json`의 `episode_ids`가 위 번호와 같은지 확인한다.
 - 평가 시드(`tools/rl/eval_parallel.py --seed`, 기본 905)와는 별개다.
 
 **수집 전 확인 (모든 사람)**
@@ -334,46 +342,47 @@ v1 초안(34차원)의 31 신호 색 · 32 정지선 거리 · 33 남은 시간�
 2. SUMO 1.27.1: `python -m pip install -r requirements.txt` (sumolib · traci · libsumo · eclipse-sumo 1.27.1). 다른 버전 SUMO가 깔려 있으면 `SUMO_HOME`을 eclipse-sumo 폴더로 (requirements.txt 주석).
 3. 처음 1~2분 안에 워커들이 실제로 에피소드를 끝내는지 로그를 본다.
 
-**수집 명령** (`--seed`와 `--name`만 표대로 바꾼다)
+**수집 명령** (`--seed`와 `--name`만 표대로 바꾼다. 모델·도로 디테일은 본 수집과 같게)
 
 ```bash
 # macOS / Linux
-ROUTE_SET=loopB MAX_STEPS=6000 LANE_PLAN_RANGE=300 python collect_pomdp_data.py \
-    --model models/yeonsan_loopB_RL/model.pt --episodes 800 --workers 8 --seed 1 --name loopB_jimin
+ROUTE_SET=loopB MAX_STEPS=6000 LANE_PLAN_RANGE=300 ROAD_DETAILS=driver_styles,taxi,short_stops \
+    python collect_pomdp_data.py --model models/yeonsan_loopB_RL2/model.pt --episodes 800 --workers 8 --seed 1 --name loopB_jimin
 ```
 
 ```powershell
 # Windows PowerShell
-$env:ROUTE_SET="loopB"; $env:MAX_STEPS="6000"; $env:LANE_PLAN_RANGE="300"
-python collect_pomdp_data.py --model models/yeonsan_loopB_RL/model.pt --episodes 800 --workers 8 --seed 1 --name loopB_jimin
+$env:ROUTE_SET="loopB"; $env:MAX_STEPS="6000"; $env:LANE_PLAN_RANGE="300"; $env:ROAD_DETAILS="driver_styles,taxi,short_stops"
+python collect_pomdp_data.py --model models/yeonsan_loopB_RL2/model.pt --episodes 800 --workers 8 --seed 1 --name loopB_jimin
 ```
 
 - `--workers`는 CPU 코어 수 − 1 정도 (컴퓨터가 너무 느려지면 줄인다).
 - 수집이 중간에 끊기면 **같은 시드·같은 이름으로 처음부터 다시** 돌린다 (같은 에피소드가 다시 나오므로 번호 충돌 없음). 파일은 `data/<이름>.jsonl.gz`, `.npz`, `.meta.json` 세 개다.
 
-### meta.json 예 (v2)
+### meta.json 예 (v2, 본 수집 첫 묶음 모양. 값 일부는 예시)
 
 ```json
 {
   "format_version": "v2",
-  "git_commit": "<collect 실행 시점 커밋 해시>",
+  "git_commit": "<collect 실행 시점 커밋 해시 — 본 수집은 7e9a66f>",
   "git_dirty": false,
   "policy": "ppo",
-  "model": "models/yeonsan_loopB_RL/model.pt",
+  "model": "models/yeonsan_loopB_RL2/model.pt",
   "stochastic": false,
-  "seed": 1,
-  "episodes": 900,
-  "transitions": 0,
-  "workers": 8,
+  "seed": 11,
+  "episodes": 400,
+  "transitions": "<이 묶음의 transition 수>",
+  "workers": 4,
   "step_length": 0.5,
   "max_steps": 6000,
   "sumo_version": "1.27.1",
-  "libsumo": false,
-  "created_at": "2026-11-24T12:00:00",
-  "files": {"jsonl": "loopB_jimin.jsonl.gz", "npz": "loopB_jimin.npz"},
+  "libsumo": true,
+  "created_at": "2026-11-24T02:00:00",
+  "files": {"jsonl": "loopB_RL2_s11.jsonl.gz", "npz": "loopB_RL2_s11.npz"},
   "route_set": "loopB",
   "route_length_m": 6666,
-  "episode_ids": {"rule": "seed × 100000 + i (i = 0 … episodes-1)", "first": 100000, "last": 100899},
+  "episode_ids": {"rule": "seed × 100000 + i (i = 0 … episodes-1)", "first": 1100000, "last": 1100399},
+  "road_details": ["driver_styles", "taxi", "short_stops"],
   "ego_routes": [["N", "S", "E", "W"]],
   "traffic_scale": 1.0,
   "loop_flows": {"enabled": true, "veh_per_hour": 4550,
@@ -403,28 +412,40 @@ python collect_pomdp_data.py --model models/yeonsan_loopB_RL/model.pt --episodes
 - `tl_order`의 키가 `state.ego_tl` 값이다. `tl_lane_groups`로 주변 차량이 어느 신호 칸을 받는지 찾는다 (차량의 도로·차로 → 그룹).
 - v1의 `signal.green_s`(진입로별 녹색 시간)는 동시 녹색 6현시와 맞지 않아 `signal_structure`로 바꾼다.
 
-## 9. Hugging Face 업로드 구조 (안)
+## 9. Hugging Face 업로드 구조
+
+저장소: `hoseob0902/HexaCross-dataset` (**지금 비공개**)
 
 ```
-<hf-id>/HexaCross-dataset
-├── README.md            # dataset card: 컬럼, 수집 조건, 라이선스, 번호표 설명
-├── v2/
-│   └── loopB/
-│       ├── loopB_jimin.parquet       # 사람별 수집 파일 = 샤드
-│       ├── loopB_jimin.meta.json
-│       └── ...
-├── map/                 # env/maps/yeonsan_area.net.xml (좌표를 도로에 대조할 때)
-└── sample/              # 1,000 transition 샘플 (git의 data/sample/에도 둠)
+hoseob0902/HexaCross-dataset
+├── README.md            # 데이터셋 카드: 수집 조건, 컬럼, 읽는 법, 통계
+└── v2/
+    ├── loopB/           # ★ 제출용 본 데이터셋 (2026-11-24). 이 문서 v2 형식
+    │   ├── loopB_RL2_s11.jsonl.gz / .npz / .parquet / .meta.json
+    │   ├── ...          # 400회 묶음마다 같은 4개 파일
+    │   └── loopB_RL2_s19.*
+    └── loopB_RL/        # 예전 수집 (2026-11-22). 아래 표처럼 조건이 달라 제출용이 아님
 ```
 
-## 10. 일정 (안)
+| | `v2/loopB/` (제출용) | `v2/loopB_RL/` (예전) |
+|---|---|---|
+| 모델 | `models/yeonsan_loopB_RL2` | `models/yeonsan_loopB_RL` (가속 명령을 제한속도에서 자르던 환경) |
+| 수집 도구 | `collect_pomdp_data.py` → `tools/data/jsonl_to_parquet.py` | `tools/data/collect_parquet.py` |
+| 정책 | 결정적 | 에피소드마다 결정적 / 샘플 번갈아 (`policy_mode` 컬럼) |
+| 주변 차량 반경 | 150 m | 100 m (`RADIUS` 기본값) |
+| `next_observation` · `next_state` | 에피소드 마지막 행에만 (수업 방식) | 모든 행 (`next_` 접두 컬럼) |
+| 규모 | 10,647,162행 · 3,600 에피소드 | 10,007,808행 · 4,055 에피소드 |
+| 파일 | 9묶음 × (jsonl.gz · npz · parquet · meta.json). 합계 jsonl.gz 9.66 GB · npz 0.81 GB · parquet 6.92 GB | Parquet 샤드 40개, 4.80 GB |
+
+- 발표 · 제출 · 프로젝트 페이지의 데이터셋 숫자는 **`v2/loopB/`** 기준이다.
+
+## 10. 일정
 
 | 날짜 | 할 일 |
 |---|---|
-| 11/23 | ✅ v2 구현 · 시험 수집(1회 + 16회) · libsumo 확인 · PR |
-| 11/24 오전 | 팀 확인 (서영 · 호섭, 분담표 · 반경 R) → PR 머지 → 각자 `pip install -r requirements.txt` |
-| 11/24 오후 ~ 11/26 | 분담 수집 (8절 "수집 분담표": 사람별 `--seed`, 같은 커밋, SUMO 1.27.1 + libsumo 1.27.1). 루프 B 1회 평균 약 2,560스텝 → 10^7 ≈ 3,900 에피소드 |
-| 11/27 | Parquet 변환 · HF 업로드 · 프로젝트 페이지 링크 |
+| 11/23 | ✅ v2 구현 · 시험 수집(1회 + 16회) · libsumo 확인 · PR #16 · #17 머지 |
+| 11/24 01:57 ~ 07:28 | ✅ 본 수집 (시드 11~19, 3,600회) · 400회마다 Parquet 변환 → HF `v2/loopB/` 업로드 |
+| 11/28 발표 전 | HF 저장소 공개 · README "Dataset (준비 중)" 링크 · 프로젝트 페이지(`docs/index.html`) Dataset 버튼 연결 |
 
 ## 11. v1 → v2 변경
 
@@ -440,3 +461,4 @@ python collect_pomdp_data.py --model models/yeonsan_loopB_RL/model.pt --episodes
 | meta: `route_set`, `route_length_m`, `loop_flows`, `traffic_scale`, `max_steps`, `libsumo`, `vehicles_radius_m`, `lane_index`, `angle`, `tl_lane_groups`, `signal_structure` | 수집 조건과 번호표 (동료평가 "수집 규모, 조건") |
 | observation 표기 41 → 56 정리 | 문서 안에서 41 / 56이 섞여 있었음. 루프 B 모델은 56차원 |
 | `event.teleported` 추가, 순간이동 스텝은 `red_light` False | 적색 정지선에서 300초 넘게 서 있던 AV를 SUMO가 교차로 너머로 순간이동시키면, v1 코드는 "정지선을 넘었다"로 보고 신호 위반으로 기록했음 (재현 3건 모두). AV가 한 행동이 아니므로 "막혀서 실패"로 따로 기록 |
+| meta: `road_details` 추가 | 본 수집이 도로 디테일(운전자 성향 · 택시 · 잠깐 정차)을 켜고 했는데 meta에 남지 않았음 |
