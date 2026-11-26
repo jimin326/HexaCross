@@ -289,6 +289,7 @@ REWARD = {
     #   idle_free_min(m) 이내로 붙어 서 있으면 0, 그보다 50 m 이상 비워 두고 서 있으면 idle_penalty.
     # idle_mode "close": 앞차 또는 적·황색 정지선이 idle_gap(m) 안에 있을 때만, 그 앞에 비워 둔 거리가
     #   idle_free_min(m)을 넘으면 idle_free_ramp(m)에 걸쳐 idle_penalty까지 감점 (앞에 아무것도 없이 서 있으면 감점 없음).
+    #   "idle_free_min_veh" / "idle_free_min_line"을 주면 앞차(getLeader 거리 = 범퍼 간격 - minGap 2.5 m)와 정지선 허용 거리를 따로 정한다.
     "idle_mode": "",
     "idle_free_min": 10.0,
     "idle_free_ramp": 50.0,
