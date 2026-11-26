@@ -287,8 +287,11 @@ REWARD = {
     "idle_stopline": 15.0,
     # idle_mode "free": 위 판정 대신 "앞에 비어 있는 거리"(앞차 또는 적·황색 정지선까지, idle_gap까지 봄)에 비례해 감점.
     #   idle_free_min(m) 이내로 붙어 서 있으면 0, 그보다 50 m 이상 비워 두고 서 있으면 idle_penalty.
+    # idle_mode "close": 앞차 또는 적·황색 정지선이 idle_gap(m) 안에 있을 때만, 그 앞에 비워 둔 거리가
+    #   idle_free_min(m)을 넘으면 idle_free_ramp(m)에 걸쳐 idle_penalty까지 감점 (앞에 아무것도 없이 서 있으면 감점 없음).
     "idle_mode": "",
     "idle_free_min": 10.0,
+    "idle_free_ramp": 50.0,
     "red_light_terminate": True,  # True면 위반 즉시 에피소드 종료
 
     # ---- 목표 도로로 가게 만드는 항 ----

@@ -1644,7 +1644,26 @@ class SumoHighwayEnv(gym.Env):
                 lead = traci.vehicle.getLeader(self.ego_id, float(self.rw.get("idle_gap", 30.0)))
                 at_line = (signal_after is not None and signal_after[3] not in "Gg"
                            and signal_after[2] <= float(self.rw.get("idle_stopline", 15.0)))
-                if self.rw.get("idle_mode") == "free":
+                if self.rw.get("idle_mode") == "close":
+                    # 앞차(같은 차로, idle_gap m 안) 또는 적·황색 정지선(idle_gap m 안)이 있을 때만,
+                    # 그 앞에 비워 둔 거리가 idle_free_min(m)보다 길면 idle_free_ramp(m)에 걸쳐 idle_penalty까지 감점.
+                    # 앞에 아무것도 없이 서 있는 경우(비보호 회전·합류에서 양보 등)는 감점하지 않는다.
+                    # 앞차 거리는 getLeader 값(내 minGap 2.5 m를 뺀 거리)이다.
+                    g = float(self.rw.get("idle_gap", 30.0))
+                    lead = traci.vehicle.getLeader(self.ego_id, g)
+                    refs = []
+                    if lead is not None and lead[0]:
+                        refs.append(max(float(lead[1]), 0.0))
+                    if (signal_after is not None and signal_after[3] not in "Gg"
+                            and float(signal_after[2]) <= g):
+                        refs.append(max(float(signal_after[2]), 0.0))
+                    if refs:
+                        free = min(refs)
+                        fm = float(self.rw.get("idle_free_min", 10.0))
+                        ramp = max(float(self.rw.get("idle_free_ramp", 50.0)), 1e-6)
+                        if free > fm:
+                            reward -= ip * min((free - fm) / ramp, 1.0)
+                elif self.rw.get("idle_mode") == "free":
                     # 앞에 비어 있는 거리(정지선 또는 앞차까지)에 비례해 감점.
                     # 정지선·앞차 바로 뒤(idle_free_min 이내)에 서 있으면 0, 50 m 이상 비워 두고 서 있으면 ip.
                     g = float(self.rw.get("idle_gap", 100.0))
