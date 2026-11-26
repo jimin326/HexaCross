@@ -15,6 +15,8 @@
   :root {
     --ink: #18392F; --green: #194D3C; --mid: #447C58; --gray: #49665A;
     --band: #F1F6EF; --rule: #DCE6DD; --code: #F4F6F4; --white: #FFFFFF;
+    --on-green: #CFE2D5; --amber: #B26B00; --red: #C8372D;
+    --bar-before: #E0857B; --bar-after: #5E9B76; --bar-amber: #E7B35A;
     --maxw: 1120px; --side: 24px;
     color-scheme: light;
   }
@@ -23,11 +25,27 @@
   html, body { margin: 0; background: var(--white); }
   body { font-family: "Noto Sans", system-ui, sans-serif; color: var(--ink); font-size: 17px; line-height: 1.75; -webkit-font-smoothing: antialiased; }
   a { color: var(--green); text-underline-offset: 3px; }
-  a:focus-visible, button:focus-visible { outline: 3px solid var(--mid); outline-offset: 3px; border-radius: 6px; }
+  a:focus-visible, button:focus-visible, summary:focus-visible { outline: 3px solid var(--mid); outline-offset: 3px; border-radius: 6px; }
   .wrap { max-width: calc(var(--maxw) + 2 * var(--side)); margin: 0 auto; padding: 0 var(--side); }
   .num { font-stretch: 87.5%; font-weight: 700; font-variant-numeric: tabular-nums; }
   .muted { color: var(--gray); }
   .small { font-size: 14px; line-height: 1.6; }
+
+  /* Icons and badges */
+  .ico { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+  .badge { width: 40px; height: 40px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; flex: none; }
+  .badge .ico { width: 22px; height: 22px; }
+  .badge.sm { width: 32px; height: 32px; } .badge.sm .ico { width: 18px; height: 18px; }
+  .badge.xs { width: 28px; height: 28px; } .badge.xs .ico { width: 16px; height: 16px; }
+  .badge.md { width: 36px; height: 36px; } .badge.md .ico { width: 20px; height: 20px; }
+  .badge.lg { width: 52px; height: 52px; } .badge.lg .ico { width: 28px; height: 28px; }
+  .t-green { background: #E3EFE6; color: #2F6B48; }
+  .t-gray { background: #ECEFED; color: #5F6F67; }
+  .t-amber { background: #FBEED3; color: var(--amber); }
+  .t-red { background: #FBE4E1; color: var(--red); }
+  .t-dark { background: var(--green); color: var(--white); }
+  .t-white { background: var(--white); color: #2F6B48; }
+  .t-white.red { color: var(--red); }
 
   /* Title band */
   header.band { background: var(--band); padding: 72px 0 56px; text-align: center; }
@@ -48,19 +66,41 @@
   section:first-child { margin-top: 0; }
   h2 { font-size: 30px; line-height: 1.35; margin: 0 0 16px; font-weight: 700; }
   h3 { font-size: 20px; line-height: 1.4; margin: 0 0 10px; font-weight: 700; }
+  h4 { font-size: 14px; line-height: 1.4; margin: 0; font-weight: 600; }
   p { margin: 0 0 16px; }
   .intro { color: var(--gray); max-width: 900px; }
+  .caption { color: var(--gray); font-size: 14px; line-height: 1.6; margin: 12px 0 0; }
+
+  /* Shared cards */
+  .card { background: var(--band); border-radius: 10px; padding: 18px; }
+  .card-w { background: var(--white); border: 1px solid var(--rule); border-radius: 8px; padding: 12px; }
+  .card-head { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 15px; line-height: 1.35; }
+  .card-head small { display: block; font-weight: 400; font-size: 13px; color: var(--gray); }
+  .card-head.lg { font-size: 17px; }
+  .big { font-size: 34px; line-height: 1.15; font-stretch: 87.5%; font-weight: 700; color: var(--green); margin: 10px 0 8px; font-variant-numeric: tabular-nums; }
+  .card p, .card li { font-size: 13.5px; line-height: 1.55; }
+  .card p { color: var(--gray); margin: 0; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+  .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; padding: 0; list-style: none; }
+  .chips li { display: inline-flex; align-items: center; gap: 8px; background: var(--white); border: 1px solid var(--rule); border-radius: 999px; padding: 6px 14px 6px 6px; font-size: 13.5px; line-height: 1.4; }
+  .tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; width: 100%; }
+  .tile { background: var(--white); border: 1px solid var(--rule); border-radius: 8px; padding: 10px 12px; line-height: 1.4; }
+  .tile .lab { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--gray); }
+  .tile .lab .ico { width: 16px; height: 16px; color: #2F6B48; }
+  .tile .n { display: block; font-size: 28px; line-height: 1.2; font-stretch: 87.5%; font-weight: 700; color: var(--green); }
+  .tile small { font-size: 12px; color: var(--gray); }
 
   /* Video + chapters */
   .video-row { display: grid; grid-template-columns: minmax(0, 816fr) minmax(0, 280fr); gap: 24px; align-items: start; }
-  video { width: 100%; aspect-ratio: 16 / 9; display: block; border-radius: 8px; background: #000; }
+  video { width: 100%; display: block; border-radius: 8px; background: #000; }
+  #drive { aspect-ratio: 16 / 9; }
   .chapters h3 { font-size: 16px; margin-bottom: 8px; }
   .chapters ol { list-style: none; margin: 0; padding: 0; }
   .chapters button { display: grid; grid-template-columns: 44px 1fr; gap: 12px; align-items: center; width: 100%; text-align: left; background: none; border: 0; border-radius: 6px; padding: 11px 12px; font: inherit; font-size: 15px; line-height: 1.45; color: var(--ink); cursor: pointer; }
   .chapters button:hover { background: var(--band); }
   .chapters button[aria-current="true"] { background: var(--band); font-weight: 600; }
   .chapters .t { color: var(--mid); }
-  .caption { color: var(--gray); font-size: 14px; line-height: 1.6; margin: 12px 0 0; }
 
   /* Overview */
   .overview { display: grid; grid-template-columns: minmax(0, 600fr) minmax(0, 470fr); gap: 48px; align-items: center; }
@@ -68,59 +108,217 @@
   .map svg { width: 100%; height: auto; display: block; }
   .map text { font-family: "Noto Sans", system-ui, sans-serif; }
 
-  /* Two columns with figure */
+  /* Framework */
+  .fw { display: grid; grid-template-columns: minmax(0, 320fr) 24px minmax(0, 400fr) 24px minmax(0, 320fr); gap: 0 8px; margin-top: 24px; }
+  .fw > .arr { align-self: center; color: var(--mid); }
+  .panel { background: var(--band); border-radius: 10px; padding: 18px; display: flex; flex-direction: column; gap: 8px; }
+  .panel-head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .panel-head .tag { color: var(--mid); font-size: 20px; line-height: 1.2; font-stretch: 87.5%; font-weight: 700; }
+  .panel-head h3 { margin: 0; font-size: 17px; line-height: 1.3; }
+  .flow { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .flow > :not(svg) { width: 100%; }
+  .down { color: var(--mid); flex: none; }
+  .row { background: var(--white); border: 1px solid var(--rule); border-radius: 8px; padding: 10px 12px; display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 12px; align-items: center; line-height: 1.4; }
+  .row b, .out b { display: block; font-size: 14px; font-weight: 600; }
+  .row > span:last-child > span { display: block; font-size: 13px; line-height: 1.45; color: var(--gray); }
+  .connector { display: flex; flex-direction: column; align-items: center; min-height: 18px; color: var(--mid); }
+  .connector::before { content: ""; flex: 1; width: 1.6px; min-height: 11px; background: currentColor; }
+  .out { background: var(--green); color: var(--white); border-radius: 8px; padding: 10px 12px; display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 12px; align-items: center; line-height: 1.4; }
+  .out > span:last-child > span { display: block; font-size: 13px; line-height: 1.45; color: var(--on-green); }
+  .thumb { position: relative; border-radius: 8px; overflow: hidden; min-height: 150px; }
+  .thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .pill { position: absolute; left: 8px; bottom: 8px; background: rgba(255, 255, 255, 0.95); border-radius: 6px; padding: 6px 10px; line-height: 1.35; font-size: 13px; }
+  .pill b { display: block; font-weight: 600; }
+  .pill span { color: var(--gray); font-size: 12px; }
+  .panel-a .thumb { flex: 1; }
+  .panel-c .flow { flex: 1; justify-content: space-between; }
+  .panel-b .connector { flex: 1; }
+  .teach { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 4px; align-items: start; text-align: center; margin-top: 10px; }
+  .who { display: flex; flex-direction: column; align-items: center; gap: 4px; line-height: 1.4; }
+  .who b { font-size: 13px; font-weight: 600; }
+  .who > span:not(.badge) { font-size: 12px; color: var(--gray); }
+  .copies { padding-top: 14px; color: var(--amber); font-size: 11.5px; line-height: 1.35; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .card-w .note { font-size: 12.5px; line-height: 1.5; color: var(--gray); margin: 10px 0 0; }
+  .rl-head { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 10px; align-items: center; line-height: 1.4; }
+  .rl-head div > span { display: block; font-size: 12px; color: var(--gray); }
+  .avcrop { width: 76px; height: 54px; border-radius: 6px; background: url("assets/rl2_poster.jpg") 30% 46% / 500% auto no-repeat; }
+  .loop { list-style: none; margin: 12px 0; padding: 0 30px 0 0; position: relative; display: flex; flex-direction: column; gap: 8px; }
+  .loop::before { content: ""; position: absolute; left: 15.25px; top: 20px; bottom: 20px; width: 1.5px; background: #C9D8CC; }
+  .loop li { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 10px; align-items: center; position: relative; line-height: 1.4; }
+  .loop li b { display: block; font-size: 13px; font-weight: 600; }
+  .loop li > span:last-child > span { display: block; font-size: 12px; color: var(--gray); }
+  .loop .ret { position: absolute; right: 2px; top: 15px; bottom: 15px; width: 22px; color: var(--mid); }
+  .loop .ret::before { content: ""; position: absolute; left: 3px; right: 4px; top: 5px; bottom: 5px; border: 1.6px solid currentColor; border-left: 0; border-radius: 0 8px 8px 0; }
+  .loop .ret svg { position: absolute; left: 0; top: 0; }
+  .fw-legend { display: flex; flex-wrap: wrap; gap: 10px 28px; list-style: none; margin: 20px 0 0; padding: 0; font-size: 13px; color: var(--gray); }
+  .fw-legend li { display: flex; align-items: center; gap: 8px; }
+
+  /* Road */
   .split { display: grid; grid-template-columns: minmax(0, 540fr) minmax(0, 532fr); gap: 48px; align-items: start; }
   figure { margin: 0; }
   figure img { width: 100%; height: auto; display: block; border-radius: 8px; }
-  .steps { list-style: none; margin: 0; padding: 0; counter-reset: step; }
-  .steps li { display: grid; grid-template-columns: 22px 1fr; gap: 16px; margin-bottom: 22px; line-height: 1.7; }
-  .steps li::before { counter-increment: step; content: counter(step); color: var(--mid); font-size: 26px; line-height: 1.1; font-stretch: 87.5%; font-weight: 700; }
-  .scenes h3 { font-size: 17px; margin: 0 0 4px; }
-  .scenes p { color: var(--gray); font-size: 16px; line-height: 1.65; margin-bottom: 18px; }
-  .scenes .stat { color: var(--mid); font-weight: 500; }
+  .steps { list-style: none; margin: 0; padding: 0; }
+  .steps li { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 16px; align-items: center; margin-bottom: 22px; line-height: 1.7; }
 
-  /* Tables */
-  .table-scroll { overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; font-size: 16px; line-height: 1.5; border-bottom: 1.5px solid var(--ink); }
-  thead th { font-size: 13px; font-weight: 500; color: var(--gray); text-align: left; padding: 10px 20px 10px 0; border-top: 1.5px solid var(--ink); }
-  tbody th, tbody td { text-align: left; vertical-align: top; padding: 14px 20px 14px 0; border-top: 1px solid var(--rule); }
-  tbody th { font-weight: 700; color: var(--ink); }
-  tbody td { color: var(--gray); }
-  table:not(.has-head) tbody tr:first-child > * { border-top: 1.5px solid var(--ink); }
-  td.right, th.right { text-align: right; padding-right: 0; }
-  .compact { font-size: 14px; }
-  .compact tbody th, .compact tbody td { padding-top: 10px; padding-bottom: 10px; }
-  .val { color: var(--green); font-weight: 500; white-space: nowrap; }
-  .stage-n { color: var(--mid); font-size: 22px; font-stretch: 87.5%; font-weight: 700; width: 36px; }
-  .stage-r { color: var(--green); font-size: 20px; font-stretch: 87.5%; font-weight: 700; white-space: nowrap; }
-  tr.final > * { background: var(--band); }
-  .results tbody th, .results tbody td { padding-top: 18px; padding-bottom: 18px; vertical-align: middle; }
-  .results tbody th { width: 160px; }
-  .results td.big { color: var(--green); font-size: 40px; line-height: 1.1; font-stretch: 87.5%; font-weight: 700; text-align: right; white-space: nowrap; padding-right: 0; }
-  .problems td:last-child { color: var(--green); font-weight: 500; }
+  /* Traffic */
+  .stack { display: flex; gap: 2px; margin: 12px 0; }
+  .stack span { height: 44px; border-radius: 3px; display: flex; align-items: center; justify-content: center; font-size: 12.5px; font-weight: 600; color: var(--white); white-space: nowrap; overflow: hidden; }
+  .scenes { list-style: none; margin: 0; padding: 0; }
+  .scenes li { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 14px; margin-bottom: 18px; }
+  .scenes h3 { font-size: 16px; margin: 0 0 2px; line-height: 1.4; }
+  .scenes p { color: var(--gray); font-size: 14.5px; line-height: 1.55; margin: 0; }
+  .around { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .around .card { padding: 12px 14px; }
+  .around .n { display: block; font-size: 26px; line-height: 1.2; font-stretch: 87.5%; font-weight: 700; color: var(--green); }
 
-  /* Observation bar */
-  .obsbar { display: flex; gap: 2px; margin: 8px 0 12px; }
+  /* Observation, action, reward */
+  .obsbar { display: flex; gap: 2px; margin: 8px 0 14px; }
   .obsbar span { height: 44px; border-radius: 3px; display: flex; align-items: center; justify-content: center; color: var(--white); font-size: 16px; font-stretch: 87.5%; font-weight: 700; min-width: 10px; }
   .obsbar span.light { color: var(--ink); }
-  .legend { display: flex; flex-wrap: wrap; gap: 10px 22px; list-style: none; margin: 0; padding: 0; font-size: 14px; line-height: 1.4; }
-  .legend li { display: flex; align-items: center; gap: 8px; }
-  .legend i { width: 12px; height: 12px; border-radius: 2px; display: inline-block; flex: none; }
-  .av-split { display: grid; grid-template-columns: minmax(0, 440fr) minmax(0, 632fr); gap: 48px; margin-top: 32px; }
-  .av-split p { line-height: 1.8; }
+  .obs-legend { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px 16px; list-style: none; margin: 0; padding: 0; }
+  .obs-legend li { display: grid; grid-template-columns: 14px 22px minmax(0, 1fr); gap: 10px; font-size: 14px; line-height: 20px; color: var(--gray); }
+  .obs-legend i { width: 14px; height: 14px; border-radius: 3px; margin-top: 3px; }
+  .obs-legend b { color: var(--ink); text-align: right; font-size: 17px; font-stretch: 87.5%; font-weight: 700; }
+  .ar { display: grid; grid-template-columns: minmax(0, 440fr) minmax(0, 656fr); gap: 24px; margin-top: 32px; align-items: stretch; }
+  .ar-left { display: flex; flex-direction: column; gap: 20px; }
+  .ar-left .card:last-child { flex: 1; }
+  .ar .card { display: flex; flex-direction: column; gap: 14px; }
+  .scale { display: flex; height: 26px; position: relative; font-size: 12.5px; font-weight: 600; }
+  .scale span { display: flex; align-items: center; justify-content: center; }
+  .scale .brake { flex: 5; background: #F6D3CE; color: #B03A2E; border-radius: 6px 0 0 6px; margin-right: 2px; }
+  .scale .acc { flex: 3; background: #CFE2D5; color: #2F6B48; border-radius: 0 6px 6px 0; }
+  .scale::after { content: ""; position: absolute; left: calc(62.5% - 1px); top: -3px; bottom: -3px; width: 2px; background: var(--ink); }
+  .scale-labels { position: relative; height: 18px; font-size: 12px; color: var(--gray); margin-top: -8px; }
+  .scale-labels span { position: absolute; top: 0; line-height: 18px; }
+  .choices { display: flex; gap: 8px; flex-wrap: wrap; }
+  .choices span { background: var(--white); border: 1px solid var(--rule); border-radius: 6px; padding: 5px 16px; font-size: 13px; font-weight: 600; }
+  .nope { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+  .nope li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; align-items: center; font-size: 14px; }
+  .nope li::before { content: "×"; width: 22px; height: 22px; border-radius: 50%; background: #FBE4E1; color: var(--red); display: flex; align-items: center; justify-content: center; font-weight: 600; line-height: 1; }
+  .terms { list-style: none; margin: 0; padding: 0; background: var(--white); border-radius: 8px; }
+  .terms li { display: grid; grid-template-columns: 24px 150px 196px minmax(0, 1fr); gap: 12px; align-items: center; padding: 9px 12px; border-bottom: 1px solid var(--rule); line-height: 1.4; }
+  .terms li:last-child { border-bottom: 0; }
+  .terms b { font-size: 13.5px; font-weight: 600; }
+  .terms code { font-size: 12px; color: var(--ink); }
+  .terms span { font-size: 13px; color: var(--gray); }
+  .sign { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 15px; line-height: 1; }
+  .sign.p { background: #E3EFE6; color: #2F6B48; } .sign.m { background: #FBE4E1; color: var(--red); }
+  .ends { background: var(--white); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .ends .r { display: grid; grid-template-columns: 170px minmax(0, 1fr) 48px; gap: 12px; align-items: center; font-size: 13.5px; font-weight: 600; line-height: 1.35; }
+  .tb { display: grid; grid-template-columns: minmax(0, 300fr) 2px minmax(0, 60fr); height: 24px; }
+  .tb .neg, .tb .pos { position: relative; }
+  .tb .zero { background: #9DB3A4; }
+  .tb i { position: absolute; top: 4px; height: 16px; border-radius: 3px; }
+  .tb .neg i { right: 0; background: var(--bar-before); }
+  .tb .pos i { left: 0; background: var(--bar-after); }
+  .ends .v { font-size: 18px; font-stretch: 87.5%; font-weight: 700; color: var(--red); }
+  .ends .v.p { color: #2F6B48; }
+  .ends p { font-size: 12.5px; color: var(--gray); margin: 0; line-height: 1.5; }
+
+  /* Training */
+  .stages { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 30px; margin-top: 24px; }
+  .stage { background: var(--band); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; justify-content: space-between; gap: 10px; position: relative; line-height: 1.4; }
+  .stage:not(:last-child)::after { content: ""; position: absolute; right: -24px; top: 50%; width: 18px; height: 14px; transform: translateY(-50%); background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='14' viewBox='0 0 18 14' fill='none'%3E%3Cpath d='M1 7h15M11 2l5 5-5 5' stroke='%23447C58' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat; }
+  .stage .top { display: flex; flex-direction: column; gap: 8px; }
+  .stage .hd { display: flex; align-items: center; justify-content: space-between; font-size: 12.5px; font-weight: 600; color: var(--mid); }
+  .stage h3 { font-size: 15px; font-weight: 600; margin: 0; line-height: 1.35; }
+  .stage .cond { font-size: 12.5px; color: var(--gray); }
+  .stage .res { border-top: 1px solid var(--rule); padding-top: 10px; }
+  .stage .arr-n { font-size: 30px; line-height: 1.15; font-stretch: 87.5%; font-weight: 700; color: var(--green); }
+  .stage .res small { font-size: 12.5px; color: var(--gray); margin-left: 4px; }
+  .stage .col { font-size: 13.5px; }
+  .stage.final { background: var(--green); color: var(--white); }
+  .stage.final .hd, .stage.final .cond, .stage.final .res small { color: var(--on-green); }
+  .stage.final .arr-n { color: var(--white); }
+  .stage.final .res { border-top-color: #3E6E5C; }
+
+  /* Results */
+  .ci { margin-top: 12px; font-size: 12.5px; line-height: 1.4; }
+  .ci .bar { position: relative; height: 14px; margin-top: 4px; }
+  .ci .bar::before { content: ""; position: absolute; left: 0; right: 0; top: 4px; height: 6px; border-radius: 3px; background: #DDE7DF; }
+  .ci .range { position: absolute; top: 4px; height: 6px; border-radius: 3px; background: #7FAE8D; }
+  .ci .dot { position: absolute; top: 1px; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; background: var(--green); border: 2px solid var(--white); }
+  .ci.light .range { background: #B5CDBB; } .ci.light .dot { background: var(--mid); }
+  .axis { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--gray); margin-top: 8px; }
+  #results .big { font-size: 44px; }
 
   /* Dataset */
+  .cols { list-style: none; margin: 0; padding: 0; border-top: 1.5px solid var(--ink); border-bottom: 1.5px solid var(--ink); }
+  .cols li { display: grid; grid-template-columns: 30px 170px minmax(0, 1fr); gap: 12px; align-items: center; padding: 10px 0; border-top: 1px solid var(--rule); font-size: 14.5px; color: var(--gray); line-height: 1.5; }
+  .cols li:first-child { border-top: 0; }
   .files { list-style: none; margin: 0 0 8px; padding: 0; }
   .files li { display: grid; grid-template-columns: 110px 1fr; gap: 12px; margin-bottom: 8px; font-size: 15px; color: var(--gray); }
   code, pre { font-family: "JetBrains Mono", ui-monospace, monospace; }
-  .files code, td code, th code { color: var(--green); font-size: 14px; }
+  .files code, .cols code { color: var(--green); font-size: 14px; }
   pre { background: var(--code); border: 1px solid var(--rule); border-radius: 8px; padding: 20px 24px; margin: 20px 0 16px; overflow-x: auto; font-size: 14px; line-height: 1.65; color: var(--ink); }
   pre .c { color: var(--mid); }
   .links { display: flex; flex-wrap: wrap; gap: 8px 24px; font-weight: 500; font-size: 15px; }
 
+  /* Problems and fixes */
+  .fix-labels { display: grid; grid-template-columns: minmax(0, 320fr) 18px minmax(0, 340fr) minmax(0, 330fr) 32px; gap: 16px; padding: 0 18px; font-size: 12.5px; font-weight: 600; color: var(--gray); margin-top: 8px; }
+  .fix-labels span:nth-child(2) { grid-column: 3; }
+  details.fix { background: var(--band); border-radius: 10px; margin-top: 12px; }
+  details.fix > summary { list-style: none; cursor: pointer; display: grid; grid-template-columns: minmax(0, 320fr) 18px minmax(0, 340fr) minmax(0, 330fr) 32px; gap: 16px; align-items: center; padding: 14px 18px; border-radius: 10px; }
+  details.fix > summary::-webkit-details-marker { display: none; }
+  .fs { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 12px; align-items: center; font-size: 14px; line-height: 1.5; }
+  .fs-arrow { color: var(--mid); }
+  .fs-res { background: var(--white); border-radius: 8px; padding: 10px 14px; line-height: 1.4; }
+  .fs-res small { display: block; font-size: 12.5px; color: var(--gray); }
+  .ba { font-size: 24px; line-height: 1.25; font-stretch: 87.5%; font-weight: 700; color: var(--green); white-space: nowrap; }
+  .ba s { text-decoration: none; color: #8A9A90; }
+  .ba .to { color: var(--mid); font-size: 20px; margin: 0 6px; }
+  .toggle { width: 32px; height: 32px; border-radius: 50%; background: var(--white); border: 1px solid var(--rule); display: flex; align-items: center; justify-content: center; color: var(--ink); }
+  .toggle svg { transition: transform 0.15s; }
+  details[open] .toggle svg { transform: rotate(180deg); }
+  .fix-body { padding: 0 18px 18px; display: flex; flex-direction: column; gap: 12px; }
+  .fig-card { background: var(--white); border-radius: 8px; padding: 18px; }
+  .fig-scroll { overflow-x: auto; }
+  .fig-scroll svg { display: block; width: 100%; min-width: 760px; height: auto; }
+  .fig-scroll text { font-family: "Noto Sans", system-ui, sans-serif; }
+  .why { background: var(--white); border-radius: 8px; padding: 16px 18px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
+  .why h4 { color: var(--mid); font-size: 13.5px; margin-bottom: 6px; }
+  .why p { font-size: 13.5px; line-height: 1.55; margin: 0; }
+  .why code { font-size: 12.5px; overflow-wrap: anywhere; }
+  .src { font-size: 12.5px; color: var(--gray); margin: 0; }
+  .minis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px; }
+  .minis h4 { font-size: 13.5px; margin-bottom: 8px; }
+  .mrow { display: grid; grid-template-columns: 52px minmax(0, 1fr) 52px; gap: 8px; align-items: center; font-size: 12.5px; color: var(--gray); line-height: 1.4; margin-bottom: 6px; }
+  .mrow b { color: var(--ink); font-size: 13.5px; font-weight: 600; }
+  .mbar { position: relative; height: 16px; background: #EDF2EE; border-radius: 3px; }
+  .mbar i { position: absolute; top: 0; bottom: 0; left: 0; border-radius: 3px; }
+  .mbar.div { background: none; }
+  .mbar.div::before { content: ""; position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1.5px; background: #9DB3A4; }
+  .fig-note { font-size: 11.5px; color: var(--gray); margin: 4px 0 0; }
+  .fig-foot { font-size: 12px; color: var(--gray); margin: 12px 0 0; }
+  .orow { display: grid; grid-template-columns: 230px minmax(0, 1fr) 154px; gap: 12px; align-items: center; margin-bottom: 12px; line-height: 1.4; }
+  .orow b { display: block; font-size: 13.5px; font-weight: 600; }
+  .orow small { font-size: 12px; color: var(--gray); }
+  .obar { display: flex; gap: 2px; height: 30px; }
+  .obar span { border-radius: 3px; color: var(--white); font-size: 12.5px; font-weight: 600; display: flex; align-items: center; padding-left: 8px; white-space: nowrap; overflow: hidden; }
+  .olegend { display: flex; gap: 20px; padding-left: 242px; font-size: 12px; color: var(--gray); }
+  .olegend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+  .tp { display: grid; grid-template-columns: 248px minmax(0, 1fr); gap: 28px; align-items: start; }
+  #tpvideo { aspect-ratio: 720 / 1046; border: 1px solid var(--rule); background: var(--white); }
+  .tp > div > p { font-size: 13.5px; color: var(--gray); line-height: 1.55; }
+  .tp-ch { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  .tp-ch button { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; align-items: start; width: 100%; text-align: left; background: var(--white); border: 1px solid var(--rule); border-radius: 8px; padding: 10px 12px; font: inherit; color: var(--ink); cursor: pointer; line-height: 1.4; }
+  .tp-ch button:hover, .tp-ch button[aria-current="true"] { background: var(--band); }
+  .tp-ch .t { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 12.5px; color: var(--green); background: var(--band); border-radius: 6px; padding: 2px 8px; }
+  .tp-ch button[aria-current="true"] .t { background: var(--white); }
+  .tp-ch b { display: block; font-size: 13.5px; font-weight: 600; }
+  .tp-ch span:last-child span { display: block; font-size: 13px; color: var(--gray); }
+
   footer { background: var(--band); padding: 40px 0 48px; color: var(--gray); font-size: 14px; line-height: 1.7; }
   footer p { margin: 0 0 6px; }
 
+  @media (max-width: 1140px) {
+    .terms li { grid-template-columns: 24px minmax(0, 1fr); row-gap: 2px; }
+    .terms li > :nth-child(n+3) { grid-column: 2; }
+  }
+  @media (max-width: 1000px) {
+    .stages { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .stage:not(:last-child)::after { display: none; }
+  }
   @media (max-width: 860px) {
     :root { --side: 20px; }
     header.band { padding: 40px 0 32px; }
@@ -129,19 +327,66 @@
     main { padding-top: 24px; }
     section { margin-top: 56px; }
     h2 { font-size: 24px; }
-    .video-row, .overview, .split, .av-split { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+    .video-row, .overview, .split, .ar, .grid3, .grid2, .tp, .why, .minis { grid-template-columns: minmax(0, 1fr); gap: 20px; }
     .chapters h3 { display: none; }
     .chapters ol { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
     .chapters button { display: flex; gap: 6px; white-space: nowrap; width: auto; border: 1px solid var(--rule); border-radius: 999px; padding: 6px 12px; font-size: 13px; }
-    .results tbody th { width: auto; }
-    .results td.big { font-size: 28px; }
-    .results td.note { display: none; }
+    .fw { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+    .fw > .arr { justify-self: center; transform: rotate(90deg); }
+    .panel-c .flow { justify-content: flex-start; }
+    .thumb { min-height: 170px; }
+    .obs-legend { grid-template-columns: minmax(0, 1fr); }
     .obsbar span { font-size: 12px; }
+    .stages { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+    #results .big { font-size: 36px; }
+    .ends .r { grid-template-columns: 110px minmax(0, 1fr) 40px; font-size: 12.5px; }
+    .cols li { grid-template-columns: 30px minmax(0, 1fr); }
+    .cols li > span { grid-column: 2; }
+    .fix-labels { display: none; }
+    details.fix > summary { grid-template-columns: minmax(0, 1fr) 32px; gap: 12px; align-items: start; }
+    details.fix > summary > .fs:first-child { grid-column: 1; }
+    details.fix > summary > .toggle { grid-column: 2; grid-row: 1; }
+    details.fix > summary > .fs-arrow { display: none; }
+    details.fix > summary > .fs:nth-of-type(2), details.fix > summary > .fs-res { grid-column: 1 / -1; }
+    .orow { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+    .olegend { padding-left: 0; flex-wrap: wrap; gap: 8px 16px; }
+    .tp > video { max-width: 280px; }
   }
-  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .toggle svg { transition: none; } }
 </style>
 </head>
 <body>
+
+<svg width="0" height="0" style="position: absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="i-map" viewBox="0 0 24 24"><path d="M3 6.5 9 4l6 2.5L21 4v13.5L15 20l-6-2.5L3 20z"/><path d="M9 4v13.5"/><path d="M15 6.5V20"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.4 15.4 20.5 20.5"/><path d="M7.8 10.7l1.9 1.9 3.5-3.6"/></symbol>
+    <symbol id="i-light" viewBox="0 0 24 24"><rect x="7.5" y="2.5" width="9" height="19" rx="3"/><circle cx="12" cy="7.2" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="12" cy="16.8" r="1.7"/></symbol>
+    <symbol id="i-car" viewBox="0 0 24 24"><path d="M5 12.5 6.8 7.6A2 2 0 0 1 8.7 6.3h6.6a2 2 0 0 1 1.9 1.3L19 12.5"/><rect x="3.5" y="12.5" width="17" height="5" rx="1.6"/><path d="M6 17.5V20"/><path d="M18 17.5V20"/><circle cx="7.3" cy="15" r="0.9"/><circle cx="16.7" cy="15" r="0.9"/></symbol>
+    <symbol id="i-wheel" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.3"/><path d="M3.4 10.6l6.4 1"/><path d="M20.6 10.6l-6.4 1"/><path d="M12 14.3V21"/></symbol>
+    <symbol id="i-network" viewBox="0 0 24 24"><path stroke-width="1.2" d="M5 6 12 9M5 6l7 9M5 12l7-3M5 12l7 3M5 18l7-9M5 18l7-3M12 9l7 3M12 15l7-3"/><g fill="currentColor" stroke="none"><circle cx="5" cy="6" r="2.2"/><circle cx="5" cy="12" r="2.2"/><circle cx="5" cy="18" r="2.2"/><circle cx="12" cy="9" r="2.2"/><circle cx="12" cy="15" r="2.2"/><circle cx="19" cy="12" r="2.2"/></g></symbol>
+    <symbol id="i-gauge" viewBox="0 0 24 24"><path d="M4.3 17.5a8.5 8.5 0 1 1 15.4 0"/><path stroke-width="1.6" d="M7.2 9.6l.9.9M12 6.8v1.3M16.8 9.6l-.9.9"/><path d="M12 15l4.2-4.7"/><circle cx="12" cy="15.2" r="1.8" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-plusminus" viewBox="0 0 24 24"><path stroke-width="2" d="M12 4v8.5M7.75 8.25h8.5M7.75 18h8.5"/></symbol>
+    <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 21V3.5"/><path d="M5 4h12.5l-2.5 4.2 2.5 4.3H5"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12.3l2.7 2.7L16.2 9.5"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 5 6v5.5c0 4.3 3 7.7 7 9.5 4-1.8 7-5.2 7-9.5V6z"/><path d="M9 12.2l2.2 2.2 4.3-4.4"/></symbol>
+    <symbol id="i-database" viewBox="0 0 24 24"><ellipse cx="12" cy="5.5" rx="7.5" ry="2.8"/><path d="M4.5 5.5v13c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8v-13"/><path d="M4.5 12c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8"/></symbol>
+    <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M7 18.5a4.5 4.5 0 0 1-.5-9 6 6 0 0 1 11.5.5 4 4 0 0 1-.5 8.5"/><path d="M12 11.5v8.5"/><path d="M9 17l3 3 3-3"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12s3.5-6.5 9.5-6.5 9.5 6.5 9.5 6.5-3.5 6.5-9.5 6.5S2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-eyeoff" viewBox="0 0 24 24"><path d="M2.5 12s3.5-6.5 9.5-6.5 9.5 6.5 9.5 6.5-3.5 6.5-9.5 6.5S2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/><path d="M4 4l16 16"/></symbol>
+    <symbol id="i-table" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M3.5 9.5h17"/><path d="M3.5 14.5h17"/><path d="M9 9.5v10"/></symbol>
+    <symbol id="i-lanechange" viewBox="0 0 24 24"><path d="M12 3v2.5M12 9v2.5M12 15v2.5"/><path d="M6 21v-3.5c0-3.2 12-3.3 12-7.5V4.5"/><path d="M15 7.3l3-3 3 3"/></symbol>
+    <symbol id="i-merge" viewBox="0 0 24 24"><path d="M6 3c0 6 6 6.5 6 11v6.5"/><path d="M18 3c0 6-6 6.5-6 11"/><path d="M9 18l3 3 3-3"/></symbol>
+    <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 3 3 7.5l9 4.5 9-4.5z"/><path d="M3 12l9 4.5 9-4.5"/><path d="M3 16.5 12 21l9-4.5"/></symbol>
+    <symbol id="i-repeat" viewBox="0 0 24 24"><path d="M20 11.5A8 8 0 0 0 6.3 6.3L4 8.5"/><path d="M4 4v4.5h4.5"/><path d="M4 12.5a8 8 0 0 0 13.7 5.2L20 15.5"/><path d="M20 20v-4.5h-4.5"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3.8 2.8 19.8h18.4z"/><path d="M12 10v4.3"/><circle cx="12" cy="17.1" r="1.1" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-wrench" viewBox="0 0 24 24"><path d="M14.8 3.6a5 5 0 0 0-4.9 6.6L3.6 16.5a2 2 0 0 0 2.9 2.9l6.3-6.3a5 5 0 0 0 6.6-4.9l-3 3-2.6-.7-.7-2.6z"/></symbol>
+    <symbol id="i-route" viewBox="0 0 24 24"><circle cx="6" cy="18" r="2.2"/><circle cx="18" cy="6" r="2.2"/><path d="M8.2 18h6.3a3.5 3.5 0 0 0 0-7h-5a3.5 3.5 0 0 1 0-7h6.3"/></symbol>
+    <symbol id="i-down" viewBox="0 0 12 18"><path d="M6 1v15M1.5 11.5 6 16l4.5-4.5"/></symbol>
+    <symbol id="i-right" viewBox="0 0 24 14"><path d="M1 7h21M16.5 1.5 22 7l-5.5 5.5"/></symbol>
+    <symbol id="i-chev" viewBox="0 0 14 9"><path d="M1.5 1.5 7 7l5.5-5.5"/></symbol>
+  </defs>
+</svg>
 
 <header class="band">
   <div class="wrap">
@@ -201,6 +446,80 @@
     </figure>
   </section>
 
+  <section id="framework">
+    <h2>Framework</h2>
+    <p class="intro">The whole project in one figure. Each panel matches sections further down the page.</p>
+    <div class="fw">
+      <div class="panel panel-a">
+        <div class="flow">
+          <div class="panel-head"><span class="tag">(a)</span><h3><a href="#road" style="color: inherit; text-decoration: none;">Build the junction</a></h3></div>
+          <div class="row"><span class="badge t-green"><svg class="ico"><use href="#i-map"/></svg></span><span><b>OpenStreetMap</b><span>6 roads imported with SUMO's netconvert</span></span></div>
+          <svg class="down ico" width="12" height="18" style="width: 12px; height: 18px;"><use href="#i-down"/></svg>
+          <div class="row"><span class="badge t-green"><svg class="ico"><use href="#i-search"/></svg></span><span><b>34 lanes checked</b><span>Street view + Korea's national road network data</span></span></div>
+          <svg class="down ico" style="width: 12px; height: 18px;"><use href="#i-down"/></svg>
+          <div class="row"><span class="badge t-green"><svg class="ico"><use href="#i-light"/></svg></span><span><b>Signal plan</b><span>6 phases in a 120 s cycle (designed)</span></span></div>
+          <svg class="down ico" style="width: 12px; height: 18px;"><use href="#i-down"/></svg>
+          <div class="row"><span class="badge t-gray"><svg class="ico"><use href="#i-car"/></svg></span><span><b>Background traffic</b><span>4,507 veh/h at the junction (2025 survey) + 4,550 veh/h on the loop</span></span></div>
+        </div>
+        <div class="connector"><svg class="ico" style="width: 12px; height: 7px;" viewBox="0 0 12 7"><path d="M1.5 1.5 6 6l4.5-4.5"/></svg></div>
+        <div class="thumb"><img src="pr/yeonsan-6way/x6_traffic.jpg" alt="Yeonsan junction in SUMO with background traffic" loading="lazy"><span class="pill"><b>SUMO environment</b><span>Test loop B, 6.7 km</span></span></div>
+      </div>
+      <svg class="arr ico" style="width: 24px; height: 14px;"><use href="#i-right"/></svg>
+      <div class="panel panel-b">
+        <div class="flow">
+          <div class="panel-head"><span class="tag">(b)</span><h3><a href="#training" style="color: inherit; text-decoration: none;">Train the AV</a></h3></div>
+          <div class="card-w">
+            <h4>1&nbsp; Imitation learning (BC → DAgger)</h4>
+            <div class="teach">
+              <div class="who"><span class="badge lg t-amber"><svg class="ico"><use href="#i-wheel"/></svg></span><b>Expert</b><span>SUMO driver model, knows the route</span></div>
+              <div class="copies"><svg width="56" height="12" viewBox="0 0 56 12" fill="none" aria-hidden="true"><path d="M1 6h50" stroke="#B26B00" stroke-width="1.6" stroke-linecap="round" stroke-dasharray="3 4"/><path d="M49.5 1.5 54.5 6l-5 4.5" stroke="#B26B00" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>copies its<br>actions</span></div>
+              <div class="who"><span class="badge lg t-red"><svg class="ico"><use href="#i-car"/></svg></span><b>AV (student)</b><span>Sees only the 56 observations</span></div>
+            </div>
+            <p class="note">DAgger: the AV drives, and the expert labels the states it reaches.</p>
+          </div>
+          <svg class="down ico" style="width: 12px; height: 18px;"><use href="#i-down"/></svg>
+          <div class="card-w">
+            <div class="rl-head"><span class="avcrop" role="img" aria-label="Our AV, circled, in SUMO"></span><div><h4>2&nbsp; Reinforcement learning (PPO)</h4><span>Practice in SUMO, every 0.5 s:</span></div></div>
+            <ol class="loop">
+              <li><span class="badge sm t-green"><svg class="ico"><use href="#i-eye"/></svg></span><span><b>1&nbsp; See</b><span>56 numbers o<sub>t</sub>: nearby cars, lanes, signals, route</span></span></li>
+              <li><span class="badge sm t-dark"><svg class="ico"><use href="#i-network"/></svg></span><span><b>2&nbsp; Decide</b><span>The neural network π<sub>θ</sub> picks an action</span></span></li>
+              <li><span class="badge sm t-red"><svg class="ico"><use href="#i-gauge"/></svg></span><span><b>3&nbsp; Act</b><span>Speed up or brake, keep or change lane (a<sub>t</sub>)</span></span></li>
+              <li><span class="badge sm t-green"><svg class="ico"><use href="#i-plusminus"/></svg></span><span><b>4&nbsp; Score</b><span>Reward r<sub>t</sub>: + for progress, − for speeding, tailgating, crashes, red lights</span></span></li>
+              <li class="ret" aria-hidden="true"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M6 1 2 5l4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></li>
+            </ol>
+            <p class="note" style="margin: 0;">PPO then nudges π<sub>θ</sub> toward actions that earned more reward. An imitation (BC) loss, weighted 1.0 → 0.2, keeps it close to the expert early on.</p>
+          </div>
+        </div>
+        <div class="connector"><svg class="ico" style="width: 12px; height: 7px;" viewBox="0 0 12 7"><path d="M1.5 1.5 6 6l4.5-4.5"/></svg></div>
+        <div class="out"><span class="badge t-white red"><svg class="ico"><use href="#i-car"/></svg></span><span><b>Final policy RL2</b><span>MLP 256×256: 56 inputs → acceleration + lane change</span></span></div>
+      </div>
+      <svg class="arr ico" style="width: 24px; height: 14px;"><use href="#i-right"/></svg>
+      <div class="panel panel-c">
+        <div class="flow">
+          <div class="panel-head"><span class="tag">(c)</span><h3><a href="#results" style="color: inherit; text-decoration: none;">Evaluate and release</a></h3></div>
+          <div class="row"><span class="badge t-green"><svg class="ico"><use href="#i-flag"/></svg></span><span><b>960 test drives</b><span>4 traffic conditions, no random actions (deterministic)</span></span></div>
+          <svg class="down ico" style="width: 12px; height: 18px;"><use href="#i-down"/></svg>
+          <div class="tiles">
+            <div class="tile"><span class="lab"><svg class="ico"><use href="#i-check"/></svg>arrival</span><span class="n">98.75%</span><small>948 of 960</small></div>
+            <div class="tile"><span class="lab"><svg class="ico"><use href="#i-shield"/></svg>collision</span><span class="n">0.21%</span><small>2 of 960</small></div>
+          </div>
+          <svg class="down ico" style="width: 12px; height: 18px;"><use href="#i-down"/></svg>
+          <div class="row"><span class="badge t-green"><svg class="ico"><use href="#i-database"/></svg></span><span><b>3,600 episodes logged</b><span>Seeds 11–19 × 400, one row every 0.5 s</span></span></div>
+          <svg class="down ico" style="width: 12px; height: 18px;"><use href="#i-down"/></svg>
+          <div class="row"><span class="badge t-green"><svg class="ico"><use href="#i-table"/></svg></span><span><b>What each row holds</b><span>Observation, action, reward + raw simulator state</span></span></div>
+        </div>
+        <div class="connector"><svg class="ico" style="width: 12px; height: 7px;" viewBox="0 0 12 7"><path d="M1.5 1.5 6 6l4.5-4.5"/></svg></div>
+        <div class="out"><span class="badge t-white"><svg class="ico"><use href="#i-cloud"/></svg></span><span><b>10,647,162 transitions</b><span>On Hugging Face as Parquet, JSONL and NPZ</span></span></div>
+      </div>
+    </div>
+    <ul class="fw-legend">
+      <li><span class="badge xs t-red"><svg class="ico"><use href="#i-car"/></svg></span>Our AV</li>
+      <li><span class="badge xs t-gray"><svg class="ico"><use href="#i-car"/></svg></span>Background traffic</li>
+      <li><span class="badge xs t-amber"><svg class="ico"><use href="#i-wheel"/></svg></span>Expert driver (SUMO)</li>
+      <li><span class="badge xs t-dark"><svg class="ico"><use href="#i-network"/></svg></span>Learned policy (neural network)</li>
+    </ul>
+  </section>
+
   <section id="road">
     <h2>Rebuilding the real junction, lane by lane</h2>
     <div class="split">
@@ -209,9 +528,9 @@
       </figure>
       <div>
         <ol class="steps">
-          <li><span>Imported the six approaches from OpenStreetMap with netconvert.</span></li>
-          <li><span>Checked all 34 lanes against street view and the national standard node-link data, fixing lane directions, BRT bus-only lanes and right-turn slip roads.</span></li>
-          <li><span>The real signal plan is not public, so we designed one: 6 phases in a 120 s cycle (3 s yellow, 2 s all-red) that group non-conflicting movements.</span></li>
+          <li><span class="badge t-green"><svg class="ico"><use href="#i-map"/></svg></span><span>Imported the six approaches from OpenStreetMap with SUMO's netconvert tool.</span></li>
+          <li><span class="badge t-green"><svg class="ico"><use href="#i-search"/></svg></span><span>Checked all 34 lanes against street view and Korea's national road network data (node-link), fixing lane directions, BRT bus-only lanes and right-turn slip roads.</span></li>
+          <li><span class="badge t-green"><svg class="ico"><use href="#i-light"/></svg></span><span>The real signal plan is not public, so we designed one: 6 phases in a 120 s cycle (3 s yellow, 2 s all-red) that group non-conflicting movements.</span></li>
         </ol>
         <p class="small muted">SUMO, TraCI and libsumo are pinned to 1.27.1 (requirements.txt).</p>
       </div>
@@ -221,29 +540,45 @@
   <section id="traffic">
     <h2>Driving among realistic traffic</h2>
     <p class="intro">Junction demand follows Busan's 2025 traffic survey (hourly, by vehicle class) for all 25 movements. Background flows were added on the rest of the AV's test loop.</p>
-    <div class="table-scroll">
-      <table>
-        <tbody>
-          <tr><th scope="row">Junction demand</th><td>4,507 veh/h (4,303 cars + 204 buses). The survey total of 5,015 veh/h includes motorcycles, which are not simulated.</td></tr>
-          <tr><th scope="row">Loop background flows</th><td>+4,550 veh/h (2,000 measured on Yeonsu-ro, 2,550 assumed)</td></tr>
-          <tr><th scope="row">Car-following models</th><td>Krauss 35%, IDM 30%, EIDM 20%, ACC 15%</td></tr>
-          <tr><th scope="row">Driver and vehicle mix</th><td>12% aggressive and 10% cautious drivers, taxis with pick-ups, short stops</td></tr>
-          <tr><th scope="row">Gridlock check</th><td>SUMO teleports of background vehicles: 153 → 16 (three 1-hour runs at full demand)</td></tr>
-        </tbody>
-      </table>
+    <div class="grid3" style="margin-top: 24px;">
+      <div class="card"><div class="card-head"><span class="badge md t-gray"><svg class="ico"><use href="#i-car"/></svg></span>Junction demand</div><div class="big">4,507 veh/h</div><p>4,303 cars + 204 buses per hour from the 2025 Busan survey, all 25 movements. Motorcycles (part of the 5,015 survey total) are not simulated.</p></div>
+      <div class="card"><div class="card-head"><span class="badge md t-green"><svg class="ico"><use href="#i-route"/></svg></span>Loop background flows</div><div class="big">+4,550 veh/h</div><p>2,000 veh/h measured on Yeonsu-ro, 2,550 veh/h assumed on the rest of the loop.</p></div>
+      <div class="card"><div class="card-head"><span class="badge md t-green"><svg class="ico"><use href="#i-check"/></svg></span>Gridlock check</div><div class="big">153 → 16</div><p>When a car is stuck too long, SUMO removes it and puts it back further on (a "teleport"). Background teleports before → after the fixes, three 1-hour runs at full demand.</p></div>
+    </div>
+    <div class="grid2" style="margin-top: 20px;">
+      <div class="card">
+        <div class="card-head">Car-following models</div>
+        <div class="stack" role="img" aria-label="Krauss 35%, IDM 30%, EIDM 20%, ACC 15%">
+          <span style="flex: 35; background: #194D3C;">Krauss 35%</span><span style="flex: 30; background: #447C58;">IDM 30%</span><span style="flex: 20; background: #8DB59A; color: var(--ink);">EIDM 20%</span><span style="flex: 15; background: #C7DCCB; color: var(--ink);">ACC 15%</span>
+        </div>
+        <p>Each background vehicle gets one SUMO car-following model, so drivers brake and accelerate differently.</p>
+      </div>
+      <div class="card">
+        <div class="card-head">Driver and vehicle mix</div>
+        <ul class="chips">
+          <li><span class="badge xs t-red"><svg class="ico"><use href="#i-gauge"/></svg></span>12% aggressive drivers</li>
+          <li><span class="badge xs t-green"><svg class="ico"><use href="#i-gauge"/></svg></span>10% cautious drivers</li>
+          <li><span class="badge xs t-amber"><svg class="ico"><use href="#i-car"/></svg></span>Taxis that stop for pick-ups</li>
+          <li><span class="badge xs t-gray"><svg class="ico"><use href="#i-car"/></svg></span>Short stops by the roadside</li>
+        </ul>
+        <p>Used in the released data; evaluation also includes runs without them.</p>
+      </div>
     </div>
     <div class="split" style="margin-top: 32px;">
       <figure>
         <img src="pr/yeonsan-6way/x6_traffic.jpg" alt="Background traffic queuing at the six approaches of Yeonsan junction in SUMO" loading="lazy" width="1590" height="1113">
       </figure>
-      <div class="scenes">
-        <h3>World Cup-daero</h3>
-        <p>Looks for a safe gap in the next lane before moving over to turn right.</p>
-        <h3>Yeonsu-ro merge</h3>
-        <p>Slows on the unsignalized ramp and yields to main-road traffic.</p>
-        <h3>Yeonsan junction</h3>
-        <p>Waits for green and moves off with the cars in front.</p>
-        <p class="stat">Across the dataset, an average of 51.8 vehicles are within 150 m of the AV and 6.79 are inside its observation range (±100 m).</p>
+      <div>
+        <ul class="scenes">
+          <li><span class="badge t-red"><svg class="ico"><use href="#i-lanechange"/></svg></span><div><h3>World Cup-daero</h3><p>Looks for a safe gap in the next lane before moving over to turn right.</p></div></li>
+          <li><span class="badge t-red"><svg class="ico"><use href="#i-merge"/></svg></span><div><h3>Yeonsu-ro merge</h3><p>Slows on the unsignalized ramp and yields to main-road traffic.</p></div></li>
+          <li><span class="badge t-red"><svg class="ico"><use href="#i-light"/></svg></span><div><h3>Yeonsan junction</h3><p>Waits for green and moves off with the cars in front.</p></div></li>
+        </ul>
+        <div class="around">
+          <div class="card"><span class="n">51.8</span><p>vehicles within 150 m of the AV</p></div>
+          <div class="card"><span class="n">6.79</span><p>inside its observation range (±100 m)</p></div>
+        </div>
+        <p class="caption">Averages over all 10,647,162 rows of the dataset.</p>
       </div>
     </div>
   </section>
@@ -252,31 +587,47 @@
     <h2>Observation, action and reward</h2>
     <p class="intro">Every 0.5 s the AV reads a 56-dimensional observation and outputs two actions: acceleration and lane change. The bar splits the 56 values by what they describe.</p>
     <div class="obsbar" id="obsbar" aria-hidden="true"></div>
-    <ul class="legend" id="obslegend"></ul>
-    <div class="av-split">
-      <div>
-        <h3>Action</h3>
-        <p>Acceleration a ∈ [−1, 1], mapped to −5 … +3 m/s²<br>Lane change ∈ {left, keep, right}</p>
-        <h3>Not in the observation</h3>
-        <p class="muted">Following the course rules and TA answers: no lane-level route guidance, no remaining signal time, and no conflicting vehicles inside the junction.</p>
+    <ul class="obs-legend" id="obslegend"></ul>
+    <div class="ar">
+      <div class="ar-left">
+        <div class="card">
+          <div class="card-head lg"><span class="badge md t-red"><svg class="ico"><use href="#i-gauge"/></svg></span><span>Action<small>Two outputs every 0.5 s</small></span></div>
+          <h4>Acceleration</h4>
+          <div class="scale" role="img" aria-label="Acceleration from −5 m/s² (brake) to +3 m/s² (accelerate)"><span class="brake">← brake</span><span class="acc">accelerate →</span></div>
+          <div class="scale-labels"><span style="left: 0;">−5 m/s²</span><span style="left: 62.5%; transform: translateX(-50%);">0</span><span style="right: 0;">+3 m/s²</span></div>
+          <p class="small muted" style="margin: 0;">Policy output a ∈ [−1, 1], mapped to −5 … +3 m/s².</p>
+          <h4>Lane change</h4>
+          <div class="choices"><span>← Left</span><span>Keep</span><span>Right →</span></div>
+          <p class="small muted" style="margin: 0;">One of three choices each step: {left, keep, right}.</p>
+        </div>
+        <div class="card">
+          <div class="card-head lg"><span class="badge md t-gray"><svg class="ico"><use href="#i-eyeoff"/></svg></span><span>Not in the observation<small>Hidden from the AV on purpose</small></span></div>
+          <ul class="nope">
+            <li>Lane-level route guidance (which lane to take)</li>
+            <li>Remaining green or red time</li>
+            <li>Conflicting vehicles inside the junction</li>
+          </ul>
+          <p class="small muted" style="margin: 0;">Removed to follow the course rules and TA answers.</p>
+        </div>
       </div>
-      <div>
-        <h3>Reward</h3>
-        <div class="table-scroll">
-          <table class="compact">
-            <tbody>
-              <tr><th scope="row">Route progress</th><td class="val">+0.1 × Δd / (v<sub>max</sub> · Δt)</td><td>Distance along the route</td></tr>
-              <tr><th scope="row">Overspeed</th><td class="val">−0.5 × (v − v<sub>lim</sub>) / v<sub>lim</sub></td><td>Above the lane speed limit</td></tr>
-              <tr><th scope="row">Time to collision (TTC)</th><td class="val">−0.3 × (1 − TTC / 3 s)</td><td>TTC &lt; 3 s</td></tr>
-              <tr><th scope="row">Short gap</th><td class="val">−0.1</td><td>Gap &lt; 6 m at ≥ 1 m/s</td></tr>
-              <tr><th scope="row">Blocked by a slow leader</th><td class="val">−0.05</td><td>Leader &lt; 20 m, not waiting at a light</td></tr>
-              <tr><th scope="row">Target lane</th><td class="val">−0.05 × (1 − d<sub>lane</sub> / 300 m)</td><td>Current lane does not continue on the route</td></tr>
-              <tr><th scope="row">Collision</th><td class="val">−50</td><td>Terminates</td></tr>
-              <tr><th scope="row">Red-light violation</th><td class="val">−30</td><td>Terminates</td></tr>
-              <tr><th scope="row">Dead-end lane, teleport</th><td class="val">−10</td><td>Terminates</td></tr>
-              <tr><th scope="row">Arrival</th><td class="val">+2</td><td>Terminates</td></tr>
-            </tbody>
-          </table>
+      <div class="card">
+        <div class="card-head lg"><span class="badge md t-green"><svg class="ico"><use href="#i-plusminus"/></svg></span><span>Reward<small>Small signals every step, large ones when the episode ends</small></span></div>
+        <h4>Every step</h4>
+        <ul class="terms">
+          <li><span class="sign p">+</span><b>Route progress</b><code>+0.1 × Δd / (v_max · Δt)</code><span>Distance gained along the route</span></li>
+          <li><span class="sign m">−</span><b>Overspeed</b><code>−0.5 × (v − v_lim) / v_lim</code><span>Above the lane speed limit</span></li>
+          <li><span class="sign m">−</span><b>Time to collision</b><code>−0.3 × (1 − TTC / 3 s)</code><span>Closing in on a car, TTC &lt; 3 s</span></li>
+          <li><span class="sign m">−</span><b>Short gap</b><code>−0.1</code><span>Gap &lt; 6 m at ≥ 1 m/s</span></li>
+          <li><span class="sign m">−</span><b>Blocked by a slow leader</b><code>−0.05</code><span>Leader &lt; 20 m, not waiting at a light</span></li>
+          <li><span class="sign m">−</span><b>Target lane</b><code>−0.05 × (1 − d_lane / 300 m)</code><span>Lane does not continue on the route</span></li>
+        </ul>
+        <h4>When the episode ends</h4>
+        <div class="ends">
+          <div class="r"><span>Collision</span><span class="tb"><span class="neg"><i style="width: 100%;"></i></span><span class="zero"></span><span class="pos"></span></span><span class="v">−50</span></div>
+          <div class="r"><span>Red-light violation</span><span class="tb"><span class="neg"><i style="width: 60%;"></i></span><span class="zero"></span><span class="pos"></span></span><span class="v">−30</span></div>
+          <div class="r"><span>Dead-end lane or teleport</span><span class="tb"><span class="neg"><i style="width: 20%;"></i></span><span class="zero"></span><span class="pos"></span></span><span class="v">−10</span></div>
+          <div class="r"><span>Arrival</span><span class="tb"><span class="neg"></span><span class="zero"></span><span class="pos"><i style="width: 20%;"></i></span></span><span class="v p">+2</span></div>
+          <p>All four end the episode. The +2 for arriving is small because route progress already pays about +96 over the loop.</p>
         </div>
       </div>
     </div>
@@ -285,48 +636,54 @@
   <section id="training">
     <h2>Training: imitation first, then PPO</h2>
     <p class="intro">PPO with reward alone did not learn to change lanes before diverges, so we switched to imitation learning from an expert (BC, then DAgger) and fine-tuned with PPO.</p>
-    <div class="table-scroll">
-      <table class="has-head">
-        <thead><tr><th scope="col" aria-label="Step"></th><th scope="col">Method</th><th scope="col">Evaluation</th><th scope="col" class="right">Arrival / collision</th></tr></thead>
-        <tbody>
-          <tr><td class="stage-n">1</td><th scope="row">PPO, reward only</th><td>7 routes, 280 runs</td><td class="stage-r right">68% / 4.3%</td></tr>
-          <tr><td class="stage-n">2</td><th scope="row">Behavior cloning (BC), corrected expert</th><td>7 routes, 0.5× demand, 560 runs</td><td class="stage-r right">85.0% / 4.1%</td></tr>
-          <tr><td class="stage-n">3</td><th scope="row">DAgger, 8-model ensemble</th><td>7 routes, 0.85× demand, 840 runs</td><td class="stage-r right">97.0% / 0.60%</td></tr>
-          <tr><td class="stage-n">4</td><th scope="row">Single-policy PPO + BC loss (sr1)</th><td>Loop B, 1.0× demand, 480 runs *</td><td class="stage-r right">92.71% / 4.38%</td></tr>
-          <tr class="final"><td class="stage-n">5</td><th scope="row">Retrained in the fixed environment (RL2, final)</th><td>Loop B + background flows, 4 conditions, 960 runs</td><td class="stage-r right">98.75% / 0.21%</td></tr>
-        </tbody>
-      </table>
-    </div>
-    <p class="caption">Routes and demand differ between steps, so compare within a row. * Re-measured after fixing a seed bug in the evaluation script that made runs repeat (<a href="https://github.com/jimin326/HexaCross/pull/19">PR #19</a>).</p>
+    <ol class="stages" style="list-style: none; padding: 0;">
+      <li class="stage"><div class="top"><div class="hd"><span class="badge md t-green"><svg class="ico"><use href="#i-plusminus"/></svg></span>Step 1</div><h3>PPO, reward only</h3><span class="cond">7 routes · 280 runs</span></div><div class="res"><span class="arr-n">68%</span><small>arrival</small><div class="col">4.3% collision</div></div></li>
+      <li class="stage"><div class="top"><div class="hd"><span class="badge md t-amber"><svg class="ico"><use href="#i-wheel"/></svg></span>Step 2</div><h3>Behavior cloning (BC) from a corrected expert</h3><span class="cond">7 routes · 0.5× demand · 560 runs</span></div><div class="res"><span class="arr-n">85.0%</span><small>arrival</small><div class="col">4.1% collision</div></div></li>
+      <li class="stage"><div class="top"><div class="hd"><span class="badge md t-green"><svg class="ico"><use href="#i-layers"/></svg></span>Step 3</div><h3>DAgger, 8-model ensemble</h3><span class="cond">7 routes · 0.85× demand · 840 runs</span></div><div class="res"><span class="arr-n">97.0%</span><small>arrival</small><div class="col">0.60% collision</div></div></li>
+      <li class="stage"><div class="top"><div class="hd"><span class="badge md t-green"><svg class="ico"><use href="#i-repeat"/></svg></span>Step 4</div><h3>Single-policy PPO + BC loss (sr1)</h3><span class="cond">Loop B · 1.0× demand · 480 runs *</span></div><div class="res"><span class="arr-n">92.71%</span><small>arrival</small><div class="col">4.38% collision</div></div></li>
+      <li class="stage final"><div class="top"><div class="hd"><span class="badge md t-white red"><svg class="ico"><use href="#i-car"/></svg></span>Final</div><h3>RL2: retrained in the fixed environment</h3><span class="cond">Loop B + background flows · 4 conditions · 960 runs</span></div><div class="res"><span class="arr-n">98.75%</span><small>arrival</small><div class="col">0.21% collision</div></div></li>
+    </ol>
+    <p class="caption">Routes and demand differ between steps, so compare the numbers within a card, not across cards. * Re-measured after fixing a seed bug in the evaluation script that made runs repeat (<a href="https://github.com/jimin326/HexaCross/pull/19">PR #19</a>).</p>
   </section>
 
   <section id="results">
     <h2>Results</h2>
-    <table class="results">
-      <tbody>
-        <tr><th scope="row">Arrival rate</th><td class="note">960 runs, 4 traffic conditions (95% CI 97.8–99.3%)</td><td class="big">98.75%</td></tr>
-        <tr><th scope="row">Collision rate</th><td class="note">95% CI 0.06–0.76%. Over 3,600 independent runs: 0.58% (0.38–0.89%). Course target &lt; 5%.</td><td class="big">0.21%</td></tr>
-        <tr><th scope="row">Transitions</th><td class="note">3,600 episodes, one step per 0.5 s, on Hugging Face</td><td class="big">10,647,162</td></tr>
-      </tbody>
-    </table>
+    <div class="grid3">
+      <div class="card">
+        <div class="card-head"><span class="badge md t-green"><svg class="ico"><use href="#i-check"/></svg></span>Arrival rate</div>
+        <div class="big">98.75%</div>
+        <p>948 of 960 runs over 4 traffic conditions.</p>
+        <div class="ci">95% confidence interval: 97.8–99.3%<div class="bar"><span class="range" style="left: 56%; width: 30%;"></span><span class="dot" style="left: 75%;"></span></div></div>
+        <div class="axis"><span>95%</span><span>100%</span></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><span class="badge md t-green"><svg class="ico"><use href="#i-shield"/></svg></span>Collision rate</div>
+        <div class="big">0.21%</div>
+        <p>2 of 960 runs. The course limit is under 5%.</p>
+        <div class="ci">Evaluation, 960 runs: 0.21% (95% CI 0.06–0.76%)<div class="bar"><span class="range" style="left: 1.2%; width: 14%;"></span><span class="dot" style="left: 4.2%;"></span></div></div>
+        <div class="ci light">Data collection, 3,600 runs: 0.58% (0.38–0.89%)<div class="bar"><span class="range" style="left: 7.6%; width: 10.2%;"></span><span class="dot" style="left: 11.6%;"></span></div></div>
+        <div class="axis"><span>0%</span><span>5% course limit</span></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><span class="badge md t-green"><svg class="ico"><use href="#i-database"/></svg></span>Transitions</div>
+        <div class="big">10,647,162</div>
+        <p>3,600 episodes, one row every 0.5 s, public on Hugging Face. Details in <a href="#dataset">Dataset</a> below.</p>
+      </div>
+    </div>
   </section>
 
   <section id="dataset">
     <h2>Dataset: 10,647,162 transitions</h2>
     <p class="intro">3,600 episodes driven by the final model, logged every 0.5 s. Each row pairs the AV's partial observation with the simulator's privileged state.</p>
     <div class="split">
-      <div class="table-scroll">
-        <table class="compact">
-          <tbody>
-            <tr><th scope="row"><code>episode, t</code></th><td>Episode id (= seed), step</td></tr>
-            <tr><th scope="row"><code>observation</code></th><td>56-dim partial observation</td></tr>
-            <tr><th scope="row"><code>action</code></th><td>Raw and applied acceleration and lane change</td></tr>
-            <tr><th scope="row"><code>reward, terminated</code></th><td>Step reward and termination flags</td></tr>
-            <tr><th scope="row"><code>state</code></th><td>Ego pose and speed, signal groups, vehicles within 150 m</td></tr>
-            <tr><th scope="row"><code>event</code></th><td>collided, arrived, red_light, wrong_lane, teleported</td></tr>
-          </tbody>
-        </table>
-      </div>
+      <ul class="cols">
+        <li><span class="badge xs t-green"><svg class="ico"><use href="#i-flag"/></svg></span><code>episode, t</code><span>Episode id (= seed), step</span></li>
+        <li><span class="badge xs t-green"><svg class="ico"><use href="#i-eye"/></svg></span><code>observation</code><span>56-dim partial observation</span></li>
+        <li><span class="badge xs t-red"><svg class="ico"><use href="#i-gauge"/></svg></span><code>action</code><span>Raw and applied acceleration and lane change</span></li>
+        <li><span class="badge xs t-green"><svg class="ico"><use href="#i-plusminus"/></svg></span><code>reward, terminated</code><span>Step reward and termination flags</span></li>
+        <li><span class="badge xs t-green"><svg class="ico"><use href="#i-map"/></svg></span><code>state</code><span>Ego pose and speed, signal groups, vehicles within 150 m</span></li>
+        <li><span class="badge xs t-green"><svg class="ico"><use href="#i-alert"/></svg></span><code>event</code><span>collided, arrived, red_light, wrong_lane, teleported</span></li>
+      </ul>
       <div>
         <h3 style="font-size: 16px;">9 shards of 400 episodes, each in three formats</h3>
         <ul class="files">
@@ -360,18 +717,188 @@ ROUTE_SET=loopB MAX_STEPS=6000 LANE_PLAN_RANGE=300 ROAD_DETAILS=driver_styles,ta
 
   <section id="problems">
     <h2>Problems and fixes</h2>
-    <div class="table-scroll">
-      <table class="has-head problems">
-        <thead><tr><th scope="col">Problem</th><th scope="col">Fix</th><th scope="col">Result</th></tr></thead>
-        <tbody>
-          <tr><td>Background vehicles queued in one lane and blocked the approaches</td><td>Demand-based green times, lane changes enabled, start-up acceleration 2.6 m/s²</td><td>Background teleports: 153 → 16</td></tr>
-          <tr><td>The imitated expert kept going on yellow, so the AV crossed the stop line just after red</td><td>Relabeled yellow-light actions: stop whenever possible at ≤ 4 m/s²</td><td>Red-light violations: 18.3% → 0% (60 runs each)</td></tr>
-          <tr><td>33 of the previous model's 39 collisions were at the unsignalized Yeonsu-ro merge</td><td>Relabeled 6,356 expert actions: decelerate from 60 m out to 4 m/s at the merge entry</td><td>Collisions in the training condition: 8 → 0 of 240</td></tr>
-          <tr><td>Removing the speed-limit clip on actions (TA ruling) made the old policy overspeed</td><td>Raised the BC-loss speed cap to the vehicle top speed (27.78 m/s) and added an overspeed penalty</td><td>Mean acceleration output at the limit: +0.057 → +0.008</td></tr>
-          <tr><td>SUMO teleported an AV waiting over 300 s at a red light, and it was logged as a red-light violation</td><td>Detect teleports and log them separately (<code>event.teleported</code>)</td><td>All 4 reproduced cases logged as teleports, none as red-light violations</td></tr>
-        </tbody>
-      </table>
-    </div>
+    <p class="intro">Open a row to see what happened, what we changed and how we checked.</p>
+    <div class="fix-labels" aria-hidden="true"><span>Problem</span><span>Fix</span><span>Result (before → after)</span></div>
+
+    <details class="fix">
+      <summary>
+        <span class="fs"><span class="badge sm t-amber"><svg class="ico"><use href="#i-alert"/></svg></span><span>Background vehicles queued in one lane and blocked the approaches</span></span>
+        <svg class="fs-arrow ico" style="width: 18px; height: 14px;"><use href="#i-right"/></svg>
+        <span class="fs"><span class="badge sm t-green"><svg class="ico"><use href="#i-wrench"/></svg></span><span>Demand-based green times, lane changes enabled, start-up acceleration 2.6 m/s²</span></span>
+        <span class="fs-res"><small>Background teleports (three 1-hour runs at full demand)</small><span class="ba"><s>153</s><span class="to">→</span>16</span></span>
+        <span class="toggle" aria-hidden="true"><svg class="ico" style="width: 14px; height: 9px;"><use href="#i-chev"/></svg></span>
+      </summary>
+      <div class="fix-body">
+        <div class="fig-card">
+          <div class="minis">
+            <div><h4>Junction throughput vs survey demand</h4>
+              <div class="mrow"><span>Before</span><span class="mbar div"><i style="left: 3.3%; width: 46.7%; background: var(--bar-before);"></i></span><b>−28%</b></div>
+              <div class="mrow"><span>After</span><span class="mbar div"><i style="left: 50.5%; width: 5%; background: var(--bar-after);"></i></span><b>+3%</b></div>
+              <p class="fig-note">Centre line = exactly the survey demand</p></div>
+            <div><h4>Background teleports</h4>
+              <div class="mrow"><span>Before</span><span class="mbar"><i style="width: 95.6%; background: var(--bar-before);"></i></span><b>153</b></div>
+              <div class="mrow"><span>After</span><span class="mbar"><i style="width: 10%; background: var(--bar-after);"></i></span><b>16</b></div></div>
+            <div><h4>Cars still waiting to enter at the end</h4>
+              <div class="mrow"><span>Before</span><span class="mbar"><i style="width: 95.6%; background: var(--bar-before);"></i></span><b>1,625</b></div>
+              <div class="mrow"><span>After</span><span class="mbar"><i style="width: 16.5%; background: var(--bar-after);"></i></span><b>281</b></div></div>
+          </div>
+          <p class="fig-foot">Measured with check_demand.py at full demand, three 1-hour runs.</p>
+        </div>
+        <div class="why">
+          <div><h4>What happened</h4><p>Background cars were not allowed to change lanes, so each queue formed in a single lane while the lane next to it stayed empty. Approaches backed up, new cars could not enter, and SUMO teleported cars that stayed stuck.</p></div>
+          <div><h4>What we changed</h4><p>Lane changes turned on for background cars. Start-up acceleration 1.8–2.0 → 2.6 m/s² and time headway 1.0–1.5 → 1.0–1.1 s so queues clear on green (assumed values). Krauss driver imperfection 0.3 → 0.2, minimum gap 2.5 → 2.0 m. Green times split by measured demand.</p></div>
+          <div><h4>How we checked</h4><p>check_demand.py at full demand, three 1-hour runs: junction throughput against the survey −28% → +3%, teleports 153 → 16, cars still waiting to enter at the end 1,625 → 281.</p></div>
+        </div>
+        <p class="src">Source: <a href="https://github.com/jimin326/HexaCross/blob/main/env/road_config.py">env/road_config.py</a> (background driver settings)</p>
+      </div>
+    </details>
+
+    <details class="fix">
+      <summary>
+        <span class="fs"><span class="badge sm t-amber"><svg class="ico"><use href="#i-alert"/></svg></span><span>The imitated expert kept going on yellow, so the AV crossed the stop line just after red</span></span>
+        <svg class="fs-arrow ico" style="width: 18px; height: 14px;"><use href="#i-right"/></svg>
+        <span class="fs"><span class="badge sm t-green"><svg class="ico"><use href="#i-wrench"/></svg></span><span>Relabeled yellow-light actions: stop whenever the car can brake at ≤ 4 m/s²</span></span>
+        <span class="fs-res"><small>Red-light violations (60 runs each)</small><span class="ba"><s>18.3%</s><span class="to">→</span>0%</span></span>
+        <span class="toggle" aria-hidden="true"><svg class="ico" style="width: 14px; height: 9px;"><use href="#i-chev"/></svg></span>
+      </summary>
+      <div class="fix-body">
+        <div class="fig-card fig-scroll">
+          <svg viewBox="0 0 1048 206" role="img" aria-label="Distance to the stop line from 60 m to 0 m. From about 24 m out the car can stop at 4 m/s² or less; closer than that it should keep going. Yellow came on 35 to 50 m out in the replayed violations, inside the stopping zone, but the SUMO expert kept going.">
+            <rect x="40" y="0" width="574.1" height="28" rx="4" fill="#E3EFE6"/>
+            <text x="50" y="19" font-size="12.5" font-weight="600" fill="#2F6B48">Can stop at ≤ 4 m/s²  →  new label: stop</text>
+            <rect x="614.1" y="0" width="385.9" height="28" rx="4" fill="#FBEED3"/>
+            <text x="624" y="19" font-size="12.5" font-weight="600" fill="#B26B00">Too close to stop gently  →  keep going</text>
+            <rect x="40" y="40" width="960" height="52" fill="#C9CFCB"/>
+            <path d="M40 66H1000" stroke="#FFFFFF" stroke-width="2" stroke-dasharray="12 10"/>
+            <rect x="1000" y="40" width="5" height="52" fill="#FFFFFF"/>
+            <use href="#i-light" x="1012" y="48" width="30" height="30" fill="none" stroke="#B26B00" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            <text x="1012" y="96" font-size="11" fill="#49665A">signal</text>
+            <rect x="315" y="72" width="26" height="14" rx="3" fill="#C8372D"/>
+            <path d="M345 79H957" stroke="#C8372D" stroke-width="1.8" stroke-dasharray="6 5"/>
+            <path d="M951 74.5 957 79l-6 4.5" fill="none" stroke="#C8372D" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            <text x="348" y="58" font-size="12" font-weight="600" fill="#C8372D">SUMO expert on yellow: keeps going and crosses just after red</text>
+            <path d="M201 99V107H439V99" fill="none" stroke="#C8372D" stroke-width="1.6"/>
+            <text x="200" y="124" font-size="12" fill="#C8372D">Yellow came on here in all 30 replayed violations (35–50 m)</text>
+            <g fill="#9DB3A4"><rect x="40" y="136" width="1" height="6"/><rect x="200" y="136" width="1" height="6"/><rect x="360" y="136" width="1" height="6"/><rect x="520" y="136" width="1" height="6"/><rect x="680" y="136" width="1" height="6"/><rect x="840" y="136" width="1" height="6"/><rect x="1000" y="136" width="1" height="6"/></g>
+            <g font-size="11.5" fill="#49665A" text-anchor="middle"><text x="40" y="156">60</text><text x="200" y="156">50</text><text x="360" y="156">40</text><text x="520" y="156">30</text><text x="680" y="156">20</text><text x="840" y="156">10</text><text x="1000" y="156">0 m</text></g>
+            <text x="40" y="174" font-size="11.5" fill="#49665A">distance to the stop line</text>
+            <text x="40" y="198" font-size="12.5" fill="#18392F">At 50 km/h (13.9 m/s) a stop at 4 m/s² needs about 24 m, so the AV could have stopped gently in every replayed case.</text>
+          </svg>
+        </div>
+        <div class="why">
+          <div><h4>What happened</h4><p>Violations grew as we added expert data. Replaying 30 of them showed one pattern: yellow comes on 35–50 m before the line at 50 km/h, the AV holds its speed for 1.5–2 s, then brakes late and crosses just after red. The cause was the expert: on yellow 30–70 m out, SUMO itself keeps going or speeds up.</p></div>
+          <div><h4>What we changed</h4><p>Every yellow-light training sample was relabeled with a physics rule: if the car can stop before the line at ≤ 4 m/s², brake to stop (required deceleration × 1.15); otherwise keep going. About 83% of ~31,000 yellow samples became stops. The rule needs no signal timing, which the AV cannot observe.</p></div>
+          <div><h4>How we checked</h4><p>Before the fix, a PPO fine-tune (lbft1, 200k steps) had 18.3% violations in 60 runs. The ensemble retrained on relabeled data (ensLBY3) had 0% violations and 100% arrival in 60 runs.</p></div>
+        </div>
+        <p class="src">Source: <a href="https://github.com/jimin326/HexaCross/blob/main/%EC%A7%84%ED%96%89%EC%83%81%ED%99%A9.md">진행상황.md</a> (progress log), yellow-light analysis</p>
+      </div>
+    </details>
+
+    <details class="fix">
+      <summary>
+        <span class="fs"><span class="badge sm t-amber"><svg class="ico"><use href="#i-alert"/></svg></span><span>33 of the previous model's 39 collisions were at the unsignalized Yeonsu-ro merge</span></span>
+        <svg class="fs-arrow ico" style="width: 18px; height: 14px;"><use href="#i-right"/></svg>
+        <span class="fs"><span class="badge sm t-green"><svg class="ico"><use href="#i-wrench"/></svg></span><span>Relabeled 6,356 expert actions: decelerate from 60 m out to 4 m/s at the merge entry</span></span>
+        <span class="fs-res"><small>Collisions in the training condition (240 runs each)</small><span class="ba"><s>8</s><span class="to">→</span>0</span></span>
+        <span class="toggle" aria-hidden="true"><svg class="ico" style="width: 14px; height: 9px;"><use href="#i-chev"/></svg></span>
+      </summary>
+      <div class="fix-body">
+        <div class="fig-card fig-scroll">
+          <svg viewBox="0 0 1048 226" role="img" aria-label="Left: a right-turn ramp joins Yeonsu-ro at an unsignalized merge; the AV enters at about 40 km/h and the main-road car is not in its observation. Right: the relabeled speed limit falls from 16 m/s at 60 m to 4 m/s at the entry, below the expert's 11 to 15 m/s approach.">
+            <use href="#i-eyeoff" x="150" y="0" width="14" height="14" fill="none" stroke="#C8372D" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            <text x="168" y="11" font-size="12" font-weight="600" fill="#C8372D">Main-road car: not in the AV's observation</text>
+            <path d="M231 20V96" stroke="#C8372D" stroke-width="1.5" stroke-dasharray="4 4"/>
+            <path d="M40 240C110 170 210 128 300 112" fill="none" stroke="#C9CFCB" stroke-width="26"/>
+            <rect x="0" y="64" width="430" height="52" fill="#C9CFCB"/>
+            <path d="M0 90H430" stroke="#FFFFFF" stroke-width="2" stroke-dasharray="12 10"/>
+            <text x="10" y="81" font-size="11.5" font-weight="600" fill="#FFFFFF">Yeonsu-ro, 1,000 veh/h  →</text>
+            <rect x="217" y="96" width="26" height="14" rx="3" fill="#7D8A84"/>
+            <circle cx="300" cy="114" r="6" fill="#D99A1B" stroke="#FFFFFF" stroke-width="2"/>
+            <text x="314" y="137" font-size="12" font-weight="600" fill="#B26B00">Unsignalized merge:<tspan x="314" dy="16">the ramp must yield</tspan></text>
+            <rect x="152" y="158" width="26" height="14" rx="3" fill="#C8372D" transform="rotate(-25 152 158)"/>
+            <text x="196" y="181" font-size="12" font-weight="600" fill="#C8372D">AV enters at ≈ 40 km/h</text>
+            <g fill="#EDF2EE"><rect x="520" y="10" width="510" height="1"/><rect x="520" y="52.5" width="510" height="1"/><rect x="520" y="95" width="510" height="1"/><rect x="520" y="137.5" width="510" height="1"/></g>
+            <rect x="520" y="20.6" width="510" height="42.5" fill="#FBEED3"/>
+            <text x="852" y="37" font-size="12" font-weight="600" fill="#B26B00">Expert's approach:<tspan x="852" dy="15">11–15 m/s, light braking</tspan></text>
+            <path d="M520.0 10.0L537.0 12.7L554.0 15.4L571.0 18.2L588.0 21.0L605.0 23.8L622.0 26.8L639.0 29.7L656.0 32.8L673.0 35.9L690.0 39.0L707.0 42.3L724.0 45.6L741.0 49.0L758.0 52.5L775.0 56.1L792.0 59.8L809.0 63.6L826.0 67.6L843.0 71.6L860.0 75.9L877.0 80.3L894.0 85.0L911.0 89.8L928.0 95.0L945.0 100.5L962.0 106.4L979.0 112.8L996.0 119.9L1013.0 127.9L1030.0 137.5" fill="none" stroke="#2F6B48" stroke-width="2.5" stroke-linecap="round"/>
+            <circle cx="1030" cy="137.5" r="5" fill="#2F6B48"/>
+            <text x="926" y="158" font-size="11.5" fill="#2F6B48">4 m/s at the entry</text>
+            <text x="536" y="120" font-size="12" font-weight="600" fill="#2F6B48">Relabeled target: never faster than this line<tspan x="536" dy="15">(brake at 2 m/s² from 60 m out)</tspan></text>
+            <rect x="520" y="10" width="1" height="170" fill="#9DB3A4"/><rect x="520" y="180" width="510" height="1" fill="#9DB3A4"/>
+            <g font-size="11.5" fill="#49665A" text-anchor="end"><text x="512" y="184">0</text><text x="512" y="141.5">4</text><text x="512" y="99">8</text><text x="512" y="56.5">12</text><text x="512" y="14">16</text></g>
+            <text x="484" y="8" font-size="11.5" fill="#49665A">m/s</text>
+            <g font-size="11.5" fill="#49665A" text-anchor="middle"><text x="520" y="198">60</text><text x="690" y="198">40</text><text x="860" y="198">20</text><text x="1030" y="198">0 m</text></g>
+            <text x="700" y="218" font-size="11.5" fill="#49665A">distance to the merge entry</text>
+          </svg>
+        </div>
+        <div class="why">
+          <div><h4>What happened</h4><p>After main-road traffic was added on Yeonsu-ro (1,000 veh/h), the previous model sr1 crashed 39 times in 960 runs, 33 at one spot where a right-turn ramp joins Yeonsu-ro. The ramp must yield, but the AV entered at about 40 km/h. Cars on the other road are not in its observation (course rule), and the SUMO expert, which can see them, slowed only slightly, so there was no braking to imitate.</p></div>
+          <div><h4>What we changed</h4><p>Approach samples were relabeled with an observation-only rule (relabel_turn.py): with no signal within 150 m and a turn of 27° or more within 60 m, the target never exceeds the speed that slows to 4 m/s at the entry at 2 m/s². 6,356 of 11,532 approach samples became braking.</p></div>
+          <div><h4>How we checked</h4><p>Training condition with all road details, 240 runs: 8 collisions for sr1 → 0 for RL2. RL2 also includes the speed fix, another DAgger round and PPO, so the drop is not from this relabel alone.</p></div>
+        </div>
+        <p class="src">Source: <a href="https://github.com/jimin326/HexaCross/blob/main/%EC%A7%84%ED%96%89%EC%83%81%ED%99%A9.md">진행상황.md</a> (progress log), 11-23 merge analysis</p>
+      </div>
+    </details>
+
+    <details class="fix">
+      <summary>
+        <span class="fs"><span class="badge sm t-amber"><svg class="ico"><use href="#i-alert"/></svg></span><span>Removing the speed-limit clip on actions (TA ruling) made the old policy overspeed</span></span>
+        <svg class="fs-arrow ico" style="width: 18px; height: 14px;"><use href="#i-right"/></svg>
+        <span class="fs"><span class="badge sm t-green"><svg class="ico"><use href="#i-wrench"/></svg></span><span>Raised the BC-loss speed cap to the vehicle top speed (27.78 m/s) and added an overspeed penalty</span></span>
+        <span class="fs-res"><small>Average acceleration command at the speed limit (scale −1 … 1)</small><span class="ba"><s>+0.057</s><span class="to">→</span>+0.008</span></span>
+        <span class="toggle" aria-hidden="true"><svg class="ico" style="width: 14px; height: 9px;"><use href="#i-chev"/></svg></span>
+      </summary>
+      <div class="fix-body">
+        <div class="fig-card">
+          <div class="orow"><span><b>Before the fix</b><small>old model, speed clip removed, 160 runs</small></span>
+            <span class="obar" role="img" aria-label="12 arrived, 84 collisions, 64 red-light violations"><span style="flex: 7.5; background: var(--bar-after);">12</span><span style="flex: 52.5; background: var(--bar-before);">84 collisions</span><span style="flex: 40; background: var(--bar-amber); color: var(--ink);">64 red-light violations</span></span>
+            <small>12 of 160 arrived</small></div>
+          <div class="orow"><span><b>After the fix</b><small>bcfix in the fixed environment, 60 runs</small></span>
+            <span class="obar" role="img" aria-label="57 arrived, 2 collisions, 1 red-light violation"><span style="flex: 95; background: var(--bar-after);">57 arrived (95.0%)</span><span style="flex: 3.3; background: var(--bar-before); padding: 0;"></span><span style="flex: 1.7; background: var(--bar-amber); padding: 0;"></span></span>
+            <small>2 collisions (3.3%), 1 red light (1.7%)</small></div>
+          <div class="olegend"><span><i style="background: var(--bar-after);"></i>arrived</span><span><i style="background: var(--bar-before);"></i>collision</span><span><i style="background: var(--bar-amber);"></i>red-light violation</span></div>
+        </div>
+        <div class="why">
+          <div><h4>What happened</h4><p>The TA ruled that clipping the acceleration command at the speed limit is a forced rule. Without the clip, the old model kept accelerating past the limit: in 160 runs it arrived 12 times, crashed 84 times and ran 64 red lights. Its BC loss compared next-step speed after clipping it at the limit (13.89 m/s), so accelerating at the limit cost nothing.</p></div>
+          <div><h4>What we changed</h4><p>The speed cap became the vehicle top speed, 100 km/h (27.78 m/s), in the environment and in the BC loss (VNEXT_MAX). A per-step overspeed penalty, 0.5 × excess ratio, now discourages speeding instead. 6,000 BC-only updates on the old model gave bcfix, the starting point of RL2.</p></div>
+          <div><h4>How we checked</h4><p>Average acceleration command at the limit: +0.057 → +0.008. bcfix in the fixed environment, 60 runs: 95.0% arrival, 3.3% collision.</p></div>
+        </div>
+        <p class="src">Source: commit b913a2f, <a href="https://github.com/jimin326/HexaCross/blob/main/models/yeonsan_loopB_RL2/README.md">models/yeonsan_loopB_RL2/README.md</a></p>
+      </div>
+    </details>
+
+    <details class="fix">
+      <summary>
+        <span class="fs"><span class="badge sm t-amber"><svg class="ico"><use href="#i-alert"/></svg></span><span>SUMO teleported an AV waiting over 300 s at a red light, and it was logged as a red-light violation</span></span>
+        <svg class="fs-arrow ico" style="width: 18px; height: 14px;"><use href="#i-right"/></svg>
+        <span class="fs"><span class="badge sm t-green"><svg class="ico"><use href="#i-wrench"/></svg></span><span>Detect teleports and log them separately (<code>event.teleported</code>)</span></span>
+        <span class="fs-res"><small>Reproduced red-light waits logged as violations</small><span class="ba"><s>3 of 3</s><span class="to">→</span>0 of 4</span></span>
+        <span class="toggle" aria-hidden="true"><svg class="ico" style="width: 14px; height: 9px;"><use href="#i-chev"/></svg></span>
+      </summary>
+      <div class="fix-body">
+        <div class="fig-card tp">
+          <video id="tpvideo" controls preload="none" playsinline poster="assets/teleport_red_light_en.jpg">
+            <source src="videos/problems/teleport_red_light_en.mp4" type="video/mp4">
+            <a href="videos/problems/teleport_red_light_en.mp4">Download the MP4</a>.
+          </video>
+          <div>
+            <p>Reproduction in SUMO: the AV is held at a red light until SUMO teleports it. The panel under the map shows what the old and the fixed code log.</p>
+            <ol class="tp-ch" id="tp-chapters">
+              <li><button type="button" data-t="0"><span class="t">0:00</span><span><b>Approach</b><span>The AV drives up to the junction from the southwest road.</span></span></button></li>
+              <li><button type="button" data-t="7"><span class="t">0:07</span><span><b>Stops at red</b><span>Normal so far.</span></span></button></li>
+              <li><button type="button" data-t="8.2"><span class="t">0:08</span><span><b>Keeps waiting</b><span>Held in place for the reproduction, even on green. Shown at ×30.</span></span></button></li>
+              <li><button type="button" data-t="18.2"><span class="t">0:18</span><span><b>Teleport and result</b><span>After 300 s SUMO moves the AV across the junction. Old code: red-light violation (wrong). Fixed code: "stuck", not a violation.</span></span></button></li>
+            </ol>
+          </div>
+        </div>
+        <div class="why">
+          <div><h4>What happened</h4><p>If the AV waits at a red stop line for more than 300 s (SUMO's time-to-teleport), SUMO moves it past the junction. Our check, "the signal ahead vanished while red, so the AV crossed the line", then logged a violation the AV never made.</p></div>
+          <div><h4>What we changed</h4><p>Teleports are detected with <code>traci.simulation.getStartingTeleportIDList()</code>. That step skips the red-light check, ends the episode with a penalty (so waiting it out is not rewarded), and is logged as <code>event.teleported</code> and as a "stuck" column in evaluation reports.</p></div>
+          <div><h4>How we checked</h4><p>Before the fix, 3 of 3 reproduced waits were logged as red-light violations. After it, 4 of 4 were logged as teleports and none as violations. Some red-light counts in older evaluations may have been this error.</p></div>
+        </div>
+        <p class="src">Source: <a href="https://github.com/jimin326/HexaCross/pull/18">PR #18</a></p>
+      </div>
+    </details>
   </section>
 
 </main>
@@ -385,28 +912,34 @@ ROUTE_SET=loopB MAX_STEPS=6000 LANE_PLAN_RANGE=300 ROAD_DETAILS=driver_styles,ta
 
 <script>
   // Video chapters: click to seek, highlight the current scene while playing.
-  const video = document.getElementById('drive');
-  const chapterButtons = [...document.querySelectorAll('.chapters button')];
-  const starts = chapterButtons.map((b) => parseFloat(b.dataset.t));
-  chapterButtons.forEach((b) => b.addEventListener('click', () => {
-    video.currentTime = parseFloat(b.dataset.t);
-    video.play().catch(() => {});
-  }));
-  let lastChapter = -1;
-  function markChapter() {
-    let idx = 0;
-    starts.forEach((s, i) => { if (video.currentTime >= s - 0.05) idx = i; });
-    chapterButtons.forEach((b, i) => b.setAttribute('aria-current', String(i === idx)));
-    if (idx !== lastChapter) {
-      lastChapter = idx;
-      // On phones the chapters are a sideways-scrolling row: keep the current one in view.
-      const list = chapterButtons[idx].closest('ol');
-      if (list.scrollWidth > list.clientWidth) list.scrollTo({ left: chapterButtons[idx].parentElement.offsetLeft - list.offsetLeft });
+  function wireChapters(video, buttons) {
+    if (!video || !buttons.length) return;
+    const starts = buttons.map((b) => parseFloat(b.dataset.t));
+    buttons.forEach((b) => b.addEventListener('click', () => {
+      video.currentTime = parseFloat(b.dataset.t);
+      video.play().catch(() => {});
+    }));
+    let last = -1;
+    function mark() {
+      let idx = 0;
+      starts.forEach((s, i) => { if (video.currentTime >= s - 0.05) idx = i; });
+      buttons.forEach((b, i) => b.setAttribute('aria-current', String(i === idx)));
+      if (idx !== last) {
+        last = idx;
+        // On phones the main chapters are a sideways-scrolling row: keep the current one in view.
+        const list = buttons[idx].closest('ol');
+        if (list && list.scrollWidth > list.clientWidth) list.scrollTo({ left: buttons[idx].parentElement.offsetLeft - list.offsetLeft });
+      }
     }
+    video.addEventListener('timeupdate', mark);
+    video.addEventListener('seeked', mark);
+    mark();
   }
-  video.addEventListener('timeupdate', markChapter);
-  video.addEventListener('seeked', markChapter);
-  markChapter();
+  // Icons are decorative; the text next to them carries the meaning.
+  document.querySelectorAll('svg.ico').forEach((s) => s.setAttribute('aria-hidden', 'true'));
+
+  wireChapters(document.getElementById('drive'), [...document.querySelectorAll('.chapters button')]);
+  wireChapters(document.getElementById('tpvideo'), [...document.querySelectorAll('#tp-chapters button')]);
 
   // Junction sketch: six approaches with road names.
   (function drawMap() {
@@ -432,10 +965,10 @@ ROUTE_SET=loopB MAX_STEPS=6000 LANE_PLAN_RANGE=300 ROAD_DETAILS=driver_styles,ta
     svg.appendChild(el('circle', { cx, cy, r: 15, fill: '#194D3C' }));
   })();
 
-  // Observation bar: 56 values split by what they describe.
+  // Observation bar: 56 values split by what they describe, with a legend that puts the count first.
   (function drawObs() {
-    const groups = [[1, 'Own speed'], [20, 'Leader and follower gap and speed, 5 lanes'], [5, 'Lane availability'], [5, 'Lane density'],
-      [6, 'Signal state per approach'], [2, 'Stop-line distance, remaining route'], [2, 'Next turn angle and distance'], [15, 'Lane arrow markings']];
+    const groups = [[1, 'Own speed'], [20, 'Gap and speed of the cars ahead and behind, in 5 lanes'], [5, 'Which lanes exist here'], [5, 'How crowded each lane is'],
+      [6, 'Signal color for each approach'], [2, 'Distance to the stop line and to the end of the route'], [2, 'Angle and distance of the next turn'], [15, 'Painted lane arrows (straight, left, right …)']];
     const shades = ['#0F3A2C', '#194D3C', '#2B6B4F', '#447C58', '#5E9470', '#7FAE8D', '#A3C7AE', '#C7DECD'];
     const bar = document.getElementById('obsbar'), legend = document.getElementById('obslegend');
     groups.forEach(([n, label], i) => {
@@ -446,7 +979,9 @@ ROUTE_SET=loopB MAX_STEPS=6000 LANE_PLAN_RANGE=300 ROAD_DETAILS=driver_styles,ta
       bar.appendChild(s);
       const li = document.createElement('li');
       const sw = document.createElement('i'); sw.style.background = shades[i];
-      li.appendChild(sw); li.appendChild(document.createTextNode(`${label} ${n}`));
+      const b = document.createElement('b'); b.textContent = n;
+      const t = document.createElement('span'); t.textContent = label;
+      li.append(sw, b, t);
       legend.appendChild(li);
     });
   })();
