@@ -1,337 +1,455 @@
 <!doctype html>
-<html lang="ko">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>HexaCross</title>
-<meta name="description" content="HexaCross: Learning to Drive Through a Six-Way Signalized Intersection — 부산 연산교차로 SUMO 강화학습 자율주행">
+<meta name="description" content="Teaching a self-driving car to cross Busan's six-way Yeonsan junction: a SUMO environment rebuilt from the real junction, an AV trained with imitation learning and PPO, and 10,647,162 driving transitions.">
+<meta property="og:title" content="HexaCross">
+<meta property="og:description" content="Teaching a self-driving car to cross Busan's six-way Yeonsan junction.">
+<meta property="og:image" content="assets/rl2_poster.jpg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wdth,wght@87.5..100,400..900&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #ffffff; --bg-soft: #f6f7f9; --text: #1b1d21; --muted: #5f6670;
-    --line: #e3e6ea; --accent: #c2410c; --accent-soft: #fff1e8;
-    --ph: #eef0f3; --ph-text: #8a919b;
-    --maxw: 920px; --radius: 12px;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #121417; --bg-soft: #1a1d21; --text: #e8eaed; --muted: #9aa1ab;
-      --line: #2a2e34; --accent: #fb923c; --accent-soft: #2a1d14;
-      --ph: #1f2328; --ph-text: #6b737d;
-    }
+    --ink: #18392F; --green: #194D3C; --mid: #447C58; --gray: #49665A;
+    --band: #F1F6EF; --rule: #DCE6DD; --code: #F4F6F4; --white: #FFFFFF;
+    --maxw: 1120px; --side: 24px;
+    color-scheme: light;
   }
   * { box-sizing: border-box; }
-  html { scroll-behavior: smooth; scroll-padding-top: 64px; }
-  body {
-    margin: 0; background: var(--bg); color: var(--text);
-    font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", "Noto Sans KR", "Segoe UI", sans-serif;
-    line-height: 1.7; font-size: 16px; -webkit-font-smoothing: antialiased;
+  html { scroll-behavior: smooth; }
+  html, body { margin: 0; background: var(--white); }
+  body { font-family: "Noto Sans", system-ui, sans-serif; color: var(--ink); font-size: 17px; line-height: 1.75; -webkit-font-smoothing: antialiased; }
+  a { color: var(--green); text-underline-offset: 3px; }
+  a:focus-visible, button:focus-visible { outline: 3px solid var(--mid); outline-offset: 3px; border-radius: 6px; }
+  .wrap { max-width: calc(var(--maxw) + 2 * var(--side)); margin: 0 auto; padding: 0 var(--side); }
+  .num { font-stretch: 87.5%; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .muted { color: var(--gray); }
+  .small { font-size: 14px; line-height: 1.6; }
+
+  /* Title band */
+  header.band { background: var(--band); padding: 72px 0 56px; text-align: center; }
+  .course { color: var(--gray); font-size: 15px; margin: 0; }
+  h1 { font-size: clamp(44px, 7vw, 68px); line-height: 1.05; margin: 12px 0 8px; font-stretch: 87.5%; font-weight: 700; letter-spacing: -0.01em; }
+  .lede { font-size: clamp(20px, 2.6vw, 26px); font-weight: 700; line-height: 1.4; margin: 0 auto; max-width: 980px; }
+  .team { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px 36px; margin: 24px 0 8px; padding: 0; list-style: none; }
+  .team li { display: flex; flex-direction: column; align-items: center; line-height: 1.35; }
+  .team b { color: var(--green); font-size: 17px; }
+  .team span { color: var(--gray); font-size: 13px; }
+  .affil { color: var(--gray); font-size: 15px; margin: 8px 0 0; }
+  .btns { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 20px; }
+  .btn { display: inline-block; background: var(--green); color: var(--white); text-decoration: none; font-weight: 700; font-size: 15px; padding: 11px 22px; border-radius: 999px; line-height: 1.3; }
+  .btn:hover { background: var(--ink); }
+
+  main { padding-top: 64px; padding-bottom: 120px; }
+  section { margin-top: 80px; }
+  section:first-child { margin-top: 0; }
+  h2 { font-size: 30px; line-height: 1.35; margin: 0 0 16px; font-weight: 700; }
+  h3 { font-size: 20px; line-height: 1.4; margin: 0 0 10px; font-weight: 700; }
+  p { margin: 0 0 16px; }
+  .intro { color: var(--gray); max-width: 900px; }
+
+  /* Video + chapters */
+  .video-row { display: grid; grid-template-columns: minmax(0, 816fr) minmax(0, 280fr); gap: 24px; align-items: start; }
+  video { width: 100%; aspect-ratio: 16 / 9; display: block; border-radius: 8px; background: #000; }
+  .chapters h3 { font-size: 16px; margin-bottom: 8px; }
+  .chapters ol { list-style: none; margin: 0; padding: 0; }
+  .chapters button { display: grid; grid-template-columns: 44px 1fr; gap: 12px; align-items: center; width: 100%; text-align: left; background: none; border: 0; border-radius: 6px; padding: 11px 12px; font: inherit; font-size: 15px; line-height: 1.45; color: var(--ink); cursor: pointer; }
+  .chapters button:hover { background: var(--band); }
+  .chapters button[aria-current="true"] { background: var(--band); font-weight: 600; }
+  .chapters .t { color: var(--mid); }
+  .caption { color: var(--gray); font-size: 14px; line-height: 1.6; margin: 12px 0 0; }
+
+  /* Overview */
+  .overview { display: grid; grid-template-columns: minmax(0, 600fr) minmax(0, 470fr); gap: 48px; align-items: center; }
+  .overview p { color: var(--gray); line-height: 1.8; }
+  .map svg { width: 100%; height: auto; display: block; }
+  .map text { font-family: "Noto Sans", system-ui, sans-serif; }
+
+  /* Two columns with figure */
+  .split { display: grid; grid-template-columns: minmax(0, 540fr) minmax(0, 532fr); gap: 48px; align-items: start; }
+  figure { margin: 0; }
+  figure img { width: 100%; height: auto; display: block; border-radius: 8px; }
+  .steps { list-style: none; margin: 0; padding: 0; counter-reset: step; }
+  .steps li { display: grid; grid-template-columns: 22px 1fr; gap: 16px; margin-bottom: 22px; line-height: 1.7; }
+  .steps li::before { counter-increment: step; content: counter(step); color: var(--mid); font-size: 26px; line-height: 1.1; font-stretch: 87.5%; font-weight: 700; }
+  .scenes h3 { font-size: 17px; margin: 0 0 4px; }
+  .scenes p { color: var(--gray); font-size: 16px; line-height: 1.65; margin-bottom: 18px; }
+  .scenes .stat { color: var(--mid); font-weight: 500; }
+
+  /* Tables */
+  .table-scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 16px; line-height: 1.5; border-bottom: 1.5px solid var(--ink); }
+  thead th { font-size: 13px; font-weight: 500; color: var(--gray); text-align: left; padding: 10px 20px 10px 0; border-top: 1.5px solid var(--ink); }
+  tbody th, tbody td { text-align: left; vertical-align: top; padding: 14px 20px 14px 0; border-top: 1px solid var(--rule); }
+  tbody th { font-weight: 700; color: var(--ink); }
+  tbody td { color: var(--gray); }
+  table:not(.has-head) tbody tr:first-child > * { border-top: 1.5px solid var(--ink); }
+  td.right, th.right { text-align: right; padding-right: 0; }
+  .compact { font-size: 14px; }
+  .compact tbody th, .compact tbody td { padding-top: 10px; padding-bottom: 10px; }
+  .val { color: var(--green); font-weight: 500; white-space: nowrap; }
+  .stage-n { color: var(--mid); font-size: 22px; font-stretch: 87.5%; font-weight: 700; width: 36px; }
+  .stage-r { color: var(--green); font-size: 20px; font-stretch: 87.5%; font-weight: 700; white-space: nowrap; }
+  tr.final > * { background: var(--band); }
+  .results tbody th, .results tbody td { padding-top: 18px; padding-bottom: 18px; vertical-align: middle; }
+  .results tbody th { width: 160px; }
+  .results td.big { color: var(--green); font-size: 40px; line-height: 1.1; font-stretch: 87.5%; font-weight: 700; text-align: right; white-space: nowrap; padding-right: 0; }
+  .problems td:last-child { color: var(--green); font-weight: 500; }
+
+  /* Observation bar */
+  .obsbar { display: flex; gap: 2px; margin: 8px 0 12px; }
+  .obsbar span { height: 44px; border-radius: 3px; display: flex; align-items: center; justify-content: center; color: var(--white); font-size: 16px; font-stretch: 87.5%; font-weight: 700; min-width: 10px; }
+  .obsbar span.light { color: var(--ink); }
+  .legend { display: flex; flex-wrap: wrap; gap: 10px 22px; list-style: none; margin: 0; padding: 0; font-size: 14px; line-height: 1.4; }
+  .legend li { display: flex; align-items: center; gap: 8px; }
+  .legend i { width: 12px; height: 12px; border-radius: 2px; display: inline-block; flex: none; }
+  .av-split { display: grid; grid-template-columns: minmax(0, 440fr) minmax(0, 632fr); gap: 48px; margin-top: 32px; }
+  .av-split p { line-height: 1.8; }
+
+  /* Dataset */
+  .files { list-style: none; margin: 0 0 8px; padding: 0; }
+  .files li { display: grid; grid-template-columns: 110px 1fr; gap: 12px; margin-bottom: 8px; font-size: 15px; color: var(--gray); }
+  code, pre { font-family: "JetBrains Mono", ui-monospace, monospace; }
+  .files code, td code, th code { color: var(--green); font-size: 14px; }
+  pre { background: var(--code); border: 1px solid var(--rule); border-radius: 8px; padding: 20px 24px; margin: 20px 0 16px; overflow-x: auto; font-size: 14px; line-height: 1.65; color: var(--ink); }
+  pre .c { color: var(--mid); }
+  .links { display: flex; flex-wrap: wrap; gap: 8px 24px; font-weight: 500; font-size: 15px; }
+
+  footer { background: var(--band); padding: 40px 0 48px; color: var(--gray); font-size: 14px; line-height: 1.7; }
+  footer p { margin: 0 0 6px; }
+
+  @media (max-width: 860px) {
+    :root { --side: 20px; }
+    header.band { padding: 40px 0 32px; }
+    .team { gap: 4px 14px; }
+    .team span { display: none; }
+    main { padding-top: 24px; }
+    section { margin-top: 56px; }
+    h2 { font-size: 24px; }
+    .video-row, .overview, .split, .av-split { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+    .chapters h3 { display: none; }
+    .chapters ol { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+    .chapters button { display: flex; gap: 6px; white-space: nowrap; width: auto; border: 1px solid var(--rule); border-radius: 999px; padding: 6px 12px; font-size: 13px; }
+    .results tbody th { width: auto; }
+    .results td.big { font-size: 28px; }
+    .results td.note { display: none; }
+    .obsbar span { font-size: 12px; }
   }
-  a { color: var(--accent); text-decoration: none; }
-  a:hover { text-decoration: underline; }
-  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 20px; }
-
-  /* Hero */
-  header.hero { padding: 72px 0 40px; text-align: center; }
-  .hero h1 { font-size: clamp(2.2rem, 6vw, 3.4rem); margin: 0; letter-spacing: -0.02em; }
-  .hero .sub { font-size: clamp(1.05rem, 2.6vw, 1.35rem); margin: 8px 0 0; font-weight: 500; }
-  .hero .ko { color: var(--muted); margin: 6px 0 0; }
-  .authors { margin: 24px 0 4px; font-size: 1.05rem; }
-  .authors span { margin: 0 10px; white-space: nowrap; }
-  .affil { color: var(--muted); font-size: 0.95rem; }
-  .btns { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 26px; }
-  .btn {
-    display: inline-flex; align-items: center; gap: 6px; padding: 9px 18px;
-    border-radius: 999px; background: var(--text); color: var(--bg); font-weight: 600; font-size: 0.95rem;
-  }
-  .btn:hover { text-decoration: none; opacity: 0.85; }
-  .btn.disabled { background: var(--ph); color: var(--ph-text); pointer-events: none; }
-
-  /* Nav */
-  nav.toc {
-    position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--bg) 88%, transparent);
-    backdrop-filter: blur(8px); border-bottom: 1px solid var(--line);
-  }
-  nav.toc ul { list-style: none; margin: 0 auto; padding: 0 12px; display: flex; gap: 4px;
-    max-width: var(--maxw); overflow-x: auto; scrollbar-width: none; }
-  nav.toc a { display: block; padding: 14px 10px; color: var(--muted); font-size: 0.9rem; white-space: nowrap;
-    border-bottom: 2px solid transparent; }
-  nav.toc a:hover { color: var(--text); text-decoration: none; }
-  nav.toc a.active { color: var(--accent); border-bottom-color: var(--accent); }
-
-  /* Sections */
-  section { padding: 56px 0 8px; }
-  section h2 { font-size: 1.6rem; margin: 0 0 6px; letter-spacing: -0.01em; }
-  section h3 { font-size: 1.15rem; margin: 28px 0 8px; }
-  .kicker { color: var(--accent); font-weight: 700; font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; }
-  p { margin: 10px 0; }
-  .muted { color: var(--muted); }
-
-  .ph {
-    background: var(--ph); color: var(--ph-text); border: 1px dashed var(--line); border-radius: var(--radius);
-    display: flex; align-items: center; justify-content: center; text-align: center; padding: 16px;
-    font-size: 0.9rem; min-height: 180px; margin: 16px 0;
-  }
-  .ph.video { aspect-ratio: 16 / 9; min-height: 0; }
-  figure { margin: 16px 0; }
-  figure img, figure video { width: 100%; border-radius: var(--radius); display: block; cursor: zoom-in; }
-  figcaption { color: var(--muted); font-size: 0.9rem; margin-top: 8px; text-align: center; }
-  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-  @media (max-width: 640px) { .grid2 { grid-template-columns: 1fr; } }
-
-  .tbd { background: var(--accent-soft); color: var(--accent); border-radius: 6px; padding: 1px 7px; font-size: 0.85em; font-weight: 600; }
-
-  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 0.94rem; }
-  th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
-  th { color: var(--muted); font-weight: 600; font-size: 0.85rem; }
-  .tablewrap { overflow-x: auto; }
-  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.88em;
-    background: var(--bg-soft); padding: 1px 5px; border-radius: 4px; }
-
-  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 18px 0; }
-  @media (max-width: 640px) { .stats { grid-template-columns: repeat(2, 1fr); } }
-  .stat { background: var(--bg-soft); border-radius: var(--radius); padding: 16px; }
-  .stat b { display: block; font-size: 1.6rem; letter-spacing: -0.02em; }
-  .stat span { color: var(--muted); font-size: 0.85rem; }
-
-  .team { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-top: 16px; }
-  @media (max-width: 720px) { .team { grid-template-columns: repeat(2, 1fr); } }
-  .member { background: var(--bg-soft); border-radius: var(--radius); padding: 16px; }
-  .member b { display: block; }
-  .member span { color: var(--muted); font-size: 0.88rem; }
-
-  details { background: var(--bg-soft); border-radius: var(--radius); padding: 12px 16px; margin: 14px 0; }
-  summary { cursor: pointer; font-weight: 600; }
-  pre { background: var(--bg-soft); border-radius: var(--radius); padding: 14px 16px; overflow-x: auto; font-size: 0.85rem; }
-
-  footer { margin-top: 72px; padding: 32px 0 48px; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.88rem; text-align: center; }
-
-  .reveal { opacity: 0; transform: translateY(14px); transition: opacity .6s ease, transform .6s ease; }
-  .reveal.on { opacity: 1; transform: none; }
-  @media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; transition: none; } html { scroll-behavior: auto; } }
-
-  .modal { position: fixed; inset: 0; background: rgba(0,0,0,.85); display: none; align-items: center; justify-content: center; z-index: 50; padding: 20px; cursor: zoom-out; }
-  .modal.open { display: flex; }
-  .modal img { max-width: 100%; max-height: 100%; border-radius: 8px; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
 </style>
 </head>
 <body>
 
-<!-- ============================================================
-  편집 안내 (지민)
-  - 이미지/영상은 docs/figures/ 에 넣고 <div class="ph">...</div> 를 <figure> 로 바꾼다.
-      <figure><img src="figures/파일명.png" alt="설명"><figcaption>설명</figcaption></figure>
-  - <span class="tbd">TBD</span> 는 아직 채울 값이다. 최종 제출 전 전부 지운다.
-  - 버튼 링크가 준비되면 class="btn disabled" 에서 disabled 를 지우고 href 를 넣는다.
-============================================================= -->
-
-<header class="hero wrap">
-  <h1>HexaCross</h1>
-  <p class="sub">Learning to Drive Through a Six-Way Signalized Intersection</p>
-  <p class="ko">부산 연산교차로 실도로 기반 SUMO 강화학습 자율주행</p>
-  <div class="authors">
-    <span>승준</span><span>지원</span><span>서영</span><span>호섭</span><span>지민</span>
-  </div>
-  <div class="affil">Team 와플 해적단 · Sungkyunkwan University · 자율주행인공지능및제어 2026</div>
-  <div class="btns">
-    <a class="btn disabled" href="#">Slides (PDF)</a>
-    <a class="btn" href="https://github.com/jimin326/HexaCross">Code</a>
-    <a class="btn disabled" href="#">Dataset</a>
-    <a class="btn disabled" href="#">Model</a>
+<header class="band">
+  <div class="wrap">
+    <p class="course">Final project, Autonomous Driving AI and Control (ICE3052), Sungkyunkwan University, Fall 2026</p>
+    <h1>HexaCross</h1>
+    <p class="lede">Teaching a self-driving car to cross Busan's six-way Yeonsan junction</p>
+    <ul class="team">
+      <li><b>Seungjun Lee</b><span>Roads, signals, routes</span></li>
+      <li><b>Jiwon Seo</b><span>Traffic demand, background vehicles</span></li>
+      <li><b>Seoyoung Hwang</b><span>AV observation, action, reward</span></li>
+      <li><b>Hoseop Lee</b><span>Training, evaluation</span></li>
+      <li><b>Jimin Cheon</b><span>Dataset, project page</span></li>
+    </ul>
+    <p class="affil">Sungkyunkwan University</p>
+    <nav class="btns" aria-label="Project links">
+      <a class="btn" href="https://github.com/jimin326/HexaCross">Code</a>
+      <!-- TODO before submission: put the final slides at docs/slides/HexaCross_final.pdf -->
+      <a class="btn" href="slides/HexaCross_final.pdf">Slides (PDF)</a>
+      <a class="btn" href="https://huggingface.co/datasets/hoseob0902/HexaCross-dataset">Dataset</a>
+      <a class="btn" href="https://github.com/jimin326/HexaCross/tree/main/models/yeonsan_loopB_RL2">Model</a>
+      <a class="btn" href="#video">Video</a>
+    </nav>
   </div>
 </header>
 
-<nav class="toc" aria-label="목차">
-  <ul>
-    <li><a href="#overview">Overview</a></li>
-    <li><a href="#site">Site</a></li>
-    <li><a href="#env">Environment</a></li>
-    <li><a href="#traffic">Traffic</a></li>
-    <li><a href="#mdp">MDP</a></li>
-    <li><a href="#training">Training</a></li>
-    <li><a href="#results">Results</a></li>
-    <li><a href="#dataset">Dataset</a></li>
-    <li><a href="#team">Team</a></li>
-  </ul>
-</nav>
-
 <main class="wrap">
 
-  <section id="overview" class="reveal">
-    <div class="kicker">Overview</div>
-    <h2>30초 주행 영상</h2>
-    <div class="ph video">주행 영상 (30초 이상) · figures/demo.mp4<br>&lt;video src="figures/demo.mp4" controls muted playsinline&gt;</div>
-    <h3>Abstract</h3>
-    <p>
-      부산 연산교차로는 6개 도로가 한 점에서 만나는 방사형 신호교차로입니다.
-      저희는 이 교차로를 OpenStreetMap 기반으로 SUMO에 구현하고, 6현시 신호와 실제 진입 방향별 교통 흐름을 반영한 환경에서
-      자율주행 차량(AV)이 신호 · 대기열 · 합류 상황을 판단하며 통과하도록 PPO와 Behavior Cloning으로 정책을 학습했습니다.
-      <span class="tbd">TBD: 결과 한 문장 (충돌률, 완주율)</span>
-    </p>
+  <section id="video" aria-label="Driving video">
+    <div class="video-row">
+      <video id="drive" controls preload="metadata" playsinline poster="assets/rl2_poster.jpg">
+        <source src="videos/loopB_RL2/loopB_RL2_seed905.mp4" type="video/mp4">
+        Your browser cannot play this video. <a href="videos/loopB_RL2/loopB_RL2_seed905.mp4">Download the MP4</a>.
+      </video>
+      <div class="chapters">
+        <h3>Jump to a scene</h3>
+        <ol>
+          <li><button type="button" data-t="0"><span class="t num">0:00</span><span>Start from the north</span></button></li>
+          <li><button type="button" data-t="8"><span class="t num">0:08</span><span>Crosses the junction, north to south</span></button></li>
+          <li><button type="button" data-t="24"><span class="t num">0:24</span><span>Entering the roundabout</span></button></li>
+          <li><button type="button" data-t="49"><span class="t num">0:49</span><span>Slows down behind waiting cars</span></button></li>
+          <li><button type="button" data-t="52"><span class="t num">0:52</span><span>Crosses the junction again, east to west</span></button></li>
+          <li><button type="button" data-t="55.5"><span class="t num">0:56</span><span>Reaches the destination</span></button></li>
+        </ol>
+      </div>
+    </div>
+    <p class="caption">The final model (RL2) drives the full 6.7 km test loop (loop B) in SUMO; 23 minutes of driving shown in 56 seconds. Click a scene to jump to it.</p>
   </section>
 
-  <section id="site" class="reveal">
-    <div class="kicker">1 · Site</div>
-    <h2>왜 연산교차로인가</h2>
-    <p>6개 방향(중앙대로 동래·서면, 월드컵대로 사직·남쪽, 반송로, 고분로)이 지름 약 80m 안에서 만나며, 방향마다 우회전 슬립 차로가 있습니다.</p>
-    <div class="grid2">
-      <div class="ph">실제 지도 / 위성 · figures/site_map.png</div>
-      <div class="ph">로드뷰 · figures/site_roadview.png</div>
+  <section id="overview" class="overview">
+    <div>
+      <h2>Overview</h2>
+      <p>We rebuilt Busan's Yeonsan junction in the SUMO traffic simulator and trained an autonomous vehicle (AV) to drive through it. Six roads meet here, so the AV has to pick the lane for its exit early, then merge, yield and change lanes among background traffic matched to real counts.</p>
+      <p>The AV first imitated an expert driver (behavior cloning, then DAgger) and was then fine-tuned with reinforcement learning (PPO). In 960 evaluation runs it reached its destination 98.75% of the time with a 0.21% collision rate. We release 10,647,162 transitions on Hugging Face.</p>
     </div>
-    <div class="tablewrap">
+    <figure class="map">
+      <svg id="junction-map" viewBox="0 0 470 360" role="img" aria-labelledby="map-title"><title id="map-title">Sketch of the six roads that meet at Yeonsan junction</title></svg>
+    </figure>
+  </section>
+
+  <section id="road">
+    <h2>Rebuilding the real junction, lane by lane</h2>
+    <div class="split">
+      <figure>
+        <img src="pr/yeonsan-6way/x6_lanes_close.jpg" alt="Close-up of the rebuilt Yeonsan junction in SUMO, showing stop lines and slip roads" loading="lazy" width="1800" height="1307">
+      </figure>
+      <div>
+        <ol class="steps">
+          <li><span>Imported the six approaches from OpenStreetMap with netconvert.</span></li>
+          <li><span>Checked all 34 lanes against street view and the national standard node-link data, fixing lane directions, BRT bus-only lanes and right-turn slip roads.</span></li>
+          <li><span>The real signal plan is not public, so we designed one: 6 phases in a 120 s cycle (3 s yellow, 2 s all-red) that group non-conflicting movements.</span></li>
+        </ol>
+        <p class="small muted">SUMO, TraCI and libsumo are pinned to 1.27.1 (requirements.txt).</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="traffic">
+    <h2>Driving among realistic traffic</h2>
+    <p class="intro">Junction demand follows Busan's 2025 traffic survey (hourly, by vehicle class) for all 25 movements. Background flows were added on the rest of the AV's test loop.</p>
+    <div class="table-scroll">
       <table>
-        <thead><tr><th>접근로</th><th>진입 / 진출 차로</th><th>비고</th></tr></thead>
         <tbody>
-          <tr><td>중앙대로 (동래 방향)</td><td>2 / 2</td><td></td></tr>
-          <tr><td>월드컵대로 (사직 방향)</td><td>4 / 3</td><td></td></tr>
-          <tr><td>반송로</td><td>2 / 2</td><td><span class="tbd">로드뷰 확인</span></td></tr>
-          <tr><td>고분로</td><td>2 / 2</td><td><span class="tbd">로드뷰 확인</span></td></tr>
-          <tr><td>월드컵대로 (남쪽)</td><td>3 / 3</td><td></td></tr>
-          <tr><td>중앙대로 (서면 방향)</td><td>2 / 2</td><td></td></tr>
+          <tr><th scope="row">Junction demand</th><td>4,507 veh/h (4,303 cars + 204 buses). The survey total of 5,015 veh/h includes motorcycles, which are not simulated.</td></tr>
+          <tr><th scope="row">Loop background flows</th><td>+4,550 veh/h (2,000 measured on Yeonsu-ro, 2,550 assumed)</td></tr>
+          <tr><th scope="row">Car-following models</th><td>Krauss 35%, IDM 30%, EIDM 20%, ACC 15%</td></tr>
+          <tr><th scope="row">Driver and vehicle mix</th><td>12% aggressive and 10% cautious drivers, taxis with pick-ups, short stops</td></tr>
+          <tr><th scope="row">Gridlock check</th><td>SUMO teleports of background vehicles: 153 → 16 (three 1-hour runs at full demand)</td></tr>
         </tbody>
       </table>
     </div>
-  </section>
-
-  <section id="env" class="reveal">
-    <div class="kicker">2 · Environment</div>
-    <h2>SUMO 구현</h2>
-    <p>OSM → netconvert로 도로를 만들고, 6현시 · 160초 주기의 신호를 적용했습니다. AV 경로는 서면 → 연산교차로 → 동래입니다.</p>
-    <div class="ph">SUMO 전체 화면 · figures/sumo_overview.png</div>
-    <div class="grid2">
-      <div class="ph">신호 현시 다이어그램 · figures/signal_phases.png</div>
-      <div class="ph">우회전 슬립 차로 · figures/slip_lane.png</div>
+    <div class="split" style="margin-top: 32px;">
+      <figure>
+        <img src="pr/yeonsan-6way/x6_traffic.jpg" alt="Background traffic queuing at the six approaches of Yeonsan junction in SUMO" loading="lazy" width="1590" height="1113">
+      </figure>
+      <div class="scenes">
+        <h3>World Cup-daero</h3>
+        <p>Looks for a safe gap in the next lane before moving over to turn right.</p>
+        <h3>Yeonsu-ro merge</h3>
+        <p>Slows on the unsignalized ramp and yields to main-road traffic.</p>
+        <h3>Yeonsan junction</h3>
+        <p>Waits for green and moves off with the cars in front.</p>
+        <p class="stat">Across the dataset, an average of 51.8 vehicles are within 150 m of the AV and 6.79 are inside its observation range (±100 m).</p>
+      </div>
     </div>
   </section>
 
-  <section id="traffic" class="reveal">
-    <div class="kicker">3 · Traffic</div>
-    <h2>일반 차량 구성</h2>
-    <div class="stats">
-      <div class="stat"><b>35</b><span>진입 지점</span></div>
-      <div class="stat"><b>390</b><span>경로</span></div>
-      <div class="stat"><b>157–398</b><span>동시 차량 수</span></div>
-      <div class="stat"><b>4종</b><span>운전 모델 (Krauss · IDM · EIDM · ACC)</span></div>
+  <section id="mdp">
+    <h2>Observation, action and reward</h2>
+    <p class="intro">Every 0.5 s the AV reads a 56-dimensional observation and outputs two actions: acceleration and lane change. The bar splits the 56 values by what they describe.</p>
+    <div class="obsbar" id="obsbar" aria-hidden="true"></div>
+    <ul class="legend" id="obslegend"></ul>
+    <div class="av-split">
+      <div>
+        <h3>Action</h3>
+        <p>Acceleration a ∈ [−1, 1], mapped to −5 … +3 m/s²<br>Lane change ∈ {left, keep, right}</p>
+        <h3>Not in the observation</h3>
+        <p class="muted">Following the course rules and TA answers: no lane-level route guidance, no remaining signal time, and no conflicting vehicles inside the junction.</p>
+      </div>
+      <div>
+        <h3>Reward</h3>
+        <div class="table-scroll">
+          <table class="compact">
+            <tbody>
+              <tr><th scope="row">Route progress</th><td class="val">+0.1 × Δd / (v<sub>max</sub> · Δt)</td><td>Distance along the route</td></tr>
+              <tr><th scope="row">Overspeed</th><td class="val">−0.5 × (v − v<sub>lim</sub>) / v<sub>lim</sub></td><td>Above the lane speed limit</td></tr>
+              <tr><th scope="row">Time to collision (TTC)</th><td class="val">−0.3 × (1 − TTC / 3 s)</td><td>TTC &lt; 3 s</td></tr>
+              <tr><th scope="row">Short gap</th><td class="val">−0.1</td><td>Gap &lt; 6 m at ≥ 1 m/s</td></tr>
+              <tr><th scope="row">Blocked by a slow leader</th><td class="val">−0.05</td><td>Leader &lt; 20 m, not waiting at a light</td></tr>
+              <tr><th scope="row">Target lane</th><td class="val">−0.05 × (1 − d<sub>lane</sub> / 300 m)</td><td>Current lane does not continue on the route</td></tr>
+              <tr><th scope="row">Collision</th><td class="val">−50</td><td>Terminates</td></tr>
+              <tr><th scope="row">Red-light violation</th><td class="val">−30</td><td>Terminates</td></tr>
+              <tr><th scope="row">Dead-end lane, teleport</th><td class="val">−10</td><td>Terminates</td></tr>
+              <tr><th scope="row">Arrival</th><td class="val">+2</td><td>Terminates</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
-    <p><span class="tbd">TBD: 방향별 교통량 근거, 차량 모델 비율</span></p>
   </section>
 
-  <section id="mdp" class="reveal">
-    <div class="kicker">4 · MDP</div>
-    <h2>Observation · Action · Reward</h2>
-    <h3>Observation (34차원)</h3>
-    <div class="tablewrap">
-      <table>
-        <thead><tr><th>인덱스</th><th>내용</th></tr></thead>
+  <section id="training">
+    <h2>Training: imitation first, then PPO</h2>
+    <p class="intro">PPO with reward alone did not learn to change lanes before diverges, so we switched to imitation learning from an expert (BC, then DAgger) and fine-tuned with PPO.</p>
+    <div class="table-scroll">
+      <table class="has-head">
+        <thead><tr><th scope="col" aria-label="Step"></th><th scope="col">Method</th><th scope="col">Evaluation</th><th scope="col" class="right">Arrival / collision</th></tr></thead>
         <tbody>
-          <tr><td><code>0</code></td><td>내 속도</td></tr>
-          <tr><td><code>1–20</code></td><td>5개 차로 × (앞차 거리, 앞차 속도차, 뒤차 거리, 뒤차 속도차)</td></tr>
-          <tr><td><code>21–25</code></td><td>차로 연결성 (끊김 예고)</td></tr>
-          <tr><td><code>26–30</code></td><td>차로별 전방 밀도</td></tr>
-          <tr><td><code>31–33</code></td><td>신호 상태 · 정지선까지 거리 · 현시 남은 시간</td></tr>
+          <tr><td class="stage-n">1</td><th scope="row">PPO, reward only</th><td>7 routes, 280 runs</td><td class="stage-r right">68% / 4.3%</td></tr>
+          <tr><td class="stage-n">2</td><th scope="row">Behavior cloning (BC), corrected expert</th><td>7 routes, 0.5× demand, 560 runs</td><td class="stage-r right">85.0% / 4.1%</td></tr>
+          <tr><td class="stage-n">3</td><th scope="row">DAgger, 8-model ensemble</th><td>7 routes, 0.85× demand, 840 runs</td><td class="stage-r right">97.0% / 0.60%</td></tr>
+          <tr><td class="stage-n">4</td><th scope="row">Single-policy PPO + BC loss (sr1)</th><td>Loop B, 1.0× demand, 480 runs *</td><td class="stage-r right">92.71% / 4.38%</td></tr>
+          <tr class="final"><td class="stage-n">5</td><th scope="row">Retrained in the fixed environment (RL2, final)</th><td>Loop B + background flows, 4 conditions, 960 runs</td><td class="stage-r right">98.75% / 0.21%</td></tr>
         </tbody>
       </table>
     </div>
-    <h3>Action</h3>
-    <p>[가감속 ∈ [-1, 1], 차로변경 ∈ {-1, 0, +1}]</p>
-    <h3>Reward</h3>
-    <p><span class="tbd">TBD: 서영 — 속도 보상, 충돌, 완주, 신호 위반, 차로 선택 실패 항목과 가중치</span></p>
+    <p class="caption">Routes and demand differ between steps, so compare within a row. * Re-measured after fixing a seed bug in the evaluation script that made runs repeat (<a href="https://github.com/jimin326/HexaCross/pull/19">PR #19</a>).</p>
   </section>
 
-  <section id="training" class="reveal">
-    <div class="kicker">5 · Training</div>
-    <h2>학습</h2>
-    <p><span class="tbd">TBD: 호섭 — PPO 스텝 수, 하이퍼파라미터, BC 데이터</span></p>
-    <div class="ph">학습 곡선 (reward / collision) · figures/training_curve.png</div>
+  <section id="results">
+    <h2>Results</h2>
+    <table class="results">
+      <tbody>
+        <tr><th scope="row">Arrival rate</th><td class="note">960 runs, 4 traffic conditions (95% CI 97.8–99.3%)</td><td class="big">98.75%</td></tr>
+        <tr><th scope="row">Collision rate</th><td class="note">95% CI 0.06–0.76%. Over 3,600 independent runs: 0.58% (0.38–0.89%). Course target &lt; 5%.</td><td class="big">0.21%</td></tr>
+        <tr><th scope="row">Transitions</th><td class="note">3,600 episodes, one step per 0.5 s, on Hugging Face</td><td class="big">10,647,162</td></tr>
+      </tbody>
+    </table>
   </section>
 
-  <section id="results" class="reveal">
-    <div class="kicker">6 · Results</div>
-    <h2>평가 (100 에피소드)</h2>
-    <div class="stats">
-      <div class="stat"><b><span class="tbd">TBD</span></b><span>충돌률 (목표 &lt; 5%)</span></div>
-      <div class="stat"><b><span class="tbd">TBD</span></b><span>경로 완주율</span></div>
-      <div class="stat"><b><span class="tbd">TBD</span></b><span>신호 위반률</span></div>
-      <div class="stat"><b><span class="tbd">TBD</span></b><span>평균 통과 시간</span></div>
+  <section id="dataset">
+    <h2>Dataset: 10,647,162 transitions</h2>
+    <p class="intro">3,600 episodes driven by the final model, logged every 0.5 s. Each row pairs the AV's partial observation with the simulator's privileged state.</p>
+    <div class="split">
+      <div class="table-scroll">
+        <table class="compact">
+          <tbody>
+            <tr><th scope="row"><code>episode, t</code></th><td>Episode id (= seed), step</td></tr>
+            <tr><th scope="row"><code>observation</code></th><td>56-dim partial observation</td></tr>
+            <tr><th scope="row"><code>action</code></th><td>Raw and applied acceleration and lane change</td></tr>
+            <tr><th scope="row"><code>reward, terminated</code></th><td>Step reward and termination flags</td></tr>
+            <tr><th scope="row"><code>state</code></th><td>Ego pose and speed, signal groups, vehicles within 150 m</td></tr>
+            <tr><th scope="row"><code>event</code></th><td>collided, arrived, red_light, wrong_lane, teleported</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>
+        <h3 style="font-size: 16px;">9 shards of 400 episodes, each in three formats</h3>
+        <ul class="files">
+          <li><code>.parquet</code><span>6.92 GB, columnar, read only what you need</span></li>
+          <li><code>.jsonl.gz</code><span>9.66 GB, one transition per line</span></li>
+          <li><code>.npz</code><span>0.81 GB, arrays for offline RL and BC</span></li>
+          <li><code>.meta.json</code><span>Collection settings and code tables</span></li>
+        </ul>
+      </div>
     </div>
-    <div class="ph">상황별 주행 예시 (대기열 · 황색 · 슬립 합류) · figures/cases.png</div>
+<pre><code>import pandas as pd
+url = "hf://datasets/hoseob0902/HexaCross-dataset/v2/loopB/loopB_RL2_s11.parquet"
+df = pd.read_parquet(url)</code></pre>
+    <p class="links"><a href="https://huggingface.co/datasets/hoseob0902/HexaCross-dataset">View on Hugging Face</a><a href="https://github.com/jimin326/HexaCross/blob/main/DATA_FORMAT.md">Full column reference (DATA_FORMAT.md)</a></p>
   </section>
 
-  <section id="dataset" class="reveal">
-    <div class="kicker">7 · Dataset</div>
-    <h2>POMDP 주행 데이터</h2>
-    <p>0.5초마다 1 transition을 저장합니다. 목표는 10<sup>7</sup>개 이상이며 Hugging Face에 공개합니다. 전체 컬럼 정의는 <a href="https://github.com/jimin326/HexaCross/blob/main/DATA_FORMAT.md">DATA_FORMAT.md</a>에 있습니다.</p>
-    <div class="stats">
-      <div class="stat"><b><span class="tbd">TBD</span></b><span>transitions</span></div>
-      <div class="stat"><b><span class="tbd">TBD</span></b><span>episodes</span></div>
-      <div class="stat"><b>0.5 s</b><span>step</span></div>
-      <div class="stat"><b><span class="tbd">TBD</span></b><span>용량</span></div>
-    </div>
-    <div class="tablewrap">
-      <table>
-        <thead><tr><th>컬럼</th><th>내용</th></tr></thead>
+  <section id="run">
+    <h2>Run it yourself</h2>
+<pre><code>git clone https://github.com/jimin326/HexaCross &amp;&amp; cd HexaCross
+pip install -r requirements.txt      <span class="c"># includes SUMO and libsumo 1.27.1</span>
+
+<span class="c"># Evaluate the final model: loop B, 240 runs per traffic condition</span>
+ROUTE_SET=loopB MAX_STEPS=6000 LANE_PLAN_RANGE=300 ROAD_DETAILS=driver_styles,taxi,short_stops \
+  python tools/rl/eval_parallel.py models/yeonsan_loopB_RL2/model.pt results/eval_RL2 --n 240 --workers 4
+
+<span class="c"># Collect transitions: seed 11, 400 runs</span>
+ROUTE_SET=loopB MAX_STEPS=6000 LANE_PLAN_RANGE=300 ROAD_DETAILS=driver_styles,taxi,short_stops \
+  python collect_pomdp_data.py --model models/yeonsan_loopB_RL2/model.pt --episodes 400 --workers 4 --seed 11 --name loopB_RL2_s11</code></pre>
+    <p class="small muted">Windows commands and more options are in the README files on GitHub.</p>
+  </section>
+
+  <section id="problems">
+    <h2>Problems and fixes</h2>
+    <div class="table-scroll">
+      <table class="has-head problems">
+        <thead><tr><th scope="col">Problem</th><th scope="col">Fix</th><th scope="col">Result</th></tr></thead>
         <tbody>
-          <tr><td><code>observation</code></td><td>AV 부분관측 34차원</td></tr>
-          <tr><td><code>action</code></td><td>가감속, 차로변경 (raw · 적용값)</td></tr>
-          <tr><td><code>reward</code> · <code>terminated</code> · <code>truncated</code></td><td>보상, 종료 여부</td></tr>
-          <tr><td><code>state</code></td><td>AV · 주변 차량 절대 좌표 · 속도 · 차로, 신호 상태</td></tr>
-          <tr><td><code>event</code></td><td>충돌, 도착, 신호 위반(<code>red_light</code>), 차로 선택 실패(<code>wrong_lane</code>)</td></tr>
+          <tr><td>Background vehicles queued in one lane and blocked the approaches</td><td>Demand-based green times, lane changes enabled, start-up acceleration 2.6 m/s²</td><td>Background teleports: 153 → 16</td></tr>
+          <tr><td>The imitated expert kept going on yellow, so the AV crossed the stop line just after red</td><td>Relabeled yellow-light actions: stop whenever possible at ≤ 4 m/s²</td><td>Red-light violations: 18.3% → 0% (60 runs each)</td></tr>
+          <tr><td>33 of the previous model's 39 collisions were at the unsignalized Yeonsu-ro merge</td><td>Relabeled 6,356 expert actions: decelerate from 60 m out to 4 m/s at the merge entry</td><td>Collisions in the training condition: 8 → 0 of 240</td></tr>
+          <tr><td>Removing the speed-limit clip on actions (TA ruling) made the old policy overspeed</td><td>Raised the BC-loss speed cap to the vehicle top speed (27.78 m/s) and added an overspeed penalty</td><td>Mean acceleration output at the limit: +0.057 → +0.008</td></tr>
+          <tr><td>SUMO teleported an AV waiting over 300 s at a red light, and it was logged as a red-light violation</td><td>Detect teleports and log them separately (<code>event.teleported</code>)</td><td>All 4 reproduced cases logged as teleports, none as red-light violations</td></tr>
         </tbody>
       </table>
-    </div>
-    <details>
-      <summary>불러오기 예시</summary>
-<pre>from datasets import load_dataset
-ds = load_dataset("TBD/HexaCross-dataset")</pre>
-    </details>
-  </section>
-
-  <section id="team" class="reveal">
-    <div class="kicker">Team</div>
-    <h2>와플 해적단</h2>
-    <div class="team">
-      <div class="member"><b>승준</b><span>SUMO 도로 · 신호 · 경로</span></div>
-      <div class="member"><b>지원</b><span>일반 차량 · 교통</span></div>
-      <div class="member"><b>서영</b><span>AV 환경 · MDP</span></div>
-      <div class="member"><b>호섭</b><span>학습 · 평가</span></div>
-      <div class="member"><b>지민</b><span>데이터 · 페이지 · 레포</span></div>
     </div>
   </section>
 
 </main>
 
-<footer class="wrap">
-  HexaCross · Team 와플 해적단 · Sungkyunkwan University<br>
-  Based on <a href="https://github.com/bmil-ssu/Artificial-Intelligence-and-Control-for-Autonomous-Driving">bmil-ssu course code</a> · Built with SUMO
+<footer>
+  <div class="wrap">
+    <p>Built on the starter code of Autonomous Driving AI and Control (ICE3052), Sungkyunkwan University.</p>
+    <p>Map data © OpenStreetMap contributors.</p>
+  </div>
 </footer>
 
-<div class="modal" id="modal" aria-hidden="true"><img alt=""></div>
-
 <script>
-  // 스크롤하면 섹션이 나타나는 효과
-  const io = new IntersectionObserver((entries) => {
-    entries.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('on'); io.unobserve(e.target); } });
-  }, { threshold: 0.08 });
-  document.querySelectorAll('.reveal').forEach((el) => io.observe(el));
+  // Video chapters: click to seek, highlight the current scene while playing.
+  const video = document.getElementById('drive');
+  const chapterButtons = [...document.querySelectorAll('.chapters button')];
+  const starts = chapterButtons.map((b) => parseFloat(b.dataset.t));
+  chapterButtons.forEach((b) => b.addEventListener('click', () => {
+    video.currentTime = parseFloat(b.dataset.t);
+    video.play().catch(() => {});
+  }));
+  let lastChapter = -1;
+  function markChapter() {
+    let idx = 0;
+    starts.forEach((s, i) => { if (video.currentTime >= s - 0.05) idx = i; });
+    chapterButtons.forEach((b, i) => b.setAttribute('aria-current', String(i === idx)));
+    if (idx !== lastChapter) {
+      lastChapter = idx;
+      // On phones the chapters are a sideways-scrolling row: keep the current one in view.
+      const list = chapterButtons[idx].closest('ol');
+      if (list.scrollWidth > list.clientWidth) list.scrollTo({ left: chapterButtons[idx].parentElement.offsetLeft - list.offsetLeft });
+    }
+  }
+  video.addEventListener('timeupdate', markChapter);
+  video.addEventListener('seeked', markChapter);
+  markChapter();
 
-  // 목차에서 현재 섹션 표시
-  const links = [...document.querySelectorAll('nav.toc a')];
-  const spy = new IntersectionObserver((entries) => {
-    entries.forEach((e) => {
-      if (!e.isIntersecting) return;
-      links.forEach((a) => a.classList.toggle('active', a.getAttribute('href') === '#' + e.target.id));
+  // Junction sketch: six approaches with road names.
+  (function drawMap() {
+    const svg = document.getElementById('junction-map');
+    const ns = 'http://www.w3.org/2000/svg';
+    const cx = 235, cy = 180, R = 96, reach = 108;
+    const arms = [
+      [90, 'Jungang-daero', 'to Gyodae'], [38, 'Bansong-ro', 'to Allak'], [-8, 'Gobun-ro', 'to Yeonsan Tunnel'],
+      [-95, 'World Cup-daero', 'to Sinri'], [-140, 'Jungang-daero', 'to City Hall'], [172, 'World Cup-daero', 'to Sajik'],
+    ];
+    const el = (name, attrs) => { const n = document.createElementNS(ns, name); for (const k in attrs) n.setAttribute(k, attrs[k]); return n; };
+    for (const [a, road, dir] of arms) {
+      const r = a * Math.PI / 180, dx = Math.cos(r), dy = -Math.sin(r);
+      svg.appendChild(el('line', { x1: cx, y1: cy, x2: cx + dx * R, y2: cy + dy * R, stroke: '#194D3C', 'stroke-width': 7, 'stroke-linecap': 'round' }));
+      const anchor = dx > 0.3 ? 'start' : (dx < -0.3 ? 'end' : 'middle');
+      const x = cx + dx * reach;
+      let y = cy + dy * reach;
+      if (Math.abs(dy) > 0.7) y += dy < 0 ? -22 : 14; else y -= 4;
+      const t1 = el('text', { x, y, 'text-anchor': anchor, 'font-size': 14, 'font-weight': 700, fill: '#18392F' }); t1.textContent = road;
+      const t2 = el('text', { x, y: y + 17, 'text-anchor': anchor, 'font-size': 12, fill: '#49665A' }); t2.textContent = dir;
+      svg.appendChild(t1); svg.appendChild(t2);
+    }
+    svg.appendChild(el('circle', { cx, cy, r: 15, fill: '#194D3C' }));
+  })();
+
+  // Observation bar: 56 values split by what they describe.
+  (function drawObs() {
+    const groups = [[1, 'Own speed'], [20, 'Leader and follower gap and speed, 5 lanes'], [5, 'Lane availability'], [5, 'Lane density'],
+      [6, 'Signal state per approach'], [2, 'Stop-line distance, remaining route'], [2, 'Next turn angle and distance'], [15, 'Lane arrow markings']];
+    const shades = ['#0F3A2C', '#194D3C', '#2B6B4F', '#447C58', '#5E9470', '#7FAE8D', '#A3C7AE', '#C7DECD'];
+    const bar = document.getElementById('obsbar'), legend = document.getElementById('obslegend');
+    groups.forEach(([n, label], i) => {
+      const s = document.createElement('span');
+      s.style.flexGrow = n; s.style.flexBasis = '0'; s.style.background = shades[i];
+      if (i >= 5) s.classList.add('light');
+      if (n >= 2) s.textContent = n;
+      bar.appendChild(s);
+      const li = document.createElement('li');
+      const sw = document.createElement('i'); sw.style.background = shades[i];
+      li.appendChild(sw); li.appendChild(document.createTextNode(`${label} ${n}`));
+      legend.appendChild(li);
     });
-  }, { rootMargin: '-45% 0px -50% 0px' });
-  document.querySelectorAll('main section').forEach((s) => spy.observe(s));
-
-  // 이미지 클릭 시 크게 보기
-  const modal = document.getElementById('modal');
-  const modalImg = modal.querySelector('img');
-  document.addEventListener('click', (e) => {
-    const img = e.target.closest('figure img');
-    if (img) { modalImg.src = img.src; modalImg.alt = img.alt; modal.classList.add('open'); return; }
-    if (e.target.closest('#modal')) modal.classList.remove('open');
-  });
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') modal.classList.remove('open'); });
+  })();
 </script>
 </body>
 </html>
