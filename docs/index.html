@@ -73,7 +73,9 @@
   h3 { font-size: 20px; line-height: 1.4; margin: 0 0 10px; font-weight: 700; }
   h4 { font-size: 14px; line-height: 1.4; margin: 0; font-weight: 600; }
   p { margin: 0 0 16px; }
-  .intro { color: var(--gray); max-width: 68ch; }
+  .intro { color: var(--gray); max-width: 980px; }
+  /* One sentence per line on wide screens; flows as normal text on phones */
+  .s { display: block; text-wrap: balance; }
   .caption { color: var(--gray); font-size: 14px; line-height: 1.6; margin: 12px 0 0; }
 
   /* Shared cards */
@@ -360,6 +362,7 @@
     .fw > .arr { justify-self: center; transform: rotate(90deg); }
     .thumb { min-height: 180px; }
     .jump .wrap { padding-top: 11px; padding-bottom: 11px; }
+    .s { display: inline; }
     .obs-legend { grid-template-columns: minmax(0, 1fr); }
     .obsbar span { font-size: 12px; }
     .stages { grid-template-columns: minmax(0, 1fr); gap: 12px; }
@@ -479,7 +482,7 @@
         </ol>
       </div>
     </div>
-    <p class="caption">The final model (RL4) drives the full 6.7&nbsp;km test loop (loop B) in SUMO; 23 minutes of driving shown in 56 seconds. Click a scene to jump to it.</p>
+    <p class="caption"><span class="s">The final model (RL4) drives the full 6.7&nbsp;km test loop (loop B) in SUMO; 23 minutes of driving shown in 56 seconds.</span> <span class="s">Click a scene to jump to it.</span></p>
   </section>
 
   <section id="overview" class="overview">
@@ -599,7 +602,7 @@
 
   <section id="traffic">
     <h2>Driving among realistic traffic</h2>
-    <p class="intro">Junction demand follows Busan's 2025 traffic survey (hourly, by vehicle class) for all 25 movements. Background flows were added on the rest of the AV's test loop.</p>
+    <p class="intro"><span class="s">Junction demand follows Busan's 2025 traffic survey (hourly, by vehicle class) for all 25 movements.</span> <span class="s">Background flows were added on the rest of the AV's test loop.</span></p>
     <div class="grid3" style="margin-top: 24px;">
       <div class="card">
         <h3 class="card-head"><span class="badge md t-gray"><svg class="ico"><use href="#i-car"/></svg></span>Junction demand</h3>
@@ -669,7 +672,7 @@
 
   <section id="mdp">
     <h2>Observation, action and reward</h2>
-    <p class="intro">Every 0.5&nbsp;s the AV reads a 56-dimensional observation and outputs two actions: acceleration and lane change. The bar splits the 56 values by what they describe.</p>
+    <p class="intro"><span class="s">Every 0.5&nbsp;s the AV reads a 56-dimensional observation and outputs two actions: acceleration and lane change.</span> <span class="s">The bar splits the 56 values by what they describe.</span></p>
     <div class="obsbar" id="obsbar" aria-hidden="true"></div>
     <ul class="obs-legend" id="obslegend"></ul>
     <div class="ar">
@@ -745,7 +748,7 @@
 
   <section id="training">
     <h2>Training: imitation first, then PPO</h2>
-    <p class="intro">PPO with reward alone did not learn to change lanes before diverges, so we switched to imitation learning from an expert (BC, then DAgger) and <span class="nw">fine-tuned</span> with PPO. The last two steps fixed the environment and then where the car stops.</p>
+    <p class="intro"><span class="s">PPO with reward alone did not learn to change lanes before diverges.</span> <span class="s">So we started with imitation learning from an expert (BC, then DAgger) and <span class="nw">fine-tuned</span> with PPO.</span> <span class="s">The last two steps fixed the environment and then where the car stops.</span></p>
     <ol class="stages" style="list-style: none; padding: 0;">
       <li class="stage">
         <div class="top">
@@ -814,7 +817,7 @@
         </div>
       </li>
     </ol>
-    <p class="caption">Routes and demand differ between steps, so compare the numbers within a card, not across cards. * Re-measured after fixing a seed bug in the evaluation script that made runs repeat (<a href="https://github.com/jimin326/HexaCross/pull/19">PR #19</a>).</p>
+    <p class="caption"><span class="s">Routes and demand differ between steps, so compare the numbers within a card, not across cards.</span> <span class="s">* Re-measured after fixing a seed bug in the evaluation script that made runs repeat.</span></p>
   </section>
 
   <section id="results">
@@ -846,7 +849,7 @@
 
   <section id="dataset">
     <h2>Dataset: 10,647,162 transitions</h2>
-    <p class="intro" style="margin-bottom: 24px;">3,600 episodes driven by the RL2 policy (the model before the final <span class="nw">stopping-distance</span> fix), logged every 0.5&nbsp;s. Each row pairs the AV's partial observation with the simulator's privileged state.</p>
+    <p class="intro" style="margin-bottom: 24px;"><span class="s">3,600 episodes driven by the RL2 policy (the model before the final <span class="nw">stopping-distance</span> fix), logged every 0.5&nbsp;s.</span> <span class="s">Each row pairs the AV's partial observation with the simulator's privileged state.</span></p>
     <div class="split">
       <ul class="cols">
         <li>
@@ -1182,7 +1185,7 @@ ROUTE_SET=loopB MAX_STEPS=6000 LANE_PLAN_RANGE=300 ROAD_DETAILS=driver_styles,ta
             <p>Average acceleration command at the limit: +0.057 → +0.008. The retrained model in the fixed environment, 60 runs: 95.0% arrival, 3.3% collision.</p>
           </div>
         </div>
-        <p class="src">Source: commit b913a2f, <a href="https://github.com/jimin326/HexaCross/blob/main/models/yeonsan_loopB_RL2/README.md">models/yeonsan_loopB_RL2/README.md</a></p>
+        <p class="src">Source: <a href="https://github.com/jimin326/HexaCross/blob/main/models/yeonsan_loopB_RL2/README.md">models/yeonsan_loopB_RL2/README.md</a></p>
       </div>
     </details>
 
@@ -1345,7 +1348,7 @@ ROUTE_SET=loopB MAX_STEPS=6000 LANE_PLAN_RANGE=300 ROAD_DETAILS=driver_styles,ta
             <p>Before the fix, 3 of 3 reproduced waits were logged as <span class="nw">red-light</span> violations. After it, 4 of 4 were logged as teleports and none as violations. Some <span class="nw">red-light</span> counts in older evaluations may have been this error.</p>
           </div>
         </div>
-        <p class="src">Source: <a href="https://github.com/jimin326/HexaCross/pull/18">PR #18</a></p>
+        <p class="src">Source: <a href="https://github.com/jimin326/HexaCross/blob/main/DATA_FORMAT.md">DATA_FORMAT.md</a> (<code>event.teleported</code>)</p>
       </div>
     </details>
   </section>
