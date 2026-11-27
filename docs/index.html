@@ -1086,7 +1086,7 @@ ROUTE_SET=loopB MAX_STEPS=6000 LANE_PLAN_RANGE=300 ROAD_DETAILS=driver_styles,ta
           <span class="badge sm t-green"><svg class="ico"><use href="#i-wrench"/></svg></span>
           <span>Relabeled 6,356 expert actions: decelerate from 60&nbsp;m out to 4&nbsp;m/s at the merge entry</span>
         </span>
-        <span class="fs-res"><small>Collisions in the training condition (240 runs each)</small><span class="ba"><s>8</s><span class="to">→</span>0</span></span>
+        <span class="fs-res"><small>Collisions at the merge in 960&nbsp;runs (sr1, then RL4)</small><span class="ba"><s>33</s><span class="to">→</span>0</span></span>
         <span class="toggle" aria-hidden="true"><svg class="ico" style="width: 14px; height: 9px;"><use href="#i-chev"/></svg></span>
       </summary>
       <div class="fix-body">
@@ -1129,7 +1129,7 @@ ROUTE_SET=loopB MAX_STEPS=6000 LANE_PLAN_RANGE=300 ROAD_DETAILS=driver_styles,ta
           </div>
           <div>
             <h3>How we checked</h3>
-            <p>Training condition with all road details, 240 runs: 8 collisions for sr1 → 0 for RL2. RL2 also includes the speed fix, another DAgger round and PPO, so the drop is not from this relabel alone.</p>
+            <p>Same 960-run evaluation: 33 collisions at this merge for sr1 → 0 for the final model RL4. In the training condition alone (240&nbsp;runs), all collisions fell from 8 for sr1 to 0 for RL2. The later models also include the speed fix, another DAgger round and PPO, so the drop is not from this relabel alone.</p>
           </div>
         </div>
         <p class="src">Source: <a href="https://github.com/jimin326/HexaCross/blob/main/docs/experiments/loopB_log.md">loopB_log.md</a> (training log), 11-23 merge analysis</p>
