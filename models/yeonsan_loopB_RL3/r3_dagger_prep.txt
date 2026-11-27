@@ -1,0 +1,13 @@
+22:15 DAgger r3a (학생 results/bcfix/model.pt, SEED 91) 시작
+steps 466259 lane_cls [170, 465919, 170] 학생 결과 {'arrival': 152, 'collision': 7, 'wrong_lane': 1}
+{"ego_0": {"arrival": 152, "collision": 7, "wrong_lane": 1}}
+data/lf/r3a.npz yellow 4848 stop 4007 go 268
+data/lf/r3ay.npz 신호 없는 회전 접근 21906 감속으로 보정 3308
+495575 → 501015 차로 변경 표본 340 정답 분포 [170, 500675, 170]
+23:07 DAgger r3b (학생 models/yeonsan_loopB_RL2/model.pt, SEED 92) 시작
+steps 477121 lane_cls [170, 476552, 399] 학생 결과 {'arrival': 159, 'collision': 1}
+{"ego_0": {"arrival": 159, "collision": 1}}
+data/lf/r3b.npz yellow 4892 stop 4166 go 285
+data/lf/r3by.npz 신호 없는 회전 접근 22327 감속으로 보정 2388
+503853 → 512957 차로 변경 표본 569 정답 분포 [170, 512388, 399]
+00:00 start r3

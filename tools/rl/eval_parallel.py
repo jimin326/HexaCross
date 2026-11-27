@@ -41,6 +41,9 @@ usage:
     mean_speed     주행 중 평균 속도 (m/s)
     stop_time_s    속도 0.1 m/s 미만으로 서 있던 시간 (s/주행, 신호 대기 포함)
     min_gap        주행 중 앞차와의 최소 거리 (m, 앞차가 감지된 주행만)
+    stop_gap_veh   멈춰 설 때(속도가 0.1 m/s 아래로 떨어진 스텝) 앞차와의 범퍼 간격 중앙값 (m, 앞차 40 m 안)
+    stop_gap_line  멈춰 설 때 적·황색 정지선까지 거리 중앙값 (m, 앞차가 정지선보다 멀 때)
+                   (같은 차로 배경 차는 범퍼 간격 약 2 m에 선다)
 """
 import argparse
 import datetime
@@ -93,6 +96,7 @@ def _worker(task):
                 fails += 1
                 continue
             done, steps, speeds, stopped, gaps, info, te = False, 0, [], 0, [], {}, False
+            stop_veh, stop_line, prev_v = [], [], 99.0
             last = None                      # ego의 마지막 위치 (충돌하면 ego가 지워지므로 직전 스텝 값)
             while not done:
                 obs, _, te, tr, info = env.step(agent.predict(obs, deterministic=True))
@@ -100,6 +104,19 @@ def _worker(task):
                 steps += 1
                 try:
                     last = (traci.vehicle.getRoadID(env.ego_id), *traci.vehicle.getPosition(env.ego_id))
+                except Exception:
+                    pass
+                try:                         # 멈춰 선 순간의 앞차 간격 · 정지선 거리 (난수를 쓰지 않음)
+                    v_now = traci.vehicle.getSpeed(env.ego_id)
+                    if v_now < 0.1 <= prev_v:
+                        lead = traci.vehicle.getLeader(env.ego_id, 40.0)
+                        tls = traci.vehicle.getNextTLS(env.ego_id)
+                        ld = tls[0][2] if tls else None
+                        if lead and lead[0] and (ld is None or lead[1] + 2.5 < ld):
+                            stop_veh.append(float(lead[1]) + traci.vehicle.getMinGap(env.ego_id))
+                        elif ld is not None and ld < 40.0 and tls[0][3] in "rRyYu":
+                            stop_line.append(float(ld))
+                    prev_v = v_now
                 except Exception:
                     pass
                 if info.get("speed") is not None:
@@ -116,6 +133,8 @@ def _worker(task):
                         "mean_speed": sum(speeds) / len(speeds) if speeds else None,
                         "stop_time_s": stopped * dt,
                         "min_gap": min(gaps) if gaps else None,
+                        "stop_veh": [round(x, 2) for x in stop_veh],
+                        "stop_line": [round(x, 2) for x in stop_line],
                         "seed": ep_seed,
                         "last_edge": last[0] if last else None,
                         "x": round(last[1], 1) if last else None,
@@ -282,6 +301,8 @@ def main():
         sp, sp_n = _mean([e["mean_speed"] for e in eps])
         st, st_n = _mean([e["stop_time_s"] for e in eps])
         mg, mg_n = _mean([e["min_gap"] for e in eps])
+        sv = sorted(x for e in eps for x in e.get("stop_veh", []))
+        sl = sorted(x for e in eps for x in e.get("stop_line", []))
         res[routes7.NAMES.get(rid, rid)] = {
             "episodes": len(eps), "insert_fail": per[rid]["fails"], **ends,
             # 완주 못 한 에피소드: record_routes.py에 seed를 주면 다시 볼 수 있다
@@ -290,7 +311,9 @@ def main():
             "metrics": {"travel_time_s": tt, "travel_time_s_n": tt_n,
                         "mean_speed": sp, "mean_speed_n": sp_n,
                         "stop_time_s": st, "stop_time_s_n": st_n,
-                        "min_gap": mg, "min_gap_n": mg_n}}
+                        "min_gap": mg, "min_gap_n": mg_n,
+                        "stop_gap_veh": sv[len(sv) // 2] if sv else None, "stop_gap_veh_n": len(sv),
+                        "stop_gap_line": sl[len(sl) // 2] if sl else None, "stop_gap_line_n": len(sl)}}
     os.makedirs(a.out_dir, exist_ok=True)
     out_json = os.path.join(a.out_dir, "eval.json")
     with open(out_json, "w", encoding="utf-8") as f:

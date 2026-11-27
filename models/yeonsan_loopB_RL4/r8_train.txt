@@ -1,0 +1,112 @@
+[init] checkpoints/il/bcstop6.pt
+obs_dim=56 envs=4 batch=4096 lr=1.5e-05
+[bc] 모방학습 손실 데이터 4753738개, 가중치 1.0, 업데이트당 20번
+[update    1] steps=    4096 rew=0.00 최근0회 완주0 충돌0 신호0 차로0 kl=-0.0000 17s
+[update    2] steps=    8192 rew=0.00 최근0회 완주0 충돌0 신호0 차로0 kl=0.0000 17s
+[update    3] steps=   12288 rew=72.40 최근2회 완주2 충돌0 신호0 차로0 kl=-0.0000 21s
+[update    4] steps=   16384 rew=72.63 최근4회 완주4 충돌0 신호0 차로0 kl=-0.0000 25s
+[update    5] steps=   20480 rew=72.63 최근4회 완주4 충돌0 신호0 차로0 kl=-0.0000 24s
+[update    6] steps=   24576 rew=74.93 최근6회 완주6 충돌0 신호0 차로0 kl=-0.0000 27s
+[update    7] steps=   28672 rew=74.00 최근8회 완주8 충돌0 신호0 차로0 kl=-0.0000 25s
+[update    8] steps=   32768 rew=74.00 최근8회 완주8 충돌0 신호0 차로0 kl=0.0000 48s
+[update    9] steps=   36864 rew=73.93 최근10회 완주10 충돌0 신호0 차로0 kl=-0.0000 63s
+[update   10] steps=   40960 rew=74.44 최근12회 완주12 충돌0 신호0 차로0 kl=-0.0000 60s
+[update   11] steps=   45056 rew=74.44 최근12회 완주12 충돌0 신호0 차로0 kl=-0.0000 58s
+[update   12] steps=   49152 rew=74.14 최근13회 완주13 충돌0 신호0 차로0 kl=-0.0000 60s
+[update   13] steps=   53248 rew=73.66 최근16회 완주16 충돌0 신호0 차로0 kl=0.0000 63s
+[update   14] steps=   57344 rew=73.66 최근16회 완주16 충돌0 신호0 차로0 kl=-0.0000 58s
+[update   15] steps=   61440 rew=73.95 최근17회 완주17 충돌0 신호0 차로0 kl=0.0000 62s
+[update   16] steps=   65536 rew=73.78 최근20회 완주20 충돌0 신호0 차로0 kl=0.0000 63s
+[update   17] steps=   69632 rew=68.69 최근21회 완주20 충돌1 신호0 차로0 kl=0.0000 56s
+[update   18] steps=   73728 rew=69.49 최근22회 완주21 충돌1 신호0 차로0 kl=0.0000 59s | 위험재시작1회 완주0 충돌1 차로0
+[update   19] steps=   77824 rew=69.87 최근23회 완주22 충돌1 신호0 차로0 kl=0.0000 59s | 위험재시작1회 완주0 충돌1 차로0
+[update   20] steps=   81920 rew=61.27 최근27회 완주24 충돌3 신호0 차로0 kl=0.0000 60s | 위험재시작1회 완주0 충돌1 차로0
+[update   21] steps=   86016 rew=62.12 최근28회 완주25 충돌3 신호0 차로0 kl=0.0069 124s | 위험재시작1회 완주0 충돌1 차로0
+[update   22] steps=   90112 rew=58.82 최근29회 완주25 충돌4 신호0 차로0 kl=0.0117 119s | 위험재시작1회 완주0 충돌1 차로0
+[update   23] steps=   94208 rew=59.87 최근31회 완주27 충돌4 신호0 차로0 kl=0.0062 66s | 위험재시작1회 완주0 충돌1 차로0
+[update   24] steps=   98304 rew=56.94 최근33회 완주28 충돌5 신호0 차로0 kl=0.0062 23s | 위험재시작1회 완주0 충돌1 차로0
+[update   25] steps=  102400 rew=57.68 최근34회 완주29 충돌5 신호0 차로0 kl=0.0056 19s | 위험재시작2회 완주1 충돌1 차로0
+[update   26] steps=  106496 rew=57.68 최근34회 완주29 충돌5 신호0 차로0 kl=0.0065 21s | 위험재시작3회 완주2 충돌1 차로0
+[update   27] steps=  110592 rew=58.28 최근35회 완주30 충돌5 신호0 차로0 kl=0.0054 24s | 위험재시작3회 완주2 충돌1 차로0
+[update   28] steps=  114688 rew=58.97 최근36회 완주31 충돌5 신호0 차로0 kl=0.0051 25s | 위험재시작4회 완주3 충돌1 차로0
+[update   29] steps=  118784 rew=59.66 최근37회 완주32 충돌5 신호0 차로0 kl=0.0077 124s | 위험재시작5회 완주4 충돌1 차로0
+[update   30] steps=  122880 rew=59.66 최근37회 완주32 충돌5 신호0 차로0 kl=0.0048 116s | 위험재시작5회 완주4 충돌1 차로0
+[update   31] steps=  126976 rew=58.91 최근41회 완주35 충돌6 신호0 차로0 kl=0.0079 131s | 위험재시작6회 완주4 충돌2 차로0
+[update   32] steps=  131072 rew=56.74 최근43회 완주36 충돌7 신호0 차로0 kl=0.0124 129s | 위험재시작9회 완주4 충돌5 차로0
+[update   33] steps=  135168 rew=56.74 최근43회 완주36 충돌7 신호0 차로0 kl=0.0131 120s | 위험재시작10회 완주4 충돌6 차로0
+[update   34] steps=  139264 rew=57.34 최근45회 완주38 충돌7 신호0 차로0 kl=0.0085 124s | 위험재시작12회 완주5 충돌7 차로0
+[update   35] steps=  143360 rew=56.31 최근47회 완주39 충돌8 신호0 차로0 kl=0.0048 119s | 위험재시작12회 완주5 충돌7 차로0
+[update   36] steps=  147456 rew=56.31 최근47회 완주39 충돌8 신호0 차로0 kl=0.0087 127s | 위험재시작12회 완주5 충돌7 차로0
+[update   37] steps=  151552 rew=54.93 최근49회 완주40 충돌8 신호0 차로1 kl=0.0063 115s | 위험재시작13회 완주6 충돌7 차로0
+Process SpawnProcess-4:
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.13/multiprocessing/process.py", line 313, in _bootstrap
+    self.run()
+    ~~~~~~~~^^
+  File "/usr/local/lib/python3.13/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/claude-0/-home-user-HexaCross/24027832-5621-5d90-929a-fa67f688310f/scratchpad/ymerge/tools/rl/residual_train.py", line 187, in worker
+    cmd, data = remote.recv()
+                ~~~~~~~~~~~^^
+  File "/usr/local/lib/python3.13/multiprocessing/connection.py", line 255, in recv
+    buf = self._recv_bytes()
+  File "/usr/local/lib/python3.13/multiprocessing/connection.py", line 435, in _recv_bytes
+    buf = self._recv(4)
+  File "/usr/local/lib/python3.13/multiprocessing/connection.py", line 404, in _recv
+    raise EOFError
+EOFError
+Process SpawnProcess-1:
+Process SpawnProcess-3:
+Process SpawnProcess-2:
+Traceback (most recent call last):
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.13/multiprocessing/process.py", line 313, in _bootstrap
+    self.run()
+    ~~~~~~~~^^
+  File "/usr/local/lib/python3.13/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/claude-0/-home-user-HexaCross/24027832-5621-5d90-929a-fa67f688310f/scratchpad/ymerge/tools/rl/residual_train.py", line 187, in worker
+    cmd, data = remote.recv()
+                ~~~~~~~~~~~^^
+  File "/usr/local/lib/python3.13/multiprocessing/connection.py", line 255, in recv
+    buf = self._recv_bytes()
+  File "/usr/local/lib/python3.13/multiprocessing/connection.py", line 435, in _recv_bytes
+    buf = self._recv(4)
+  File "/usr/local/lib/python3.13/multiprocessing/connection.py", line 404, in _recv
+    raise EOFError
+EOFError
+  File "/usr/local/lib/python3.13/multiprocessing/process.py", line 313, in _bootstrap
+    self.run()
+    ~~~~~~~~^^
+  File "/usr/local/lib/python3.13/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/claude-0/-home-user-HexaCross/24027832-5621-5d90-929a-fa67f688310f/scratchpad/ymerge/tools/rl/residual_train.py", line 187, in worker
+    cmd, data = remote.recv()
+                ~~~~~~~~~~~^^
+  File "/usr/local/lib/python3.13/multiprocessing/connection.py", line 255, in recv
+    buf = self._recv_bytes()
+  File "/usr/local/lib/python3.13/multiprocessing/connection.py", line 435, in _recv_bytes
+    buf = self._recv(4)
+  File "/usr/local/lib/python3.13/multiprocessing/connection.py", line 404, in _recv
+    raise EOFError
+EOFError
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.13/multiprocessing/process.py", line 313, in _bootstrap
+    self.run()
+    ~~~~~~~~^^
+  File "/usr/local/lib/python3.13/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/claude-0/-home-user-HexaCross/24027832-5621-5d90-929a-fa67f688310f/scratchpad/ymerge/tools/rl/residual_train.py", line 187, in worker
+    cmd, data = remote.recv()
+                ~~~~~~~~~~~^^
+  File "/usr/local/lib/python3.13/multiprocessing/connection.py", line 255, in recv
+    buf = self._recv_bytes()
+  File "/usr/local/lib/python3.13/multiprocessing/connection.py", line 435, in _recv_bytes
+    buf = self._recv(4)
+  File "/usr/local/lib/python3.13/multiprocessing/connection.py", line 404, in _recv
+    raise EOFError
+EOFError

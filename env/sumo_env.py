@@ -1644,7 +1644,25 @@ class SumoHighwayEnv(gym.Env):
                 lead = traci.vehicle.getLeader(self.ego_id, float(self.rw.get("idle_gap", 30.0)))
                 at_line = (signal_after is not None and signal_after[3] not in "Gg"
                            and signal_after[2] <= float(self.rw.get("idle_stopline", 15.0)))
-                if self.rw.get("idle_mode") == "free":
+                if self.rw.get("idle_mode") == "close":
+                    # 앞차(같은 차로, idle_gap m 안) 또는 적·황색 정지선(idle_gap m 안)이 있을 때만,
+                    # 그 앞에 비워 둔 거리가 idle_free_min(m)보다 길면 idle_free_ramp(m)에 걸쳐 idle_penalty까지 감점.
+                    # 앞에 아무것도 없이 서 있는 경우(비보호 회전·합류에서 양보 등)는 감점하지 않는다.
+                    # 앞차 거리는 getLeader 값(내 minGap 2.5 m를 뺀 거리)이다.
+                    # 허용 거리는 앞차(idle_free_min_veh, 없으면 idle_free_min)와 정지선(idle_free_min_line)을 따로 둘 수 있다.
+                    g = float(self.rw.get("idle_gap", 30.0))
+                    fm = float(self.rw.get("idle_free_min", 10.0))
+                    lead = traci.vehicle.getLeader(self.ego_id, g)
+                    excess = []                     # 기준마다 (비워 둔 거리 - 허용 거리). 가장 작은 것(가까운 기준)으로 감점
+                    if lead is not None and lead[0]:
+                        excess.append(max(float(lead[1]), 0.0) - float(self.rw.get("idle_free_min_veh", fm)))
+                    if (signal_after is not None and signal_after[3] not in "Gg"
+                            and float(signal_after[2]) <= g):
+                        excess.append(max(float(signal_after[2]), 0.0) - float(self.rw.get("idle_free_min_line", fm)))
+                    if excess and min(excess) > 0.0:
+                        ramp = max(float(self.rw.get("idle_free_ramp", 50.0)), 1e-6)
+                        reward -= ip * min(min(excess) / ramp, 1.0)
+                elif self.rw.get("idle_mode") == "free":
                     # 앞에 비어 있는 거리(정지선 또는 앞차까지)에 비례해 감점.
                     # 정지선·앞차 바로 뒤(idle_free_min 이내)에 서 있으면 0, 50 m 이상 비워 두고 서 있으면 ip.
                     g = float(self.rw.get("idle_gap", 100.0))
