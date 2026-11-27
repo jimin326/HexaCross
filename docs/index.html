@@ -787,18 +787,18 @@
         <div class="top">
           <div class="hd"><span class="badge md t-green"><svg class="ico"><use href="#i-repeat"/></svg></span>Step 4</div>
           <h3><span class="nw">Single-policy</span> PPO + BC loss (sr1)</h3>
-          <span class="cond">6.7&nbsp;km loop · 1.0× demand · 480 runs *</span>
+          <span class="cond">6.7&nbsp;km loop + added traffic · 960 runs *</span>
         </div>
         <div class="res">
-          <span class="arr-n">92.71%</span><small>arrival</small>
-          <div class="col">4.38% collision</div>
+          <span class="arr-n">94.27%</span><small>arrival</small>
+          <div class="col">4.06% collision</div>
         </div>
       </li>
       <li class="stage">
         <div class="top">
           <div class="hd"><span class="badge md t-green"><svg class="ico"><use href="#i-gauge"/></svg></span>Step 5</div>
           <h3>RL2: retrained after the speed-limit clip was removed</h3>
-          <span class="cond">6.7&nbsp;km loop + added traffic · 4 conditions · 960 runs</span>
+          <span class="cond">Same evaluation · 4 conditions · 960 runs</span>
         </div>
         <div class="res">
           <span class="arr-n">98.75%</span><small>arrival</small>
@@ -817,7 +817,7 @@
         </div>
       </li>
     </ol>
-    <p class="caption"><span class="s">Steps 1 to 3 were tested on seven short routes through the junction; from step 4 on, the car drives the full 6.7&nbsp;km loop.</span> <span class="s">Routes and demand differ between steps, so compare the numbers within a card, not across cards.</span> <span class="s">* Re-measured after fixing a seed bug in the evaluation script that made runs repeat.</span></p>
+    <p class="caption"><span class="s">Steps 1 to 3 were tested on seven short routes through the junction, each with its own traffic level, so compare those numbers within a card.</span> <span class="s">Steps 4 to 6 share one harder test: the full 6.7&nbsp;km loop with traffic added on the surrounding roads, 960&nbsp;runs.</span> <span class="s">* Step 4 was trained before that traffic was added. 33 of its 39 collisions were at one unsignalized merge, which step 5 fixed.</span></p>
   </section>
 
   <section id="results">
