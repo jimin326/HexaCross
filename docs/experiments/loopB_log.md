@@ -539,3 +539,9 @@
 - 검사 통과: 묶음마다 4개 파일, 에피소드 번호 400개씩·중복 0, 행 수 meta = npz = parquet, 마지막 행 종료 표시.
 - 실패 위치: 충돌 26 거제천로 신호 구간, 10 반송로·쌍미천로(#31에서 정지선이 옮겨진 곳), 차로 이탈 6도 반송로·쌍미천로. 모델이 #31 지도로 학습하지 않은 영향으로 본다 (같은 지도 960회 평가는 충돌 0.94%). 충돌 1.17%는 팀 목표(1%)보다 높고 수업 기준(5%)보다는 낮다.
 - `DATA_FORMAT.md`를 이 데이터셋(제출용) 기준으로 바꾸고, `v2/loopB_RL4/`(#31 이전 지도)와 `v2/loopB/`(RL2)는 비교·보관용으로 남김.
+
+### 11-28 Hugging Face 정리 · LMS 제출본
+- HF `hoseob0902/HexaCross-dataset`에서 `v2/loopB_RL4/`(RL4, #31 이전 지도)와 `v2/loopB/`(RL2)를 지움 (사용자 요청). 남은 데이터셋은 제출용 `v2/loopB_RL4_route31/`뿐이고, 데이터셋 카드도 이것만으로 다시 씀.
+- LMS 제출 데이터 압축본 `submission/와플해적단_data.zip`(537 MB, 9묶음 × 앞 30 에피소드 = 782,513 transition, parquet + npz + meta.json + README)을 HF에 올림.
+- LMS 제출본(코드 zip · 데이터 zip)을 만드는 스크립트는 개인 브랜치 `hoseob/lms-submission`의 `tools/make_lms_zip.py` (main에는 넣지 않음).
+- `DATA_FORMAT.md`, `README.md`, 프로젝트 페이지(`docs/index.html`), `docs/project_rules.md`의 데이터셋 숫자·경로를 `v2/loopB_RL4_route31/`(10,454,044 transition) 기준으로 맞춤.

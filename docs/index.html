@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>HexaCross</title>
-<meta name="description" content="Teaching a self-driving car to cross Busan's six-way Yeonsan junction: a SUMO environment rebuilt from the real junction, an AV trained with imitation learning and PPO, and 10,654,526 driving transitions.">
+<meta name="description" content="Teaching a self-driving car to cross Busan's six-way Yeonsan junction: a SUMO environment rebuilt from the real junction, an AV trained with imitation learning and PPO, and 10,454,044 driving transitions.">
 <meta property="og:title" content="HexaCross">
 <meta property="og:description" content="Teaching a self-driving car to cross Busan's six-way Yeonsan junction.">
 <meta property="og:image" content="assets/rl4_poster.jpg">
@@ -494,7 +494,7 @@
     <div>
       <h2>Overview</h2>
       <p>We rebuilt Busan's Yeonsan junction in the SUMO traffic simulator and trained an autonomous vehicle (AV) to drive through it. Six roads meet here, so the AV has to pick the lane for its exit early, then merge, yield and change lanes among background traffic matched to real counts.</p>
-      <p>The AV first imitated an expert driver (behavior cloning, then DAgger) and was then <span class="nw">fine-tuned</span> with reinforcement learning (PPO). In 1,920 evaluation runs the final policy reached its destination 98.54% of the time with a 0.83% collision rate. We release 10,654,526 transitions on Hugging Face.</p>
+      <p>The AV first imitated an expert driver (behavior cloning, then DAgger) and was then <span class="nw">fine-tuned</span> with reinforcement learning (PPO). In 1,920 evaluation runs the final policy reached its destination 98.54% of the time with a 0.83% collision rate. We release 10,454,044 transitions on Hugging Face.</p>
     </div>
     <figure class="map">
       <svg id="junction-map" viewBox="0 0 470 360" role="img" aria-labelledby="map-title"><title id="map-title">Sketch of the six roads that meet at Yeonsan junction</title></svg>
@@ -566,7 +566,7 @@
           <svg class="down ico" style="width: 12px; height: 16px;" viewBox="0 0 12 18"><use href="#i-down"/></svg>
           <div class="mt"><span class="badge xs t-green"><svg class="ico"><use href="#i-database"/></svg></span><span><b>3,600 episodes</b><span>one row every 0.5&nbsp;s</span></span></div>
           <svg class="down ico" style="width: 12px; height: 16px;" viewBox="0 0 12 18"><use href="#i-down"/></svg>
-          <div class="out"><span class="badge t-white"><svg class="ico"><use href="#i-cloud"/></svg></span><span><b>10,654,526 transitions</b><span>Hugging Face · Parquet, JSONL, NPZ</span></span></div>
+          <div class="out"><span class="badge t-white"><svg class="ico"><use href="#i-cloud"/></svg></span><span><b>10,454,044 transitions</b><span>Hugging Face · Parquet, JSONL, NPZ</span></span></div>
         </div>
       </div>
     </div>
@@ -853,8 +853,8 @@
   </section>
 
   <section id="dataset">
-    <h2>Dataset: 10,654,526 transitions</h2>
-    <p class="intro" style="margin-bottom: 24px;"><span class="s">3,600 episodes driven by the final RL4 policy, logged every 0.5&nbsp;s.</span> <span class="s">Each row pairs the AV's partial observation with the simulator's privileged state.</span> <span class="s">An earlier set driven by RL2 (10,647,162 transitions, same seeds) stays in <code>v2/loopB/</code>.</span></p>
+    <h2>Dataset: 10,454,044 transitions</h2>
+    <p class="intro" style="margin-bottom: 24px;"><span class="s">3,600 episodes driven by the final RL4 policy, logged every 0.5&nbsp;s.</span> <span class="s">Each row pairs the AV's partial observation with the simulator's privileged state.</span> <span class="s">Collected on the current map (6,646&nbsp;m loop), in <code>v2/loopB_RL4_route31/</code>.</span></p>
     <div class="split">
       <ul class="cols">
         <li>
@@ -885,15 +885,15 @@
       <div>
         <h3 style="font-size: 16px;">9 shards of 400 episodes, each in three formats</h3>
         <ul class="files">
-          <li><code>.parquet</code><span>7.07&nbsp;GB, columnar, read only what you need</span></li>
-          <li><code>.jsonl.gz</code><span>9.80&nbsp;GB, one transition per line</span></li>
-          <li><code>.npz</code><span>0.90&nbsp;GB, arrays for offline RL and BC</span></li>
+          <li><code>.parquet</code><span>6.98&nbsp;GB, columnar, read only what you need</span></li>
+          <li><code>.jsonl.gz</code><span>9.68&nbsp;GB, one transition per line</span></li>
+          <li><code>.npz</code><span>0.89&nbsp;GB, arrays for offline RL and BC</span></li>
           <li><code>.meta.json</code><span>Collection settings and code tables</span></li>
         </ul>
       </div>
     </div>
 <pre><code>import pandas as pd
-url = "hf://datasets/hoseob0902/HexaCross-dataset/v2/loopB_RL4/loopB_RL4_s11.parquet"
+url = "hf://datasets/hoseob0902/HexaCross-dataset/v2/loopB_RL4_route31/loopB_RL4_route31_s11.parquet"
 df = pd.read_parquet(url)</code></pre>
     <p class="links"><a href="https://huggingface.co/datasets/hoseob0902/HexaCross-dataset">View on Hugging Face</a><a href="https://github.com/jimin326/HexaCross/blob/main/DATA_FORMAT.md">Full column reference (DATA_FORMAT.md)</a></p>
   </section>
@@ -910,7 +910,7 @@ ROUTE_SET=loopB MAX_STEPS=6000 LANE_PLAN_RANGE=300 ROAD_DETAILS=driver_styles,ta
 <span class="c"># Collect transitions: seed 11, 400 runs (how the released dataset was made)</span>
 ROUTE_SET=loopB MAX_STEPS=6000 LANE_PLAN_RANGE=300 ROAD_DETAILS=driver_styles,taxi,short_stops \
   python collect_pomdp_data.py --model models/yeonsan_loopB_RL4/model.pt \
-  --episodes 400 --workers 4 --seed 11 --name loopB_RL4_s11</code></pre>
+  --episodes 400 --workers 4 --seed 11 --name loopB_RL4_route31_s11</code></pre>
     <p class="small muted">Windows commands and more options are in the README files on GitHub.</p>
   </section>
 
