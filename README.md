@@ -64,11 +64,11 @@ How to re-record the driving video: [`docs/videos/loopB_RL4/README.md`](./docs/v
 
 ## Dataset
 
-10,654,526 transitions from 3,600 episodes, on [Hugging Face](https://huggingface.co/datasets/hoseob0902/HexaCross-dataset) (`v2/loopB_RL4/`). Each row pairs the AV's partial observation with the simulator's privileged state. The data was collected with the final `models/yeonsan_loopB_RL4` policy. An earlier set collected with `models/yeonsan_loopB_RL2` (10,647,162 transitions, same seeds) stays in `v2/loopB/`.
+10,454,044 transitions from 3,600 episodes, on [Hugging Face](https://huggingface.co/datasets/hoseob0902/HexaCross-dataset) (`v2/loopB_RL4_route31/`). Each row pairs the AV's partial observation with the simulator's privileged state. The data was collected with the final `models/yeonsan_loopB_RL4` policy on the current map (PR #31, 6,646 m loop).
 
 ```python
 import pandas as pd
-url = "hf://datasets/hoseob0902/HexaCross-dataset/v2/loopB_RL4/loopB_RL4_s11.parquet"
+url = "hf://datasets/hoseob0902/HexaCross-dataset/v2/loopB_RL4_route31/loopB_RL4_route31_s11.parquet"
 df = pd.read_parquet(url)
 ```
 
@@ -76,7 +76,7 @@ Collect one shard yourself (seed 11, 400 episodes; the command that made the rel
 
 ```bash
 ROUTE_SET=loopB MAX_STEPS=6000 LANE_PLAN_RANGE=300 ROAD_DETAILS=driver_styles,taxi,short_stops \
-python collect_pomdp_data.py --model models/yeonsan_loopB_RL4/model.pt --episodes 400 --workers 4 --seed 11 --name loopB_RL4_s11
+python collect_pomdp_data.py --model models/yeonsan_loopB_RL4/model.pt --episodes 400 --workers 4 --seed 11 --name loopB_RL4_route31_s11
 ```
 
 Column definitions: [`DATA_FORMAT.md`](./DATA_FORMAT.md).
@@ -86,7 +86,7 @@ Column definitions: [`DATA_FORMAT.md`](./DATA_FORMAT.md).
 | Folder | Description |
 |---|---|
 | `models/yeonsan_loopB_RL4` | **Final model.** Stops at the right distance from the stop line and the car ahead. The policy that collected the released dataset |
-| `models/yeonsan_loopB_RL2` | Retrained after the speed-limit clip on actions was removed. Collected the earlier dataset in `v2/loopB/` |
+| `models/yeonsan_loopB_RL2` | Retrained after the speed-limit clip on actions was removed. Collected an earlier dataset (since removed from Hugging Face) |
 | `models/yeonsan_loopB_RL3` | Retrained after a seed bug in the evaluation script was fixed |
 | `models/yeonsan_loopB_RL` | First single-network model to complete the loop (sr1) |
 | `models/yeonsan_loopC_RL` | Model for a second loop with more left turns |
