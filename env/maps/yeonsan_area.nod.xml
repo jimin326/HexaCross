@@ -36,7 +36,7 @@
     <node id="436818569" x="1024.05" y="1634.56" type="traffic_light" tl="436818569"/>
     <node id="436843762" x="1456.82" y="2049.74" type="dead_end"/>
     <node id="436859887" x="1714.89" y="28.53" type="traffic_light" tl="436859887"/>
-    <node id="436859903" x="1281.24" y="1881.28" type="priority"/>
+    <node id="436859903" x="1288.60" y="1888.30" type="priority"/>
     <node id="436872940" x="967.77" y="253.51" type="priority"/>
     <node id="436872945" x="573.31" y="823.88" type="priority"/>
     <node id="4633975089" x="444.67" y="909.96" type="traffic_light" tl="4633975089"/>
@@ -50,7 +50,7 @@
     <node id="990000009999" x="581.70" y="2167.87" type="dead_end"/>
     <node id="990000019999" x="335.06" y="742.68" type="dead_end"/>
     <node id="cluster_14158297210_1773421582" x="1425.06" y="2019.42" type="traffic_light" tl="cluster_14158297210_1773421582"/>
-    <node id="cluster_14158297261_14158297263" x="1269.62" y="1853.77" type="traffic_light" tl="cluster_14158297261_14158297263"/>
+    <node id="cluster_14158297261_14158297263" x="1278.40" y="1871.00" type="traffic_light" tl="cluster_14158297261_14158297263"/>
     <node id="cluster_1772229542_7222328581" x="989.54" y="153.50" type="traffic_light" tl="cluster_1772229542_7222328581"/>
     <node id="cluster_3131958161_4958136016_4958136222" x="343.60" y="1555.82" type="traffic_light" tl="cluster_3131958161_4958136016_4958136222"/>
     <node id="x6_E_in_55" x="811.84" y="1367.38" type="priority" radius="0.50"/>
