@@ -26,7 +26,7 @@ usage:
     fig_routes_<LABEL>.png  경로별로 주행이 끝난 이유 (가로 누적 막대)
 
 신뢰구간: Wilson score 95%. 평가 횟수가 적을수록 구간이 넓다.
-기준 판정: 수업 평가 기준 "Collision Rate < 5%" (project_materials/6_Project_Evaluation.md).
+기준 판정: 수업 평가 기준 "Collision Rate < 5%" (수업 프로젝트 평가 자료).
     충돌률 신뢰구간 상한까지 5% 미만이면 "통과", 점추정만 5% 미만이면 "경계".
 """
 import csv

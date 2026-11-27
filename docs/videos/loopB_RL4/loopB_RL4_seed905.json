@@ -1,10 +1,9 @@
 {
  "source": "sumo-gui screenshots",
- "slow_frac": 0.36654545454545456,
- "base_mult": 13.695402298850574,
- "fast_mult": 41.08620689655172,
- "seconds": 56.36,
- "steps": 2750,
+ "width": 1280,
+ "height": 720,
+ "seconds": 56.46,
+ "steps": 2749,
  "end": "arrival",
  "seed": 905
 }
