@@ -482,7 +482,7 @@
         </ol>
       </div>
     </div>
-    <p class="caption"><span class="s">The final model (RL4) drives the full 6.7&nbsp;km test loop (loop B) in SUMO; 23 minutes of driving shown in 56 seconds.</span> <span class="s">Click a scene to jump to it.</span></p>
+    <p class="caption"><span class="s">The final model (RL4) drives the full 6.7&nbsp;km test loop in SUMO; 23 minutes of driving shown in 56 seconds.</span> <span class="s">Click a scene to jump to it.</span></p>
   </section>
 
   <section id="overview" class="overview">
@@ -513,7 +513,7 @@
           <svg class="down ico" style="width: 12px; height: 16px;" viewBox="0 0 12 18"><use href="#i-down"/></svg>
           <div class="thumb">
             <img src="assets/junction_traffic.jpg" alt="Yeonsan junction in SUMO with background traffic" loading="lazy" width="640" height="360">
-            <span class="pill"><b>SUMO environment</b><span>loop B, 6.7&nbsp;km</span></span>
+            <span class="pill"><b>SUMO environment</b><span>6.7&nbsp;km test loop</span></span>
           </div>
         </div>
       </div>
@@ -754,7 +754,7 @@
         <div class="top">
           <div class="hd"><span class="badge md t-green"><svg class="ico"><use href="#i-plusminus"/></svg></span>Step 1</div>
           <h3>PPO, reward only</h3>
-          <span class="cond">7 routes · 280 runs</span>
+          <span class="cond">7 junction routes · 280 runs</span>
         </div>
         <div class="res">
           <span class="arr-n">68%</span><small>arrival</small>
@@ -765,7 +765,7 @@
         <div class="top">
           <div class="hd"><span class="badge md t-amber"><svg class="ico"><use href="#i-wheel"/></svg></span>Step 2</div>
           <h3>Behavior cloning (BC) from a corrected expert</h3>
-          <span class="cond">7 routes · 0.5× demand · 560 runs</span>
+          <span class="cond">7 junction routes · 0.5× demand · 560 runs</span>
         </div>
         <div class="res">
           <span class="arr-n">85.0%</span><small>arrival</small>
@@ -776,7 +776,7 @@
         <div class="top">
           <div class="hd"><span class="badge md t-green"><svg class="ico"><use href="#i-layers"/></svg></span>Step 3</div>
           <h3>DAgger, 8-model ensemble</h3>
-          <span class="cond">7 routes · 0.85× demand · 840 runs</span>
+          <span class="cond">7 junction routes · 0.85× demand · 840 runs</span>
         </div>
         <div class="res">
           <span class="arr-n">97.0%</span><small>arrival</small>
@@ -787,7 +787,7 @@
         <div class="top">
           <div class="hd"><span class="badge md t-green"><svg class="ico"><use href="#i-repeat"/></svg></span>Step 4</div>
           <h3><span class="nw">Single-policy</span> PPO + BC loss (sr1)</h3>
-          <span class="cond">Loop B · 1.0× demand · 480 runs *</span>
+          <span class="cond">6.7&nbsp;km loop · 1.0× demand · 480 runs *</span>
         </div>
         <div class="res">
           <span class="arr-n">92.71%</span><small>arrival</small>
@@ -798,7 +798,7 @@
         <div class="top">
           <div class="hd"><span class="badge md t-green"><svg class="ico"><use href="#i-gauge"/></svg></span>Step 5</div>
           <h3>RL2: retrained after the speed-limit clip was removed</h3>
-          <span class="cond">Loop B + background flows · 4 conditions · 960 runs</span>
+          <span class="cond">6.7&nbsp;km loop + added traffic · 4 conditions · 960 runs</span>
         </div>
         <div class="res">
           <span class="arr-n">98.75%</span><small>arrival</small>
@@ -817,7 +817,7 @@
         </div>
       </li>
     </ol>
-    <p class="caption"><span class="s">Routes and demand differ between steps, so compare the numbers within a card, not across cards.</span> <span class="s">* Re-measured after fixing a seed bug in the evaluation script that made runs repeat.</span></p>
+    <p class="caption"><span class="s">Steps 1 to 3 were tested on seven short routes through the junction; from step 4 on, the car drives the full 6.7&nbsp;km loop.</span> <span class="s">Routes and demand differ between steps, so compare the numbers within a card, not across cards.</span> <span class="s">* Re-measured after fixing a seed bug in the evaluation script that made runs repeat.</span></p>
   </section>
 
   <section id="results">
@@ -898,7 +898,7 @@ df = pd.read_parquet(url)</code></pre>
 <pre><code>git clone https://github.com/jimin326/HexaCross &amp;&amp; cd HexaCross
 pip install -r requirements.txt      <span class="c"># includes SUMO and libsumo 1.27.1</span>
 
-<span class="c"># Evaluate the final model: loop B, 240 runs per traffic condition</span>
+<span class="c"># Evaluate the final model on the 6.7 km loop (loopB in the code): 240 runs per traffic condition</span>
 ROUTE_SET=loopB MAX_STEPS=6000 LANE_PLAN_RANGE=300 ROAD_DETAILS=driver_styles,taxi,short_stops \
   python tools/rl/eval_parallel.py models/yeonsan_loopB_RL4/model.pt results/eval_RL4 --n 240 --workers 4 --chunk 15
 
