@@ -289,7 +289,7 @@
   details.fix > summary::-webkit-details-marker { display: none; }
   .fs { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 12px; align-items: center; font-size: 15px; line-height: 1.5; }
   .fs-arrow { color: var(--mid); }
-  .fs-res { background: var(--white); border-radius: 8px; padding: 10px 14px; line-height: 1.4; }
+  .fs-res { border-left: 1px solid #C5D4C8; padding: 2px 0 2px 18px; line-height: 1.4; }
   .fs-res small { display: block; font-size: 13px; color: var(--gray); }
   .ba { font-size: 24px; line-height: 1.25; font-stretch: 87.5%; font-weight: 700; color: var(--green); white-space: nowrap; }
   .ba s { text-decoration: none; color: #74857B; }
@@ -376,6 +376,7 @@
     details.fix > summary > .toggle { grid-column: 2; grid-row: 1; }
     details.fix > summary > .fs-arrow { display: none; }
     details.fix > summary > .fs:nth-of-type(2), details.fix > summary > .fs-res { grid-column: 1 / -1; }
+    .fs-res { border-left: 0; border-top: 1px solid #C5D4C8; padding: 10px 0 0; }
     .orow { grid-template-columns: minmax(0, 1fr); gap: 6px; }
     .olegend { padding-left: 0; flex-wrap: wrap; gap: 8px 16px; }
     .tp > video { max-width: 280px; }
