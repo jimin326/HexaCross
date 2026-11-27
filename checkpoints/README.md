@@ -1,7 +1,7 @@
 # checkpoints: 실험 중간 모델 보관 (11-17 ~ 11-22)
 
 대표 모델은 `models/`에 있다. 이 폴더는 **실험 기록용으로 남긴 중간 모델 전부**다.
-회차 이름은 `docs/experiments/README.md`(실험 기록)와 `진행상황.md`의 이름과 같다.
+회차 이름은 `docs/experiments/README.md`(실험 기록)와 `docs/experiments/loopB_log.md`의 이름과 같다.
 
 - 가중치(`*.pt`)와 학습 설정·로그만 넣었다. 옵티마이저 상태(`ckpt.pt`)와 실행 때 복사해 둔 설정 파일(`*.py`)은 뺐다.
 - 단일 신경망 파일은 PPO 정책 `state_dict`다 (`test.load_agent`, `tools/rl/eval_parallel.py`로 바로 평가 가능).
