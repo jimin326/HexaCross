@@ -1,0 +1,2 @@
+﻿model,episodes,insert_fail,arrival,arrival_rate,arrival_ci_lo,arrival_ci_hi,collision,collision_rate,collision_ci_lo,collision_ci_hi,red_light,red_light_rate,red_light_ci_lo,red_light_ci_hi,wrong_lane,wrong_lane_rate,wrong_lane_ci_lo,wrong_lane_ci_hi,teleported,teleported_rate,teleported_ci_lo,teleported_ci_hi,timeout,timeout_rate,timeout_ci_lo,timeout_ci_hi
+RL4_v31_all3,240,0,238,0.9917,0.9701,0.9977,2,0.0083,0.0023,0.0299,0,0.0,0.0,0.0158,0,0.0,0.0,0.0158,0,0.0,0.0,0.0158,0,0.0,0.0,0.0158
