@@ -479,7 +479,7 @@
         <ol>
           <li><button type="button" data-t="0"><span class="t num">0:00</span><span>Start from the north</span></button></li>
           <li><button type="button" data-t="7"><span class="t num">0:07</span><span>Crosses the junction, north to south</span></button></li>
-          <li><button type="button" data-t="10"><span class="t num">0:10</span><span>Yields and merges onto <span class="nw">Yeonsu-ro</span></span></button></li>
+          <li><button type="button" data-t="10.5"><span class="t num">0:10</span><span>Yields and merges onto <span class="nw">Yeonsu-ro</span></span></button></li>
           <li><button type="button" data-t="24"><span class="t num">0:24</span><span>Entering the roundabout</span></button></li>
           <li><button type="button" data-t="48"><span class="t num">0:48</span><span>Slows down behind waiting cars</span></button></li>
           <li><button type="button" data-t="49.5"><span class="t num">0:49</span><span>Crosses the junction again, east to west</span></button></li>
@@ -487,7 +487,7 @@
         </ol>
       </div>
     </div>
-    <p class="caption"><span class="s">The final model (RL4) drives the full test loop in SUMO; 23 minutes of driving shown in 56 seconds.</span> <span class="s">Recorded on the map before the junction fix (PR #31).</span> <span class="s">Click a scene to jump to it.</span></p>
+    <p class="caption"><span class="s">The final model (RL4) drives the full test loop in SUMO; 23 minutes of driving shown in 56 seconds.</span> <span class="s">Click a scene to jump to it.</span></p>
   </section>
 
   <section id="overview" class="overview">
@@ -822,7 +822,7 @@
         </div>
       </li>
     </ol>
-    <p class="caption"><span class="s">Steps 1 to 3 were tested on seven short routes through the junction, each with its own traffic level, so compare those numbers within a card.</span> <span class="s">Steps 4 to 6 share one harder test: the full 6.7&nbsp;km loop with traffic added on the surrounding roads, 960&nbsp;runs.</span> <span class="s">* Step 4 was trained before that traffic was added. 33 of its 39 collisions were at one unsignalized merge, which step 5 fixed.</span> <span class="s">These step results come from the map before the junction fix (PR #31); the results below use the current map.</span></p>
+    <p class="caption"><span class="s">Steps 1 to 3 were tested on seven short routes through the junction, each with its own traffic level, so compare those numbers within a card.</span> <span class="s">Steps 4 to 6 share one harder test: the full 6.7&nbsp;km loop with traffic added on the surrounding roads, 960&nbsp;runs.</span> <span class="s">* Step 4 was trained before that traffic was added. 33 of its 39 collisions were at one unsignalized merge, which step 5 fixed.</span></p>
   </section>
 
   <section id="results">
@@ -849,12 +849,12 @@
         <p>Medians. Gray is the previous model RL2, green is RL4. Details in <a href="#problems">Problems and fixes</a>.</p>
       </div>
     </div>
-    <p class="caption">Final model RL4 on the current map (after the junction fix in PR #31), deterministic policy. Two evaluations with different traffic seeds (905 and 60001 onward), each with 240 runs in each of 4 traffic conditions.</p>
+    <p class="caption">Final model RL4, deterministic policy. Two evaluations with different traffic seeds (905 and 60001 onward), each with 240 runs in each of 4 traffic conditions.</p>
   </section>
 
   <section id="dataset">
     <h2>Dataset: 10,654,526 transitions</h2>
-    <p class="intro" style="margin-bottom: 24px;"><span class="s">3,600 episodes driven by the final RL4 policy, logged every 0.5&nbsp;s, on the map before the junction fix (PR #31).</span> <span class="s">Each row pairs the AV's partial observation with the simulator's privileged state.</span> <span class="s">An earlier set driven by RL2 (10,647,162 transitions, same seeds) stays in <code>v2/loopB/</code>.</span></p>
+    <p class="intro" style="margin-bottom: 24px;"><span class="s">3,600 episodes driven by the final RL4 policy, logged every 0.5&nbsp;s.</span> <span class="s">Each row pairs the AV's partial observation with the simulator's privileged state.</span> <span class="s">An earlier set driven by RL2 (10,647,162 transitions, same seeds) stays in <code>v2/loopB/</code>.</span></p>
     <div class="split">
       <ul class="cols">
         <li>
@@ -907,7 +907,7 @@ pip install -r requirements.txt      <span class="c"># includes SUMO and libsumo
 ROUTE_SET=loopB MAX_STEPS=6000 LANE_PLAN_RANGE=300 ROAD_DETAILS=driver_styles,taxi,short_stops \
   python tools/rl/eval_parallel.py models/yeonsan_loopB_RL4/model.pt results/eval_RL4 --n 240 --workers 4 --chunk 15
 
-<span class="c"># Collect transitions: seed 11, 400 runs (the released dataset used this command on the map before PR #31)</span>
+<span class="c"># Collect transitions: seed 11, 400 runs (how the released dataset was made)</span>
 ROUTE_SET=loopB MAX_STEPS=6000 LANE_PLAN_RANGE=300 ROAD_DETAILS=driver_styles,taxi,short_stops \
   python collect_pomdp_data.py --model models/yeonsan_loopB_RL4/model.pt \
   --episodes 400 --workers 4 --seed 11 --name loopB_RL4_s11</code></pre>

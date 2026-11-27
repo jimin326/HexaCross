@@ -18,7 +18,7 @@ We rebuilt Busan's Yeonsan junction, where six roads meet, in the SUMO traffic s
 
 ## Results
 
-Final model `models/yeonsan_loopB_RL4` on the 6.6 km loop (13 signalized junctions), on the current map (after the junction fix in PR #31). Two evaluations with different traffic seeds (905 and 60001), each 4 traffic conditions × 240 runs: 1,920 runs in total, deterministic policy.
+Final model `models/yeonsan_loopB_RL4` on the 6.6 km loop (13 signalized junctions). Two evaluations with different traffic seeds (905 and 60001), each 4 traffic conditions × 240 runs: 1,920 runs in total, deterministic policy.
 
 | Metric | Result |
 |---|---|
@@ -64,7 +64,7 @@ How to re-record the driving video: [`docs/videos/loopB_RL4/README.md`](./docs/v
 
 ## Dataset
 
-10,654,526 transitions from 3,600 episodes, on [Hugging Face](https://huggingface.co/datasets/hoseob0902/HexaCross-dataset) (`v2/loopB_RL4/`). Each row pairs the AV's partial observation with the simulator's privileged state. The data was collected with the final `models/yeonsan_loopB_RL4` policy on the map before the junction fix in PR #31 (6.7 km loop). An earlier set collected with `models/yeonsan_loopB_RL2` (10,647,162 transitions, same seeds) stays in `v2/loopB/`.
+10,654,526 transitions from 3,600 episodes, on [Hugging Face](https://huggingface.co/datasets/hoseob0902/HexaCross-dataset) (`v2/loopB_RL4/`). Each row pairs the AV's partial observation with the simulator's privileged state. The data was collected with the final `models/yeonsan_loopB_RL4` policy. An earlier set collected with `models/yeonsan_loopB_RL2` (10,647,162 transitions, same seeds) stays in `v2/loopB/`.
 
 ```python
 import pandas as pd
@@ -72,7 +72,7 @@ url = "hf://datasets/hoseob0902/HexaCross-dataset/v2/loopB_RL4/loopB_RL4_s11.par
 df = pd.read_parquet(url)
 ```
 
-Collect one shard yourself (seed 11, 400 episodes). The released data came from this command on the map before PR #31, so the current code gives slightly different episodes:
+Collect one shard yourself (seed 11, 400 episodes; the command that made the released data):
 
 ```bash
 ROUTE_SET=loopB MAX_STEPS=6000 LANE_PLAN_RANGE=300 ROAD_DETAILS=driver_styles,taxi,short_stops \
