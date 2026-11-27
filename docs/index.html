@@ -420,7 +420,7 @@
 
 <header class="band">
   <div class="wrap">
-    <p class="course">Final project, Autonomous Driving AI and Control (ICE3052), Sungkyunkwan University, Fall 2026</p>
+    <p class="course">Course project, Autonomous Driving AI and Control, Fall 2026</p>
     <h1>HexaCross</h1>
     <p class="lede">Teaching a self-driving car to cross Busan's <span class="nw">six-way</span> Yeonsan junction</p>
     <ul class="team">
@@ -433,7 +433,6 @@
     <p class="affil">Sungkyunkwan University</p>
     <nav class="btns" aria-label="Project links">
       <a class="btn" href="https://github.com/jimin326/HexaCross">Code</a>
-      <!-- TODO before submission: put the final slides at docs/slides/HexaCross_final.pdf -->
       <a class="btn" href="slides/HexaCross_final.pdf">Slides (PDF)</a>
       <a class="btn" href="https://huggingface.co/datasets/hoseob0902/HexaCross-dataset">Dataset</a>
       <a class="btn" href="https://github.com/jimin326/HexaCross/tree/main/models/yeonsan_loopB_RL4">Model</a>
@@ -698,7 +697,7 @@
             <li>Remaining green or red time</li>
             <li>Conflicting vehicles inside the junction</li>
           </ul>
-          <p class="small muted" style="margin: 0;">Removed to follow the course rules and TA answers.</p>
+          <p class="small muted" style="margin: 0;">Left out on purpose, so the policy has to choose its lane and judge the signal on its own.</p>
         </div>
       </div>
       <div class="card">
@@ -831,9 +830,9 @@
       <div class="card">
         <h3 class="card-head"><span class="badge md t-green"><svg class="ico"><use href="#i-shield"/></svg></span>Collision rate</h3>
         <div class="big">0.42%</div>
-        <p>4 of 960 runs. The course limit is under 5%.</p>
+        <p>4 of 960 runs. The project requirement was under 5%.</p>
         <div class="ci">95% confidence interval: 0.16–1.07%<div class="bar"><span class="range" style="left: 3.2%; width: 18.2%;"></span><span class="dot" style="left: 8.4%;"></span></div></div>
-        <div class="axis"><span>0%</span><span>5% course limit</span></div>
+        <div class="axis"><span>0%</span><span>5% limit</span></div>
       </div>
       <div class="card">
         <h3 class="card-head"><span class="badge md t-green"><svg class="ico"><use href="#i-light"/></svg></span>Stopping distance</h3>
@@ -1065,7 +1064,7 @@ ROUTE_SET=loopB MAX_STEPS=6000 LANE_PLAN_RANGE=300 ROAD_DETAILS=driver_styles,ta
           </div>
           <div>
             <h3>How we checked</h3>
-            <p>Before the fix, a PPO fine-tune (lbft1, 200k steps) had 18.3% violations in 60 runs. The ensemble retrained on relabeled data (ensLBY3) had 0% violations and 100% arrival in 60 runs.</p>
+            <p>Before the fix, a model <span class="nw">fine-tuned</span> with PPO for 200k steps had 18.3% violations in 60 runs. An <span class="nw">8-model</span> ensemble retrained on the relabeled data had 0% violations and 100% arrival in 60 runs.</p>
           </div>
         </div>
         <p class="src">Source: <a href="https://github.com/jimin326/HexaCross/blob/main/docs/experiments/loopB_log.md">loopB_log.md</a> (training log), <span class="nw">yellow-light</span> analysis</p>
@@ -1118,7 +1117,7 @@ ROUTE_SET=loopB MAX_STEPS=6000 LANE_PLAN_RANGE=300 ROAD_DETAILS=driver_styles,ta
         <div class="why">
           <div>
             <h3>What happened</h3>
-            <p>After main-road traffic was added on <span class="nw">Yeonsu-ro</span> (1,000&nbsp;veh/h), the previous model sr1 crashed 39 times in 960 runs, 33 at one spot where a <span class="nw">right-turn</span> ramp joins <span class="nw">Yeonsu-ro</span>. The ramp must yield, but the AV entered at about 40&nbsp;km/h. Cars on the other road are not in its observation (course rule), and the SUMO expert, which can see them, slowed only slightly, so there was no braking to imitate.</p>
+            <p>After main-road traffic was added on <span class="nw">Yeonsu-ro</span> (1,000&nbsp;veh/h), the previous model sr1 crashed 39 times in 960 runs, 33 at one spot where a <span class="nw">right-turn</span> ramp joins <span class="nw">Yeonsu-ro</span>. The ramp must yield, but the AV entered at about 40&nbsp;km/h. Cars on the other road are not in its observation (left out by design), and the SUMO expert, which can see them, slowed only slightly, so there was no braking to imitate.</p>
           </div>
           <div>
             <h3>What we changed</h3>
@@ -1137,7 +1136,7 @@ ROUTE_SET=loopB MAX_STEPS=6000 LANE_PLAN_RANGE=300 ROAD_DETAILS=driver_styles,ta
       <summary>
         <span class="fs">
           <span class="badge sm t-amber"><svg class="ico"><use href="#i-alert"/></svg></span>
-          <span>Removing the speed-limit clip on actions (TA ruling) made the old policy overspeed</span>
+          <span>Removing the speed-limit clip on actions made the old policy overspeed</span>
         </span>
         <svg class="fs-arrow ico" style="width: 18px; height: 14px;"><use href="#i-right"/></svg>
         <span class="fs">
@@ -1156,7 +1155,7 @@ ROUTE_SET=loopB MAX_STEPS=6000 LANE_PLAN_RANGE=300 ROAD_DETAILS=driver_styles,ta
               <span style="flex: 40; background: var(--bar-amber); color: var(--ink);">64 <span class="nw">red-light</span> violations</span>
             </span>
             <small>12 of 160 arrived</small></div>
-          <div class="orow"><span><b>After the fix</b><small>bcfix in the fixed environment, 60 runs</small></span>
+          <div class="orow"><span><b>After the fix</b><small>retrained model, fixed environment, 60 runs</small></span>
             <span class="obar" role="img" aria-label="57 arrived, 2 collisions, 1 red-light violation">
               <span style="flex: 95; background: var(--bar-after);">57 arrived (95.0%)</span>
               <span style="flex: 3.3; background: var(--bar-before); padding: 0;"></span>
@@ -1172,15 +1171,15 @@ ROUTE_SET=loopB MAX_STEPS=6000 LANE_PLAN_RANGE=300 ROAD_DETAILS=driver_styles,ta
         <div class="why">
           <div>
             <h3>What happened</h3>
-            <p>The TA ruled that clipping the acceleration command at the speed limit is a forced rule. Without the clip, the old model kept accelerating past the limit: in 160 runs it arrived 12 times, crashed 84 times and ran 64 red lights. Its BC loss compared next-step speed after clipping it at the limit (13.89&nbsp;m/s), so accelerating at the limit cost nothing.</p>
+            <p>Clipping the acceleration command at the speed limit overrides the policy's own action, so the clip was removed. Without it, the old model kept accelerating past the limit: in 160 runs it arrived 12 times, crashed 84 times and ran 64 red lights. Its BC loss compared next-step speed after clipping it at the limit (13.89&nbsp;m/s), so accelerating at the limit cost nothing.</p>
           </div>
           <div>
             <h3>What we changed</h3>
-            <p>The speed cap became the vehicle top speed, 100&nbsp;km/h (27.78&nbsp;m/s), in the environment and in the BC loss (VNEXT_MAX). A <span class="nw">per-step</span> overspeed penalty, 0.5 × excess ratio, now discourages speeding instead. 6,000 BC-only updates on the old model gave bcfix, the starting point of RL2.</p>
+            <p>The speed cap became the vehicle top speed, 100&nbsp;km/h (27.78&nbsp;m/s), in the environment and in the BC loss (VNEXT_MAX). A <span class="nw">per-step</span> overspeed penalty, 0.5 × excess ratio, now discourages speeding instead. 6,000 imitation-only updates on the old model gave the starting point of RL2.</p>
           </div>
           <div>
             <h3>How we checked</h3>
-            <p>Average acceleration command at the limit: +0.057 → +0.008. bcfix in the fixed environment, 60 runs: 95.0% arrival, 3.3% collision.</p>
+            <p>Average acceleration command at the limit: +0.057 → +0.008. The retrained model in the fixed environment, 60 runs: 95.0% arrival, 3.3% collision.</p>
           </div>
         </div>
         <p class="src">Source: commit b913a2f, <a href="https://github.com/jimin326/HexaCross/blob/main/models/yeonsan_loopB_RL2/README.md">models/yeonsan_loopB_RL2/README.md</a></p>
@@ -1260,7 +1259,7 @@ ROUTE_SET=loopB MAX_STEPS=6000 LANE_PLAN_RANGE=300 ROAD_DETAILS=driver_styles,ta
               <div class="mrow"><span>r6</span><span class="mbar"><i style="width: 25%; background: var(--bar-before);"></i></span><b>10</b></div>
               <div class="mrow"><span>r7</span><span class="mbar"><i style="width: 60%; background: var(--bar-before);"></i></span><b>24</b></div>
               <div class="mrow"><span>RL4</span><span class="mbar"><i style="width: 10%; background: var(--bar-after);"></i></span><b>4</b></div>
-              <p class="fig-note">r6 and r7 are the first two attempts at closer stopping. Red bars missed the team target of 1% or less.</p>
+              <p class="fig-note">r6 and r7 are the first two attempts at closer stopping. Red bars missed our target of 1% or less.</p>
             </div>
           </div>
         </div>
@@ -1355,7 +1354,7 @@ ROUTE_SET=loopB MAX_STEPS=6000 LANE_PLAN_RANGE=300 ROAD_DETAILS=driver_styles,ta
 
 <footer>
   <div class="wrap">
-    <p>Built on the starter code of Autonomous Driving AI and Control (ICE3052), Sungkyunkwan University.</p>
+    <p>Built on the <a href="https://github.com/bmil-ssu/Artificial-Intelligence-and-Control-for-Autonomous-Driving">starter code</a> of the Autonomous Driving AI and Control course at Sungkyunkwan University.</p>
     <p>Map data © OpenStreetMap contributors.</p>
   </div>
 </footer>
