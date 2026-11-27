@@ -70,6 +70,30 @@ SUMO 운전 모델이 고를 속도가 아니라 **학생이 명령한 속도**�
 | `run_r8.sh` | PPO 실행 스크립트 |
 | `r8_train.txt`, `r8_train_log.csv` | 학습 로그 |
 | `eval/` | 4조건 확인 평가 결과 |
+| `bc_lby_t_s.npz` | 모방학습 데이터: 예전 루프 DAgger + 황색·회전 보정 (1,380,903 표본) |
+| `dg12_bc_s.npz` | 모방학습 데이터: 고친 환경 DAgger 1·2차 (1,645,536 표본) |
+| `r3a_bc_s.npz` | 모방학습 데이터: 시드 버그를 고친 DAgger, 학생 bcfix (818,832 표본) |
+| `r3b_bc_s.npz` | 모방학습 데이터: 시드 버그를 고친 DAgger, 학생 RL2 (908,467 표본) |
+
+### 모방학습(전문가) 데이터
+
+위 `*_s.npz` 4개는 bcstop6 미세조정과 PPO r8의 모방학습 손실에 쓴 데이터다 (합계 4,753,738 표본).
+DAgger로 모은 SUMO 전문가 정답에 황색·회전 보정을 한 원본(`bc_lby_t`, `dg12_bc`, `r3a_bc`, `r3b_bc`)을
+`tools/rl/relabel_stop.py`로 한 번 더 보정한 결과다 (위 "왜 멀리 섰나"의 1~6. 바뀐 표본은 복제해 원본보다 크다).
+
+| 키 | 모양 | 내용 |
+|---|---|---|
+| `obs` | (N, 56) float | 관측 (DATA_FORMAT.md 4절) |
+| `accel` | (N,) float | 정답 가감속 [-1, 1] (−1 = −5 m/s², +1 = +3 m/s²) |
+| `lane_cls` | (N,) int | 정답 차로 선택 (0 왼쪽 · 1 유지 · 2 오른쪽, `HybridActorCritic.LANE_CMDS` 순서) |
+
+모방학습만 다시 하려면 (bcstop6과 같은 설정):
+
+```bash
+STEPS=3000 LR=5e-5 python tools/rl/bc_finetune.py models/yeonsan_loopB_RL2/model.pt results/bcstop6/model.pt \
+    models/yeonsan_loopB_RL4/bc_lby_t_s.npz models/yeonsan_loopB_RL4/dg12_bc_s.npz \
+    models/yeonsan_loopB_RL4/r3a_bc_s.npz models/yeonsan_loopB_RL4/r3b_bc_s.npz
+```
 
 ## 평가
 
