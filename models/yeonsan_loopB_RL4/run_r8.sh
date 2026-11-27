@@ -6,7 +6,9 @@ P=$S/venv127/bin/python
 export SUMO_HOME=$S/venv127/lib/python3.13/site-packages/sumo ROUTE_SET=loopB N_ROUTES=1 MAX_STEPS=6000 LANE_PLAN_RANGE=300
 export ROAD_DETAILS=driver_styles,taxi,short_stops
 export INIT_MODEL=checkpoints/il/bcstop6.pt INIT_LOG_STD=-1.5 LR=1.5e-5 VALUE_WARMUP=20 LANE_ENT=0
-export BC_DATA=data/lf/bc_lby_t_s.npz,data/lf/dg12_bc_s.npz,data/lf/r3a_bc_s.npz,data/lf/r3b_bc_s.npz BC_W=1.0 BC_W_END=0.2 BC_STEPS=20 BC_BATCH=512
+# 모방학습 데이터: 이 폴더의 *_s.npz 4개 (학습 당시 경로는 data/lf/)
+D=models/yeonsan_loopB_RL4
+export BC_DATA=$D/bc_lby_t_s.npz,$D/dg12_bc_s.npz,$D/r3a_bc_s.npz,$D/r3b_bc_s.npz BC_W=1.0 BC_W_END=0.2 BC_STEPS=20 BC_BATCH=512
 export DANGER_P=0.3 DANGER_RED=1 RING_EVERY=4 RING_N=6
 # 멈춤 거리 목표: 앞차 범퍼 4.0 m (3.25·3.5 m는 대기 줄 충돌), 정지선 1.5 m.
 # 앞차는 범퍼 4.0 m(getLeader 1.5 m), 정지선은 1.5 m 넘게 비우고 서면 8 m에 걸쳐 스텝당 최대 0.1 감점
