@@ -7,7 +7,7 @@ Sungkyunkwan University (SKKU)
 
 ![Yeonsan junction rebuilt in SUMO, with background traffic](docs/assets/junction_traffic.jpg)
 
-We rebuilt Busan's Yeonsan junction, where six roads meet, in the SUMO traffic simulator and trained an autonomous vehicle (AV) to drive a 6.7 km loop through it. The AV first imitated an expert driver (behavior cloning, then DAgger) and was then fine-tuned with reinforcement learning (PPO). In 960 evaluation runs the final policy reached its destination 99.38% of the time, with a 0.42% collision rate.
+We rebuilt Busan's Yeonsan junction, where six roads meet, in the SUMO traffic simulator and trained an autonomous vehicle (AV) to drive a 6.6 km loop through it. The AV first imitated an expert driver (behavior cloning, then DAgger) and was then fine-tuned with reinforcement learning (PPO). In 1,920 evaluation runs the final policy reached its destination 98.54% of the time, with a 0.83% collision rate.
 
 ## Overview
 
@@ -18,13 +18,14 @@ We rebuilt Busan's Yeonsan junction, where six roads meet, in the SUMO traffic s
 
 ## Results
 
-Final model `models/yeonsan_loopB_RL4` on the 6.7 km loop (13 signalized junctions). 4 traffic conditions × 240 runs = 960 runs, deterministic policy.
+Final model `models/yeonsan_loopB_RL4` on the 6.6 km loop (13 signalized junctions), on the current map (after the junction fix in PR #31). Two evaluations with different traffic seeds (905 and 60001), each 4 traffic conditions × 240 runs: 1,920 runs in total, deterministic policy.
 
 | Metric | Result |
 |---|---|
-| Arrival | 954 runs (99.38%) |
-| Collision | 4 runs (0.42%) |
-| Red-light violation | 2 runs (0.21%) |
+| Arrival | 1,892 runs (98.54%) |
+| Collision | 16 runs (0.83%) |
+| Red-light violation | 7 runs (0.36%) |
+| Wrong lane (could not reach the lane its route needs) | 5 runs (0.26%) |
 | Stopping position (median) | 4.5 m behind the car ahead, 1.6 m before the stop line |
 
 Results per traffic condition and the training steps are in [`models/yeonsan_loopB_RL4/README.md`](./models/yeonsan_loopB_RL4/README.md).
@@ -50,6 +51,8 @@ Evaluate the final model on the loop, 240 runs per traffic condition:
 ROUTE_SET=loopB MAX_STEPS=6000 LANE_PLAN_RANGE=300 ROAD_DETAILS=driver_styles,taxi,short_stops \
 python tools/rl/eval_parallel.py models/yeonsan_loopB_RL4/model.pt results/eval_RL4 --n 240 --workers 4 --chunk 15
 ```
+
+The default seed is 905. The second set of 960 runs used `--seed 60001`.
 
 Open the road and the traffic flows in `sumo-gui`:
 

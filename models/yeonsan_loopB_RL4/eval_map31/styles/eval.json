@@ -1,0 +1,47 @@
+{
+ "_meta": {
+  "model": "models/yeonsan_loopB_RL4/model.pt",
+  "route_set": "loopB",
+  "road_details": "driver_styles",
+  "max_steps": 6000,
+  "n_per_route": 240,
+  "seed_start": 60001,
+  "traffic_scale": 1.0,
+  "sumo_dir": "env/sumo_eval/loopB_scale_1.0_details-driver_styles",
+  "commit": "58a5187",
+  "git_dirty": false,
+  "date": "2026-11-28 00:12",
+  "minutes": 14.2,
+  "libsumo": true
+ },
+ "루프B N→S→회전교차로→E→W": {
+  "episodes": 240,
+  "insert_fail": 0,
+  "arrival": 239,
+  "red_light": 1,
+  "failures": [
+   {
+    "seed": 60153,
+    "end": "red_light",
+    "time_s": 640.5,
+    "last_edge": ":cluster_3131958161_4958136016_4958136222_9",
+    "x": 336.5,
+    "y": 1540.4
+   }
+  ],
+  "metrics": {
+   "travel_time_s": 1388.876569037657,
+   "travel_time_s_n": 239,
+   "mean_speed": 5.240259224570254,
+   "mean_speed_n": 240,
+   "stop_time_s": 548.9770833333333,
+   "stop_time_s_n": 240,
+   "min_gap": 0.651320848465669,
+   "min_gap_n": 240,
+   "stop_gap_veh": 4.51,
+   "stop_gap_veh_n": 6903,
+   "stop_gap_line": 1.59,
+   "stop_gap_line_n": 2542
+  }
+ }
+}

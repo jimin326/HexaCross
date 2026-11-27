@@ -35,3 +35,7 @@ pillow>=10          # 확인한 버전 13.0.0 (녹화 tools/rl/record_routes.py,
 
 # ---- 학습 곡선 (train.py · train_bc.py, 평가·수집에는 필요 없음) ----
 tensorboard>=2.15
+
+# ---- 데이터셋 (tools/data/jsonl_to_parquet.py · Hugging Face 업로드) ----
+pyarrow>=15         # 확인한 버전 23.0.1 (수집한 jsonl.gz → Parquet 변환)
+huggingface_hub>=0.34   # 확인한 버전 2.4.0 (hf auth login · hf upload)

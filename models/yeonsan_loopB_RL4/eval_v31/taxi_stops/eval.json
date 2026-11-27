@@ -1,0 +1,81 @@
+{
+ "_meta": {
+  "model": "models/yeonsan_loopB_RL4/model.pt",
+  "route_set": "loopB",
+  "road_details": "short_stops+taxi",
+  "max_steps": 6000,
+  "n_per_route": 240,
+  "seed_start": 905,
+  "traffic_scale": 1.0,
+  "sumo_dir": "env/sumo_eval/loopB_scale_1.0_details-short_stops-taxi",
+  "commit": "1e4942d",
+  "git_dirty": false,
+  "date": "2026-11-27 15:31",
+  "minutes": 25.2,
+  "libsumo": true
+ },
+ "루프B N→S→회전교차로→E→W": {
+  "episodes": 240,
+  "insert_fail": 0,
+  "arrival": 235,
+  "collision": 3,
+  "wrong_lane": 1,
+  "red_light": 1,
+  "failures": [
+   {
+    "seed": 907,
+    "end": "collision",
+    "time_s": 58.5,
+    "last_edge": ":414663644_33",
+    "x": 752.0,
+    "y": 1377.5
+   },
+   {
+    "seed": 926,
+    "end": "collision",
+    "time_s": 900.0,
+    "last_edge": "-37400617#4",
+    "x": 1359.9,
+    "y": 1963.4
+   },
+   {
+    "seed": 982,
+    "end": "wrong_lane",
+    "time_s": 1216.5,
+    "last_edge": "-37400617#3",
+    "x": 1274.9,
+    "y": 1881.9
+   },
+   {
+    "seed": 1080,
+    "end": "collision",
+    "time_s": 1027.0,
+    "last_edge": "-37400617#4",
+    "x": 1368.7,
+    "y": 1971.9
+   },
+   {
+    "seed": 1130,
+    "end": "red_light",
+    "time_s": 839.5,
+    "last_edge": ":cluster_3131958161_4958136016_4958136222_9",
+    "x": 336.8,
+    "y": 1540.9
+   }
+  ],
+  "metrics": {
+   "travel_time_s": 1437.8574468085105,
+   "travel_time_s_n": 235,
+   "mean_speed": 5.090928966347011,
+   "mean_speed_n": 240,
+   "stop_time_s": 582.6020833333333,
+   "stop_time_s_n": 240,
+   "min_gap": 0.655074635971667,
+   "min_gap_n": 239,
+   "stop_gap_veh": 4.51,
+   "stop_gap_veh_n": 7603,
+   "stop_gap_line": 1.6,
+   "stop_gap_line_n": 2399
+  }
+ }
+}

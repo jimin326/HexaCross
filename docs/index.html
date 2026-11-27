@@ -487,14 +487,14 @@
         </ol>
       </div>
     </div>
-    <p class="caption"><span class="s">The final model (RL4) drives the full 6.7&nbsp;km test loop in SUMO; 23 minutes of driving shown in 56 seconds.</span> <span class="s">Click a scene to jump to it.</span></p>
+    <p class="caption"><span class="s">The final model (RL4) drives the full test loop in SUMO; 23 minutes of driving shown in 56 seconds.</span> <span class="s">Recorded on the map before the junction fix (PR #31).</span> <span class="s">Click a scene to jump to it.</span></p>
   </section>
 
   <section id="overview" class="overview">
     <div>
       <h2>Overview</h2>
       <p>We rebuilt Busan's Yeonsan junction in the SUMO traffic simulator and trained an autonomous vehicle (AV) to drive through it. Six roads meet here, so the AV has to pick the lane for its exit early, then merge, yield and change lanes among background traffic matched to real counts.</p>
-      <p>The AV first imitated an expert driver (behavior cloning, then DAgger) and was then <span class="nw">fine-tuned</span> with reinforcement learning (PPO). In 960 evaluation runs the final policy reached its destination 99.38% of the time with a 0.42% collision rate. We release 10,647,162 transitions on Hugging Face.</p>
+      <p>The AV first imitated an expert driver (behavior cloning, then DAgger) and was then <span class="nw">fine-tuned</span> with reinforcement learning (PPO). In 1,920 evaluation runs the final policy reached its destination 98.54% of the time with a 0.83% collision rate. We release 10,647,162 transitions on Hugging Face.</p>
     </div>
     <figure class="map">
       <svg id="junction-map" viewBox="0 0 470 360" role="img" aria-labelledby="map-title"><title id="map-title">Sketch of the six roads that meet at Yeonsan junction</title></svg>
@@ -518,7 +518,7 @@
           <svg class="down ico" style="width: 12px; height: 16px;" viewBox="0 0 12 18"><use href="#i-down"/></svg>
           <div class="thumb">
             <img src="assets/junction_traffic.jpg" alt="Yeonsan junction in SUMO with background traffic" loading="lazy" width="640" height="360">
-            <span class="pill"><b>SUMO environment</b><span>6.7&nbsp;km test loop</span></span>
+            <span class="pill"><b>SUMO environment</b><span>6.6&nbsp;km test loop</span></span>
           </div>
         </div>
       </div>
@@ -557,11 +557,11 @@
       <div class="fp fp-c">
         <div class="fp-head"><span class="tag">(c)</span><h3>Evaluate and release</h3></div>
         <div class="fp-body">
-          <div class="mt"><span class="badge xs t-green"><svg class="ico"><use href="#i-flag"/></svg></span><span><b>960 test drives</b><span>4 traffic conditions</span></span></div>
+          <div class="mt"><span class="badge xs t-green"><svg class="ico"><use href="#i-flag"/></svg></span><span><b>1,920 test drives</b><span>4 traffic conditions</span></span></div>
           <svg class="down ico" style="width: 12px; height: 16px;" viewBox="0 0 12 18"><use href="#i-down"/></svg>
           <div class="tiles">
-            <div class="tile"><span class="lab"><svg class="ico"><use href="#i-check"/></svg>arrival</span><span class="n">99.38%</span><small>954 of 960</small></div>
-            <div class="tile"><span class="lab"><svg class="ico"><use href="#i-shield"/></svg>collision</span><span class="n">0.42%</span><small>4 of 960</small></div>
+            <div class="tile"><span class="lab"><svg class="ico"><use href="#i-check"/></svg>arrival</span><span class="n">98.54%</span><small>1,892 of 1,920</small></div>
+            <div class="tile"><span class="lab"><svg class="ico"><use href="#i-shield"/></svg>collision</span><span class="n">0.83%</span><small>16 of 1,920</small></div>
           </div>
           <svg class="down ico" style="width: 12px; height: 16px;" viewBox="0 0 12 18"><use href="#i-down"/></svg>
           <div class="mt"><span class="badge xs t-green"><svg class="ico"><use href="#i-database"/></svg></span><span><b>3,600 episodes</b><span>one row every 0.5&nbsp;s</span></span></div>
@@ -822,7 +822,7 @@
         </div>
       </li>
     </ol>
-    <p class="caption"><span class="s">Steps 1 to 3 were tested on seven short routes through the junction, each with its own traffic level, so compare those numbers within a card.</span> <span class="s">Steps 4 to 6 share one harder test: the full 6.7&nbsp;km loop with traffic added on the surrounding roads, 960&nbsp;runs.</span> <span class="s">* Step 4 was trained before that traffic was added. 33 of its 39 collisions were at one unsignalized merge, which step 5 fixed.</span></p>
+    <p class="caption"><span class="s">Steps 1 to 3 were tested on seven short routes through the junction, each with its own traffic level, so compare those numbers within a card.</span> <span class="s">Steps 4 to 6 share one harder test: the full 6.7&nbsp;km loop with traffic added on the surrounding roads, 960&nbsp;runs.</span> <span class="s">* Step 4 was trained before that traffic was added. 33 of its 39 collisions were at one unsignalized merge, which step 5 fixed.</span> <span class="s">These step results come from the map before the junction fix (PR #31); the results below use the current map.</span></p>
   </section>
 
   <section id="results">
@@ -830,16 +830,16 @@
     <div class="grid3">
       <div class="card">
         <h3 class="card-head"><span class="badge md t-green"><svg class="ico"><use href="#i-check"/></svg></span>Arrival rate</h3>
-        <div class="big">99.38%</div>
-        <p>954 of 960 runs over 4 traffic conditions.</p>
-        <div class="ci">95% confidence interval: 98.6–99.7%<div class="bar"><span class="range" style="left: 72.8%; width: 21.4%;"></span><span class="dot" style="left: 87.6%;"></span></div></div>
+        <div class="big">98.54%</div>
+        <p>1,892 of 1,920 runs over 4 traffic conditions.</p>
+        <div class="ci">95% confidence interval: 97.9–99.0%<div class="bar"><span class="range" style="left: 58.0%; width: 21.8%;"></span><span class="dot" style="left: 70.8%;"></span></div></div>
         <div class="axis"><span>95%</span><span>100%</span></div>
       </div>
       <div class="card">
         <h3 class="card-head"><span class="badge md t-green"><svg class="ico"><use href="#i-shield"/></svg></span>Collision rate</h3>
-        <div class="big">0.42%</div>
-        <p>4 of 960 runs. The project requirement was under 5%.</p>
-        <div class="ci">95% confidence interval: 0.16–1.07%<div class="bar"><span class="range" style="left: 3.2%; width: 18.2%;"></span><span class="dot" style="left: 8.4%;"></span></div></div>
+        <div class="big">0.83%</div>
+        <p>16 of 1,920 runs. The project requirement was under 5%.</p>
+        <div class="ci">95% confidence interval: 0.51–1.35%<div class="bar"><span class="range" style="left: 10.3%; width: 16.7%;"></span><span class="dot" style="left: 16.7%;"></span></div></div>
         <div class="axis"><span>0%</span><span>5% limit</span></div>
       </div>
       <div class="card">
@@ -849,7 +849,7 @@
         <p>Medians. Gray is the previous model RL2, green is RL4. Details in <a href="#problems">Problems and fixes</a>.</p>
       </div>
     </div>
-    <p class="caption">Final model RL4, deterministic policy, 240 runs in each of 4 traffic conditions (seeds 905 onward).</p>
+    <p class="caption">Final model RL4 on the current map (after the junction fix in PR #31), deterministic policy. Two evaluations with different traffic seeds (905 and 60001 onward), each with 240 runs in each of 4 traffic conditions.</p>
   </section>
 
   <section id="dataset">
@@ -903,7 +903,7 @@ df = pd.read_parquet(url)</code></pre>
 <pre><code>git clone https://github.com/jimin326/HexaCross &amp;&amp; cd HexaCross
 pip install -r requirements.txt      <span class="c"># includes SUMO and libsumo 1.27.1</span>
 
-<span class="c"># Evaluate the final model on the 6.7 km loop (loopB in the code): 240 runs per traffic condition</span>
+<span class="c"># Evaluate the final model on the 6.6 km loop (loopB in the code): 240 runs per traffic condition</span>
 ROUTE_SET=loopB MAX_STEPS=6000 LANE_PLAN_RANGE=300 ROAD_DETAILS=driver_styles,taxi,short_stops \
   python tools/rl/eval_parallel.py models/yeonsan_loopB_RL4/model.pt results/eval_RL4 --n 240 --workers 4 --chunk 15
 
