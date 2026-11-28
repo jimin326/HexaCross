@@ -20,7 +20,7 @@ We rebuilt Busan's Yeonsan junction, where six roads meet, in the SUMO traffic s
 
 ## Results
 
-Final model `models/yeonsan_loopB_RL4` on the 6.6 km loop (13 signalized junctions). Two evaluations with different traffic seeds (905 and 60001), each 4 traffic conditions × 240 runs: 1,920 runs in total, deterministic policy.
+Final model `models/yeonsan_loopB_RL4` on the 6.6 km loop (13 traffic signals along the route). Two evaluations with different traffic seeds (905 and 60001), each 4 traffic conditions × 240 runs: 1,920 runs in total, deterministic policy.
 
 | Metric | Result |
 |---|---|
@@ -66,7 +66,7 @@ How to re-record the driving video: [`docs/videos/loopB_RL4/README.md`](./docs/v
 
 ## Dataset
 
-10,454,044 transitions from 3,600 episodes, on [Hugging Face](https://huggingface.co/datasets/hoseob0902/HexaCross-dataset) (`v2/loopB_RL4_route31/`). Each row pairs the AV's partial observation with the simulator's privileged state. The data was collected with the final `models/yeonsan_loopB_RL4` policy on the current map (PR #31, 6,646 m loop).
+10,454,044 transitions from 3,600 episodes, on [Hugging Face](https://huggingface.co/datasets/hoseob0902/HexaCross-dataset) (`v2/loopB_RL4_route31/`). Each row pairs the AV's partial observation with the simulator's privileged state. The data was collected with the final `models/yeonsan_loopB_RL4` policy on the 6,646 m test loop.
 
 ```python
 import pandas as pd
@@ -131,7 +131,7 @@ The documents below are written in Korean.
 |---|---|
 | [`DATA_FORMAT.md`](./DATA_FORMAT.md) | Dataset columns, the 56-dimensional observation, how the data was collected |
 | [`models/yeonsan_loopB_RL4/README.md`](./models/yeonsan_loopB_RL4/README.md) | Training and evaluation of the final model |
-| [`docs/experiments/loopB_log.md`](./docs/experiments/loopB_log.md) | Training log for the loop (2026-11-21 to 11-27) |
+| [`docs/experiments/loopB_log.md`](./docs/experiments/loopB_log.md) | Training log for the loop (2026-11-21 to 11-28) |
 | [`docs/experiments/README.md`](./docs/experiments/README.md) | Early experiments on 7 routes (2026-11-17 to 11-22) |
 | [`env/maps/README.md`](./env/maps/README.md) | How the road network was built and checked |
 | [`env/demand/README.md`](./env/demand/README.md) | Traffic demand data |

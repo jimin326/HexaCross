@@ -477,10 +477,10 @@
       <div class="chapters">
         <h3>Jump to a scene</h3>
         <ol>
-          <li><button type="button" data-t="0"><span class="t num">0:00</span><span>Start from the north</span></button></li>
+          <li><button type="button" data-t="0"><span class="t num">0:00</span><span>Starts from the north</span></button></li>
           <li><button type="button" data-t="7"><span class="t num">0:07</span><span>Crosses the junction, north to south</span></button></li>
           <li><button type="button" data-t="10.5"><span class="t num">0:10</span><span>Yields and merges onto <span class="nw">Yeonsu-ro</span></span></button></li>
-          <li><button type="button" data-t="24"><span class="t num">0:24</span><span>Entering the roundabout</span></button></li>
+          <li><button type="button" data-t="24"><span class="t num">0:24</span><span>Enters the roundabout</span></button></li>
           <li><button type="button" data-t="48"><span class="t num">0:48</span><span>Slows down behind waiting cars</span></button></li>
           <li><button type="button" data-t="49.5"><span class="t num">0:49</span><span>Crosses the junction again, east to west</span></button></li>
           <li><button type="button" data-t="55.5"><span class="t num">0:55</span><span>Reaches the destination</span></button></li>
@@ -622,7 +622,7 @@
       <div class="card">
         <h3 class="card-head"><span class="badge md t-green"><svg class="ico"><use href="#i-check"/></svg></span>Gridlock check</h3>
         <div class="big">153 → 16</div>
-        <p>When a car is stuck too long, SUMO removes it and puts it back further on (a "teleport"). Background teleports before → after the fixes, three 1-hour runs at full demand.</p>
+        <p>When a car is stuck too long, SUMO removes it and puts it back further along its route (a "teleport"). Background teleports before → after the fixes, three 1-hour runs at full demand.</p>
       </div>
     </div>
     <div class="grid2" style="margin-top: 20px;">
@@ -667,10 +667,10 @@
           </li>
         </ul>
         <div class="around">
-          <div class="card"><span class="n">51.8</span><p>vehicles within 150&nbsp;m of&nbsp;the&nbsp;AV</p></div>
-          <div class="card"><span class="n">6.79</span><p>inside its observation range (±100&nbsp;m)</p></div>
+          <div class="card"><span class="n">51.5</span><p>vehicles within 150&nbsp;m of&nbsp;the&nbsp;AV</p></div>
+          <div class="card"><span class="n">7.12</span><p>inside its observation range (±100&nbsp;m)</p></div>
         </div>
-        <p class="caption">Averages over a 300,000-row sample of the dataset (seed 15).</p>
+        <p class="caption">Averages over the first 300,000 rows of the released dataset (seed 15).</p>
       </div>
     </div>
   </section>
@@ -711,7 +711,7 @@
       <div class="card">
         <h3 class="card-head lg">
           <span class="badge md t-green"><svg class="ico"><use href="#i-plusminus"/></svg></span>
-          <span>Reward<small>Small signals every step, large ones when the episode ends</small></span>
+          <span>Reward<small>Small rewards and penalties every step, large ones when the episode ends</small></span>
         </h3>
         <h4>Every step</h4>
         <ul class="terms">
@@ -720,8 +720,8 @@
           <li><span class="sign m">−</span><b>Time to collision</b><code>−0.3 × (1 − TTC / 3&nbsp;s)</code><span>Closing in on a car, TTC &lt; 3&nbsp;s</span></li>
           <li><span class="sign m">−</span><b>Short gap</b><code>−0.1</code><span>Gap &lt; 6&nbsp;m at ≥ 3&nbsp;m/s</span></li>
           <li><span class="sign m">−</span><b>Blocked by a slow leader</b><code>−0.05</code><span>Leader &lt; 20&nbsp;m, not waiting at a light</span></li>
-          <li><span class="sign m">−</span><b>Target lane</b><code>−0.05 × (1 − d_lane / 300&nbsp;m)</code><span>Lane does not continue on the route</span></li>
-          <li><span class="sign m">−</span><b>Stopping far back</b><code>−0.1 × min(1, extra gap / 8&nbsp;m)</code><span>Stopped over 4.0&nbsp;m behind a car or 1.5&nbsp;m short of the stop line. Added for RL4</span></li>
+          <li><span class="sign m">−</span><b>Wrong lane for the route</b><code>−0.05 × (1 − d_lane / 300&nbsp;m)</code><span>Lane does not continue on the route</span></li>
+          <li><span class="sign m">−</span><b>Stopping far back</b><code>−0.1 × min(1, extra gap / 8&nbsp;m)</code><span>Stopped more than 4.0&nbsp;m behind a car or more than 1.5&nbsp;m short of the stop line. Added for RL4</span></li>
         </ul>
         <h4>When the episode ends</h4>
         <div class="ends">
@@ -753,7 +753,7 @@
 
   <section id="training">
     <h2>Training: imitation first, then PPO</h2>
-    <p class="intro"><span class="s">PPO with reward alone did not learn to change lanes before diverges.</span> <span class="s">So we started with imitation learning from an expert (BC, then DAgger) and <span class="nw">fine-tuned</span> with PPO.</span> <span class="s">The last two steps fixed the environment and then where the car stops.</span></p>
+    <p class="intro"><span class="s">PPO with reward alone did not learn to change lanes before the road splits.</span> <span class="s">So we started with imitation learning from an expert (BC, then DAgger) and <span class="nw">fine-tuned</span> with PPO.</span> <span class="s">The last two steps fixed the environment and then the stopping distance.</span></p>
     <ol class="stages" style="list-style: none; padding: 0;">
       <li class="stage">
         <div class="top">
@@ -792,7 +792,7 @@
         <div class="top">
           <div class="hd"><span class="badge md t-green"><svg class="ico"><use href="#i-repeat"/></svg></span>Step 4</div>
           <h3><span class="nw">Single-policy</span> PPO + BC loss (sr1)</h3>
-          <span class="cond">6.7&nbsp;km loop + added traffic · 960 runs *</span>
+          <span class="cond">Full loop + added traffic · 960 runs *</span>
         </div>
         <div class="res">
           <span class="arr-n">94.27%</span><small>arrival</small>
@@ -822,7 +822,7 @@
         </div>
       </li>
     </ol>
-    <p class="caption"><span class="s">Steps 1 to 3 were tested on seven short routes through the junction, each with its own traffic level, so compare those numbers within a card.</span> <span class="s">Steps 4 and 5 share one harder test: the full loop with traffic added on the surrounding roads, 960&nbsp;runs.</span> <span class="s">The final model RL4 is shown with its final evaluation, the same 1,920&nbsp;runs as in <a href="#results">Results</a>.</span> <span class="s">* Step 4 was trained before that traffic was added. 33 of its 39 collisions were at one unsignalized merge, which step 5 fixed.</span></p>
+    <p class="caption"><span class="s">Steps 1 to 3 were tested on seven short routes through the junction, each with its own traffic level, so their numbers are not directly comparable.</span> <span class="s">Steps 4 and 5 share one harder test: the full loop with traffic added on the surrounding roads, 960&nbsp;runs.</span> <span class="s">The final model RL4 is shown with its final evaluation, the same 1,920&nbsp;runs as in <a href="#results">Results</a>.</span> <span class="s">* Step 4 was trained before that traffic was added. 33 of its 39 collisions were at one unsignalized merge, which step 5 fixed.</span></p>
   </section>
 
   <section id="results">
@@ -838,7 +838,7 @@
       <div class="card">
         <h3 class="card-head"><span class="badge md t-green"><svg class="ico"><use href="#i-shield"/></svg></span>Collision rate</h3>
         <div class="big">0.83%</div>
-        <p>16 of 1,920 runs. The project requirement was under 5%.</p>
+        <p>16 of 1,920 runs. The course requires under 5%.</p>
         <div class="ci">95% confidence interval: 0.51–1.35%<div class="bar"><span class="range" style="left: 10.3%; width: 16.7%;"></span><span class="dot" style="left: 16.7%;"></span></div></div>
         <div class="axis"><span>0%</span><span>5% limit</span></div>
       </div>
@@ -849,12 +849,12 @@
         <p>Medians. Gray is the previous model RL2, green is RL4. Details in <a href="#problems">Problems and fixes</a>.</p>
       </div>
     </div>
-    <p class="caption">Final model RL4, deterministic policy. Two evaluations with different traffic seeds (905 and 60001 onward), each with 240 runs in each of 4 traffic conditions.</p>
+    <p class="caption">Final model RL4, deterministic policy. Two evaluations with different traffic seeds (905 and 60001 onward), each with 240 runs per traffic condition (4 conditions).</p>
   </section>
 
   <section id="dataset">
     <h2>Dataset: 10,454,044 transitions</h2>
-    <p class="intro" style="margin-bottom: 24px;"><span class="s">3,600 episodes driven by the final RL4 policy, logged every 0.5&nbsp;s.</span> <span class="s">Each row pairs the AV's partial observation with the simulator's privileged state.</span> <span class="s">Collected on the current map (6,646&nbsp;m loop), in <code>v2/loopB_RL4_route31/</code>.</span></p>
+    <p class="intro" style="margin-bottom: 24px;"><span class="s">3,600 episodes driven by the final RL4 policy, logged every 0.5&nbsp;s.</span> <span class="s">Each row pairs the AV's partial observation with the simulator's privileged state.</span> <span class="s">Collected on the 6,646&nbsp;m test loop and stored in <code>v2/loopB_RL4_route31/</code>.</span></p>
     <div class="split">
       <ul class="cols">
         <li>
@@ -888,7 +888,7 @@
           <li><code>.parquet</code><span>6.98&nbsp;GB, columnar, read only what you need</span></li>
           <li><code>.jsonl.gz</code><span>9.68&nbsp;GB, one transition per line</span></li>
           <li><code>.npz</code><span>0.89&nbsp;GB, arrays for offline RL and BC</span></li>
-          <li><code>.meta.json</code><span>Collection settings and code tables</span></li>
+          <li><code>.meta.json</code><span>Collection settings and lookup tables for the numeric codes</span></li>
         </ul>
       </div>
     </div>
@@ -939,7 +939,7 @@ ROUTE_SET=loopB MAX_STEPS=6000 LANE_PLAN_RANGE=300 ROAD_DETAILS=driver_styles,ta
             <div><h3>Junction throughput vs survey demand</h3>
               <div class="mrow"><span>Before</span><span class="mbar div"><i style="left: 3.3%; width: 46.7%; background: var(--bar-before);"></i></span><b>−28%</b></div>
               <div class="mrow"><span>After</span><span class="mbar div"><i style="left: 50.5%; width: 5%; background: var(--bar-after);"></i></span><b>+3%</b></div>
-              <p class="fig-note">Centre line = exactly the survey demand</p></div>
+              <p class="fig-note">Center line = exactly the survey demand</p></div>
             <div><h3>Background teleports</h3>
               <div class="mrow"><span>Before</span><span class="mbar"><i style="width: 95.6%; background: var(--bar-before);"></i></span><b>153</b></div>
               <div class="mrow"><span>After</span><span class="mbar"><i style="width: 10%; background: var(--bar-after);"></i></span><b>16</b></div></div>
@@ -1009,7 +1009,7 @@ ROUTE_SET=loopB MAX_STEPS=6000 LANE_PLAN_RANGE=300 ROAD_DETAILS=driver_styles,ta
         <div class="why">
           <div>
             <h3>What happened</h3>
-            <p>SUMO's driver model stops exactly at its minimum gap (2.5&nbsp;m). A student that aims for the same spot overshoots by a few tens of centimetres, and SUMO counts that as a collision. At red lights the expert's rule "if you cannot stop any more, keep going" also leaked into the labels.</p>
+            <p>SUMO's driver model stops exactly at its minimum gap (2.5&nbsp;m). The imitation policy (the student) aimed for the same spot and overshot it by a few tens of centimeters, which SUMO counts as a collision. At red lights the expert's rule "if you cannot stop any more, keep going" also leaked into the labels.</p>
           </div>
           <div>
             <h3>What we changed</h3>
@@ -1145,7 +1145,7 @@ ROUTE_SET=loopB MAX_STEPS=6000 LANE_PLAN_RANGE=300 ROAD_DETAILS=driver_styles,ta
       <summary>
         <span class="fs">
           <span class="badge sm t-amber"><svg class="ico"><use href="#i-alert"/></svg></span>
-          <span>Removing the speed-limit clip on actions made the old policy overspeed</span>
+          <span>Removing the speed-limit clip on actions made the old policy speed</span>
         </span>
         <svg class="fs-arrow ico" style="width: 18px; height: 14px;"><use href="#i-right"/></svg>
         <span class="fs">
