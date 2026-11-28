@@ -1,10 +1,10 @@
 # 데이터 포맷 v2 (확정)
 
-> **v2로 확정 (2026-11-24).** 제출용 10^7 데이터셋은 최종 모델 RL4가 지금 지도(PR #31, 루프 B 6,646 m)를 달린 **HF `v2/loopB_RL4_route31/`, 10,454,044 transition** (2026-11-28)이다. #31 이전 지도로 모은 `v2/loopB_RL4/`(10,654,526)와 RL2로 모은 `v2/loopB/`(10,647,162)도 같은 형식으로 남겨 둔다 (8절, 9절).
-> 앞으로 컬럼을 바꾸면 버전을 올린다 (v2 → v3).
+> **제출 데이터셋:** 최종 모델 RL4가 루프 경로 B(6,646 m)를 3,600번 달린 **10,454,044 transition**. Hugging Face `hoseob0902/HexaCross-dataset`의 `v2/loopB_RL4_route31/`에 있다 (2026-11-28 수집, 6절 · 9절).
+> 컬럼 형식 v2는 2026-11-24에 확정했다. 앞으로 컬럼을 바꾸면 버전을 올린다 (v2 → v3).
 >
-> **v2는 루프 경로 B(`ROUTE_SET=loopB`, 순환 흐름 포함) 데이터 형식이다 (11절 "v1 → v2 변경").**
-> v1은 연산교차로 주변만 번호표가 있어서, 루프 B 경로 6,666 m 중 3,624 m(54%)가 `leg = -1`, 연산 밖 신호 11개가 모두 "그 밖"으로 기록됐다.
+> **v2는 루프 경로 B(`ROUTE_SET=loopB`, 순환 흐름 포함)용 형식이다 (11절 "v1 → v2 변경").**
+> v1은 연산교차로 주변에만 번호표가 있어서 루프 B 경로의 54%가 `leg = -1`이었고, 연산교차로 밖 신호 11곳이 모두 "그 밖"으로 기록됐다.
 > **v1 → v2에서 바뀐 것은 `state`와 `meta`뿐이다. `observation`과 `action`은 그대로다.**
 
 ## 0. 수업 기본 항목 대조
@@ -26,7 +26,7 @@
 ## 1. 저장 단위
 
 - **1줄 = 1 transition = SUMO 1스텝 (0.5초)**
-- 목표: **10^7 transition 이상** → **결과 (RL4 · #31 지도, 제출용): 10,454,044 transition, 3,600 에피소드** (루프 B 1회 평균 2,904스텝). #31 이전 지도 RL4 데이터셋 10,654,526, RL2 데이터셋 10,647,162 (각 3,600 에피소드)
+- 목표: **10^7 transition 이상** → **결과: 10,454,044 transition, 3,600 에피소드** (루프 B 한 바퀴 평균 2,904스텝)
 - 수집: `collect_pomdp_data.py --workers N` (SUMO N개 병렬). 본 수집은 시드 11~19로 400회씩 9묶음 (8절)
 
 ## 2. 원칙
@@ -74,21 +74,23 @@
 | **21~24** | **연산교차로 차로 그룹 B·C** (아래 표) | v2 추가 |
 | -1 | 앞에 신호 없음 | v1과 같음 |
 
-**루프 B 신호 (10~20)** — 거리는 출발점에서 경로를 따라 잰 정지선 위치 (근사)
+**루프 B 신호 (10~20)** — 거리는 출발점에서 경로를 따라 잰 정지선 위치다. 경로 도로 길이만 더했고 교차로 안 연결 차로는 뺐다 (`meta.route_length_m` 6,646 m와 같은 기준, 근사)
 
 | 번호 | 위치 | 진입 → 진출 | SUMO 신호 id | 거리 |
 |---|---|---|---|---|
 | 10 | 연산교차로 북쪽 상류 | 중앙대로 → 중앙대로 | `12785591052` | 445 m |
 | 11 | 연수로 끝 | 연수로 → 중앙천로 | `cluster_1772229542_7222328581` | 1,977 m |
 | 12 | 중앙천로 끝 (중앙대로와 만남, 가정 신호) | 중앙천로 → 신촌로 | `4633975089` | 2,881 m |
-| 13 | 거제천로 | 거제천로 → 거제천로 | `cluster_3131958161_4958136016_4958136222` | 3,701 m |
-| 14 | 거제천로 | 거제천로 → 거제천로 | `12508988076` | 4,191 m |
-| 15 | 거제천로 | 거제천로 → 거제천로 | `6606304736` | 4,485 m |
-| 16 | 거제천로 끝 | 거제천로 → 반송로 | `cluster_14158297210_1773421582` | 4,938 m |
-| 17 | 반송로 끝 | 반송로 → 쌍미천로 | `cluster_14158297261_14158297263` | 5,126 m |
-| 18 | 쌍미천로 | 쌍미천로 → 쌍미천로 | `7282326875` | 5,466 m |
-| 19 | 쌍미천로 끝 | 쌍미천로 → 고분로 | `436818089` | 5,613 m |
-| 20 | 연산교차로 서쪽 하류 | 월드컵대로 → 월드컵대로 | `cluster_3131958161_4958136016_4958136222` | 6,478 m |
+| 13 | 거제천로 | 거제천로 → 거제천로 | `cluster_3131958161_4958136016_4958136222` | 3,693 m |
+| 14 | 거제천로 | 거제천로 → 거제천로 | `12508988076` | 4,183 m |
+| 15 | 거제천로 | 거제천로 → 거제천로 | `6606304736` | 4,477 m |
+| 16 | 거제천로 끝 | 거제천로 → 반송로 | `cluster_14158297210_1773421582` | 4,930 m |
+| 17 | 반송로 끝 | 반송로 → 쌍미천로 | `cluster_14158297261_14158297263` | 5,107 m |
+| 18 | 쌍미천로 | 쌍미천로 → 쌍미천로 | `7282326875` | 5,447 m |
+| 19 | 쌍미천로 끝 | 쌍미천로 → 고분로 | `436818089` | 5,594 m |
+| 20 | 연산교차로 서쪽 하류 | 월드컵대로 → 월드컵대로 | `cluster_3131958161_4958136016_4958136222` | 6,458 m |
+
+- 거리는 `meta.json`의 `tl_order`(신호 id@진입 도로)와 SUMO 도로 길이로 계산했다 (2026-11-28). 같은 방법을 회전교차로를 한 바퀴 더 돌던 예전 경로(6,666 m)에 적용하면 예전 표 값과 m 단위까지 같다.
 
 - 13과 20은 같은 신호 교차로의 서로 다른 진입로다 (진입로마다 번호 하나).
 - 10~20은 모두 루프가 지나는 진입로 안에서 차로별 녹색 시점이 같다 (차로 그룹 1개, 2026-11-23 지도로 확인). 그래서 진입로당 한 칸이다.
@@ -240,12 +242,12 @@ v1 초안(34차원)의 31 신호 색 · 32 정지선 거리 · 33 남은 시간�
 
 ## 5. 정한 것
 
-| 항목 | 선택지 | 결정 (본 수집, 2026-11-24) |
+| 항목 | 선택지 | 결정 (본 수집) |
 |---|---|---|
 | **`state.vehicles` 반경 R** | 전체 차량 / AV 반경 R m 안 | **150 m** (관측 거리 100 m + 여유, `--state-radius` 기본값, `meta.vehicles_radius_m`). 시험 수집에서 평균 47대 · 용량 약 0.9 KB / transition |
 | 파일 형식 | jsonl.gz + npz (수업 기본) / + Parquet | 수집은 수업 기본 형식(jsonl.gz + npz + meta.json) 그대로. **HF에는 같은 값을 Parquet(zstd)로 바꾼 파일도 같이 올림** (`tools/data/jsonl_to_parquet.py`. HF 로딩에 유리, `state.tl_color_i`처럼 펼친 컬럼이 다루기 쉬움) |
-| 샤드 크기 | 파일 하나에 N 에피소드 | **400회 묶음 = 파일 하나** (`loopB_RL4_route31_s11` ~ `s19`, 9묶음. #31 이전 지도 RL4는 `loopB_RL4_s11` ~ `s19`, RL2는 `loopB_RL2_s11` ~ `s19`). 8절 시드 규칙으로 번호가 겹치지 않음 |
-| 수집 정책 | PPO / BC / 규칙 기반 / 혼합 | **최종 모델 `models/yeonsan_loopB_RL4/model.pt`, 결정적 정책** (`stochastic: false`). RL2 데이터셋은 `models/yeonsan_loopB_RL2/model.pt`. 조교 답변: 제출 데이터는 최종 정책이 주행한 데이터로만 구성해도 됨 |
+| 샤드 크기 | 파일 하나에 N 에피소드 | **400회 묶음 = 파일 하나** (`loopB_RL4_route31_s11` ~ `s19`, 9묶음). 8절 시드 규칙으로 번호가 겹치지 않음 |
+| 수집 정책 | PPO / BC / 규칙 기반 / 혼합 | **최종 모델 `models/yeonsan_loopB_RL4/model.pt`, 결정적 정책** (`stochastic: false`). 조교 답변: 제출 데이터는 최종 정책이 주행한 데이터로만 구성해도 됨 |
 | 교통 시나리오 | 순환 흐름 켬 / 끔 | **켬 (4,550대/시)** + 도로 디테일 `ROAD_DETAILS=driver_styles,taxi,short_stops` (학습 조건과 같음). 조건은 컬럼이 아니라 `meta.json`에 (`loop_flows`, `road_details`. FAQ "시나리오별 칼럼은 하나로") |
 | 신호 인코딩 (state) | 신호등·그룹별 0 / 0.5 / 1 | v1과 같음 (FAQ 예시와 같은 방식) |
 | raw 정보 범위 | 일부 행만 / 모든 행 | **모든 행에 `state`** (조교 답변: "raw 정보 다 포함해야 합니다"). 본 수집에서 `state`가 빈 행 0 |
@@ -264,7 +266,7 @@ v1 초안(34차원)의 31 신호 색 · 32 정지선 거리 · 33 남은 시간�
 | libsumo | `collect_pomdp_data.py` (맨 위) | ✅ 설치돼 있으면 traci 대신 사용, `--gui`면 traci |
 | `event.arrived` 충돌 스텝 False | `env/sumo_env.py` `step` (PR #2) | 그대로 |
 | `event.teleported`, 순간이동 스텝 신호위반 제외 | `env/sumo_env.py` `step` (`getStartingTeleportIDList`) | ✅ 감점은 `teleport_penalty`, 없으면 `wrong_lane_penalty`와 같음 |
-| 가속 명령 상한 = 차량 최고속도, 제한속도 초과 감점 (조교 답변) | `env/sumo_env.py` `step`, `env/road_config.py` `EGO["max_speed"]` (27.78 m/s), `env/mdp_config.py` `REWARD["overspeed_penalty"]` (0.5) | ✅ 예전에는 가속 명령을 제한속도(13.89 m/s)에서 잘랐다. 지금은 `reward`에 −0.5 × (속도 − 차로 제한속도) / 차로 제한속도가 스텝마다 더해진다. `models/yeonsan_loopB_RL2` · `models/yeonsan_loopB_RL4`와 HF `v2/loopB/` · `v2/loopB_RL4/` · `v2/loopB_RL4_route31/`가 이 환경 |
+| 가속 명령 상한 = 차량 최고속도, 제한속도 초과 감점 (조교 답변) | `env/sumo_env.py` `step`, `env/road_config.py` `EGO["max_speed"]` (27.78 m/s), `env/mdp_config.py` `REWARD["overspeed_penalty"]` (0.5) | ✅ 예전에는 가속 명령을 제한속도(13.89 m/s)에서 잘랐다. 지금은 `reward`에 −0.5 × (속도 − 차로 제한속도) / 차로 제한속도가 스텝마다 더해진다. `models/yeonsan_loopB_RL2` · `models/yeonsan_loopB_RL4`와 제출 데이터셋이 이 환경 |
 
 - 번호표는 연산교차로 OSM 도로망(`ROAD["osm"]["enabled"] = True`)에서만 만든다. 다른 도로에서는 `leg` = -1, `tl_color_*` = 0, `tl_remaining_*` = -1, `ego_dist_to_junction` = 0.
 - v1 확인 기록 (2026-11-18): AV 경로를 끝까지 주행하며 703스텝 검사. `ego_leg` 0 → 12 → 7, `ego_tl` 7 → 0 → 9 → -1 순서, `ego_dist_to_junction` 계속 감소, 관측 31·32번과 불일치 0. 수집 속도 16 step/s, JSONL은 transition당 약 36% 감소.
@@ -279,23 +281,13 @@ v1 초안(34차원)의 31 신호 색 · 32 정지선 거리 · 33 남은 시간�
   워커 8개로 16회(40,936스텝): **403 step/s** → 10^7이면 이 PC(Ryzen 5 5600X) 한 대로 약 7시간.
   워커 8개로 돌린 에피소드 900000도 워커 1개 결과와 같았다 (스텝 수 2,601, return 95.795).
   16회 전체에서도 `ego_leg = -1` 0%, `ego_tl` 순서 같음, 관측 31번과 불일치 0 / 26,847스텝, 반경 밖 차량 0대, 에피소드 번호 900000~900015 겹침 없음.
-- **RL2 본 수집 결과 (2026-11-24 01:57 ~ 07:28, 기록은 `docs/experiments/loopB_log.md`). HF `v2/loopB/`는 2026-11-28에 지움, 기록으로만 남김:**
-  - 조건: 모델 `models/yeonsan_loopB_RL2`, 결정적 정책, SUMO · libsumo 1.27.1, 순환 흐름 켬, `ROAD_DETAILS=driver_styles,taxi,short_stops`, 커밋 7e9a66f (`git_dirty = false`), 워커 4개, 초당 약 550 transition, 5시간 31분
-  - 규모: **10,647,162 transition, 3,600 에피소드** (시드 11~19 × 400회, 평균 2,958스텝)
-  - 끝난 이유: 완주 3,537 (98.25%) · 충돌 21 (0.58%) · 신호위반 38 (1.06%) · 순간이동(막힘) 2 · 차로 이탈 2
-  - 검사: 에피소드마다 `t`가 0부터 1씩 증가, 끝 표시는 마지막 행에만, 에피소드 번호 = `meta.json` (3,600개 통과), `state`가 빈 행 0, Parquet ↔ JSONL 대조 불일치 0
-- **RL4 · #31 이전 지도 본 수집 결과 (2026-11-27 17:07 ~ 23:32, 기록은 `docs/experiments/loopB_log.md`). HF `v2/loopB_RL4/`는 2026-11-28에 지움, 기록으로만 남김:**
-  - 조건: 모델 `models/yeonsan_loopB_RL4`, 결정적 정책, SUMO · libsumo 1.27.1, 순환 흐름 켬, `ROAD_DETAILS=driver_styles,taxi,short_stops`, 루프 B 6,666 m (#31 도로 변경 전), `git_dirty = false`. 클라우드(커밋 530df22, 시드 11~14·18·19, 워커 4개 초당 약 480~520 transition)와 호섭 PC(커밋 8c221c1, 시드 15~17) 두 곳에서 수집. 두 커밋은 문서만 다르고 수집 코드·도로는 같음
-  - 규모: **10,654,526 transition, 3,600 에피소드** (시드 11~19 × 400회, 평균 2,960스텝)
-  - 끝난 이유: 완주 3,578 (99.39%) · 충돌 14 (0.39%) · 신호위반 7 (0.19%) · 차로 이탈 1 · 순간이동·시간 초과 0. 에피소드 return 평균 80.7, 중앙값 81.7, 최대 98.8, 최소 1.4
-  - 검사 (HF에 올린 파일로): 묶음마다 4개 파일(jsonl.gz · npz · parquet · meta.json), 에피소드 400개 = 시드 × 100000 ~ + 399, 9묶음 사이 중복 0, 행 수 meta = npz = parquet, 모든 에피소드 마지막 행이 종료(terminated) 표시
-  - PC 묶음(15~17)의 Parquet은 PC에 `pyarrow`가 없어 클라우드에서 jsonl.gz로 만들어 올림 (행 수 meta와 같음 확인)
-- **RL4 · #31 지도 본 수집 결과 (2026-11-28 00:15 ~ 05:26, 제출용, 기록은 `docs/experiments/loopB_log.md`):**
-  - 조건: 모델 `models/yeonsan_loopB_RL4` (재학습 없음), 결정적 정책, SUMO · libsumo 1.27.1, 순환 흐름 켬, `ROAD_DETAILS=driver_styles,taxi,short_stops`, **루프 B 6,646 m (PR #31 지도: 회전교차로 한 바퀴 제거, 반송로×쌍미천로 정지선 정정, 경로 도로 34개)**, 커밋 4fdbee6 (`git_dirty = false`), 클라우드 워커 4개, 초당 약 580 transition, 5시간 11분
+- **본 수집 결과 (제출 데이터셋, 2026-11-28 00:15 ~ 05:26, 기록은 `docs/experiments/loopB_log.md`):**
+  - 조건: 모델 `models/yeonsan_loopB_RL4`, 결정적 정책, SUMO · libsumo 1.27.1, 순환 흐름 켬, `ROAD_DETAILS=driver_styles,taxi,short_stops`, 루프 B 6,646 m (경로 도로 34개), 커밋 4fdbee6 (`git_dirty = false`), 클라우드 워커 4개, 초당 약 580 transition, 5시간 11분
   - 규모: **10,454,044 transition, 3,600 에피소드** (시드 11~19 × 400회, 평균 2,904스텝)
-  - 끝난 이유: 완주 3,544 (98.44%) · 충돌 42 (1.17%) · 신호위반 7 (0.19%) · 차로 이탈 7 (0.19%) · 순간이동·시간 초과 0. 에피소드 return 평균 79.2, 중앙값 80.6, 최대 98.2, 최소 1.6
-  - 실패 위치: 충돌 42 중 26이 거제천로 신호 구간, 10이 반송로·쌍미천로(#31에서 정지선이 옮겨진 곳). 차로 이탈 7 중 6도 반송로·쌍미천로. 모델이 #31 지도로 학습하지 않아 이 구간에서 약하다 (같은 지도 평가 960회는 충돌 0.94%, `models/yeonsan_loopB_RL4/README.md`)
-  - 검사 (HF에 올린 파일로): 묶음마다 4개 파일, 에피소드 400개 = 시드 × 100000 ~ + 399, 9묶음 사이 중복 0, 행 수 meta = npz = parquet, 모든 에피소드 마지막 행이 종료 표시
+  - 끝난 이유: 완주 3,544 (98.44%) · 충돌 42 (1.17%) · 신호위반 7 (0.19%) · 차로 이탈 7 (0.19%) · 순간이동 · 시간 초과 0. 에피소드 return 평균 79.2, 중앙값 80.6, 최대 98.2, 최소 1.6
+  - 실패 위치: 충돌 42 중 26이 거제천로 신호 구간, 10이 반송로 · 쌍미천로. 차로 이탈 7 중 6도 반송로 · 쌍미천로다. 반송로 × 쌍미천로는 정지선 위치를 바로잡은 곳인데, 모델은 바로잡기 전 지도로 학습했다
+  - 검사 (HF에 올린 파일로): 묶음마다 4개 파일(jsonl.gz · npz · parquet · meta.json), 에피소드 400개 = 시드 × 100000 ~ + 399, 9묶음 사이 중복 0, 행 수 meta = npz = parquet, 모든 에피소드 마지막 행이 종료 표시
+- 이전 수집 두 번도 같은 v2 형식으로 했다: RL2 정책(2026-11-24, 10,647,162 transition)과, 회전교차로 경로와 반송로 × 쌍미천로 정지선을 바로잡기 전 지도의 RL4(2026-11-27, 10,654,526 transition). 제출 데이터셋 하나만 남기려고 2026-11-28에 HF에서 지웠고, 수집 기록은 `docs/experiments/loopB_log.md`에 있다.
 
 ## 7. v0 → v1 변경
 
@@ -327,80 +319,79 @@ v1 초안(34차원)의 31 신호 색 · 32 정지선 거리 · 33 남은 시간�
 
 ### 시드 배정표
 
-여러 PC로 나눠 수집할 때 **PC마다 다른 `--seed`**를 쓴다. 같은 시드를 두 곳에서 쓰면 같은 에피소드를 중복 수집하고 에피소드 번호도 겹친다.
+여러 컴퓨터로 나눠 수집할 때는 **컴퓨터마다 다른 `--seed`**를 쓴다. 같은 시드를 두 곳에서 쓰면 같은 에피소드를 중복 수집하고 에피소드 번호도 겹친다.
 시드 번호는 여기서만 정하고, 바꾸면 이 표를 먼저 고친다.
-**본 수집은 시드 11~19 한 번으로 10^7을 채웠다.** PC별 분담(시드 1~5)은 하지 않았고, 시드 1~5는 추가 수집용으로 남겨 둔다.
 
-| 수집 주체 | `--seed` | 에피소드 수 | 에피소드 번호 | 파일 이름 (`--name`) | 상태 |
-|---|---|---|---|---|---|
-| 팀원 PC (예비) | 1 ~ 5 | 800씩 | 100000 ~ 500799 | `loopB_<이름>` | 안 함 (추가 수집용) |
-| (예약) | 9 | – | 900000 ~ | 시험 수집용 (2026-11-23 사용). 본 수집에 쓰지 않음 | – |
-| 클라우드 | 11 ~ 19 | 400 × 9 = 3,600 | 1,100,000 ~ 1,900,399 | `loopB_RL2_s11` ~ `loopB_RL2_s19` | **완료·업로드 (11-24)**: 10,647,162 transition, 모델 `models/yeonsan_loopB_RL2`, `ROAD_DETAILS=driver_styles,taxi,short_stops`, 커밋 7e9a66f. HF `v2/loopB/` (2026-11-28 지움) |
-| RL4 수집 (클라우드 + 호섭 PC) | 11 ~ 19 | 400 × 9 = 3,600 | 1,100,000 ~ 1,900,399 | `loopB_RL4_s11` ~ `loopB_RL4_s19` | **완료·업로드 (11-27), #31 이전 지도**: 10,654,526 transition, 모델 `models/yeonsan_loopB_RL4`, 조건은 RL2 본 수집과 같음. 클라우드 11~14·18·19, 호섭 PC 15~17. HF `v2/loopB_RL4/` (2026-11-28 지움) |
-| RL4 · #31 지도 수집 (클라우드) | 11 ~ 19 | 400 × 9 = 3,600 | 1,100,000 ~ 1,900,399 | `loopB_RL4_route31_s11` ~ `s19` | **완료·업로드 (11-28), 제출용**: 10,454,044 transition, 모델 `models/yeonsan_loopB_RL4`, 지금 지도(PR #31, 6,646 m), 커밋 4fdbee6. HF `v2/loopB_RL4_route31/` (위 두 데이터셋과 같은 시드). **HF에 남은 유일한 데이터셋** |
+| 용도 | `--seed` | 에피소드 수 | 에피소드 번호 | 파일 이름 (`--name`) |
+|---|---|---|---|---|
+| 시험 수집 (2026-11-23) | 9 | 16 | 900000 ~ 900015 | – |
+| **본 수집 (제출 데이터셋)** | 11 ~ 19 | 400 × 9 = 3,600 | 1,100,000 ~ 1,900,399 | `loopB_RL4_route31_s11` ~ `s19` |
+| 추가 수집용 (비워 둠) | 1 ~ 5 | – | 100000 ~ | – |
 
-- 본 수집 (RL4 · #31 지도, 제출용): 3,600 에피소드 × 평균 2,904스텝 = 10,454,044 transition → 10^7 이상 (6절 "RL4 · #31 지도 본 수집 결과"). #31 이전 지도 RL4: 10,654,526, RL2: 10,647,162 transition.
-- 예상 시간 참고: Ryzen 5 5600X · 워커 8개 · libsumo 기준 403 step/s → 800회 약 1시간 30분. 본 수집은 워커 4개로 초당 약 550 transition, 5시간 31분 걸렸다.
-- 완료하면 `meta.json`의 `episode_ids`가 위 번호와 같은지 확인한다.
+- 본 수집: 3,600 에피소드 × 평균 2,904스텝 = 10,454,044 transition → 10^7 이상 (6절).
+- 걸린 시간: 클라우드 워커 4개로 초당 약 580 transition, 5시간 11분. 참고로 Ryzen 5 5600X · 워커 8개 · libsumo는 403 step/s.
+- 다 모으면 `meta.json`의 `episode_ids`가 위 번호와 같은지 확인한다.
 - 평가 시드(`tools/rl/eval_parallel.py --seed`, 기본 905)와는 별개다.
 
-**수집 전 확인 (모든 사람)**
+**수집 전 확인**
 
-1. 같은 커밋: 이 표가 들어간 브랜치(또는 머지된 main)를 받고 `git status`가 깨끗해야 한다 (`meta.json`의 `git_dirty`가 `false`).
+1. 같은 커밋: `git status`가 깨끗해야 한다 (`meta.json`의 `git_dirty`가 `false`).
 2. SUMO 1.27.1: `python -m pip install -r requirements.txt` (sumolib · traci · libsumo · eclipse-sumo 1.27.1). 다른 버전 SUMO가 깔려 있으면 `SUMO_HOME`을 eclipse-sumo 폴더로 (requirements.txt 주석).
 3. 처음 1~2분 안에 워커들이 실제로 에피소드를 끝내는지 로그를 본다.
 
-**수집 명령** (`--seed`와 `--name`만 표대로 바꾼다. 모델·도로 디테일은 본 수집과 같게)
+**수집 명령** (제출 데이터셋 첫 묶음. 다른 묶음은 `--seed`와 `--name`만 바꾼다)
 
 ```bash
 # macOS / Linux
 ROUTE_SET=loopB MAX_STEPS=6000 LANE_PLAN_RANGE=300 ROAD_DETAILS=driver_styles,taxi,short_stops \
-    python collect_pomdp_data.py --model models/yeonsan_loopB_RL4/model.pt --episodes 800 --workers 8 --seed 1 --name loopB_jimin
+    python collect_pomdp_data.py --model models/yeonsan_loopB_RL4/model.pt --episodes 400 --workers 4 --seed 11 --name loopB_RL4_route31_s11
+python tools/data/jsonl_to_parquet.py data/loopB_RL4_route31_s11.jsonl.gz data/loopB_RL4_route31_s11.parquet
 ```
 
 ```powershell
 # Windows PowerShell
 $env:ROUTE_SET="loopB"; $env:MAX_STEPS="6000"; $env:LANE_PLAN_RANGE="300"; $env:ROAD_DETAILS="driver_styles,taxi,short_stops"
-python collect_pomdp_data.py --model models/yeonsan_loopB_RL4/model.pt --episodes 800 --workers 8 --seed 1 --name loopB_jimin
+python collect_pomdp_data.py --model models/yeonsan_loopB_RL4/model.pt --episodes 400 --workers 4 --seed 11 --name loopB_RL4_route31_s11
 ```
 
 - `--workers`는 CPU 코어 수 − 1 정도 (컴퓨터가 너무 느려지면 줄인다).
 - 수집이 중간에 끊기면 **같은 시드·같은 이름으로 처음부터 다시** 돌린다 (같은 에피소드가 다시 나오므로 번호 충돌 없음). 파일은 `data/<이름>.jsonl.gz`, `.npz`, `.meta.json` 세 개다.
 
-### meta.json 예 (v2, 본 수집 첫 묶음 모양. 값 일부는 예시)
+### meta.json 예 (`loopB_RL4_route31_s11.meta.json`, 긴 항목은 줄임)
 
 ```json
 {
   "format_version": "v2",
-  "git_commit": "<collect 실행 시점 커밋 해시 — 본 수집은 7e9a66f>",
+  "git_commit": "4fdbee69a8b1a59d3d9569ac1fdd58a1a7e3b218",
   "git_dirty": false,
   "policy": "ppo",
-  "model": "models/yeonsan_loopB_RL2/model.pt",
+  "model": "models/yeonsan_loopB_RL4/model.pt",
   "stochastic": false,
   "seed": 11,
   "episodes": 400,
-  "transitions": "<이 묶음의 transition 수>",
+  "transitions": 1155894,
   "workers": 4,
   "step_length": 0.5,
   "max_steps": 6000,
   "sumo_version": "1.27.1",
   "libsumo": true,
-  "created_at": "2026-11-24T02:00:00",
-  "files": {"jsonl": "loopB_RL2_s11.jsonl.gz", "npz": "loopB_RL2_s11.npz"},
+  "warmup_state_pool": 0,
+  "created_at": "2026-11-27T15:48:54",
+  "files": {"jsonl": "loopB_RL4_route31_s11.jsonl.gz", "npz": "loopB_RL4_route31_s11.npz"},
   "route_set": "loopB",
-  "route_length_m": 6666,
+  "route_length_m": 6646.4,
   "episode_ids": {"rule": "seed × 100000 + i (i = 0 … episodes-1)", "first": 1100000, "last": 1100399},
-  "road_details": ["driver_styles", "taxi", "short_stops"],
+  "road_details": ["short_stops", "taxi", "driver_styles"],
   "ego_routes": [["N", "S", "E", "W"]],
   "traffic_scale": 1.0,
-  "loop_flows": {"enabled": true, "veh_per_hour": 4550,
+  "loop_flows": {"enabled": true, "scale": 1.0, "veh_per_hour": 4550.0,
                  "flows": [{"name": "연수로 (루프 방향)", "vph": 1000, "source": "실측"}, "..."]},
-  "vehicles_radius_m": 150,
+  "vehicles_radius_m": 150.0,
   "lane_index": "0 = 맨 오른쪽 (버스 전용 차로 포함)",
   "angle": "도, 0 = 북쪽, 90 = 동쪽, 시계방향",
   "leg_code": {"0-5": "연산교차로로 들어가는 도로 (leg_order 순)",
                "6-11": "연산교차로에서 나가는 도로 (leg_order 순 + 6)",
-               "12": "연산교차로 안", "13": "연수로 (루프 방향)", "14": "연수로 (반대)",
+               "12": "연산교차로 안 (우회전 연결로 포함)", "13": "연수로 (루프 방향)", "14": "연수로 (반대 방향)",
                "...": "2절 표", "-1": "그 밖"},
   "leg_order": ["SW", "N", "W", "S", "E", "NE"],
   "tl_order": {"0": "SW", "1": "N", "...": "...", "9": "other",
@@ -410,57 +401,53 @@ python collect_pomdp_data.py --model models/yeonsan_loopB_RL4/model.pt --episode
                      "23": {"edge": "x6_N_in1", "lanes": [2, 3]}, "...": "..."},
   "tl_color": {"red": 0.0, "yellow": 0.5, "green": 1.0},
   "vehicle_type": {"car": 0, "bus": 1},
+  "signal": {"green_s": {"A": 14, "B": 17, "C1": 19, "C2": 8, "D1": 16, "D3": 16}, "yellow_s": 3.0, "all_red_s": 2.0},
   "signal_structure": {"type": "concurrent", "phases": ["A", "B", "C1", "C2", "D1", "D3"],
-                       "cycle_s": 120.0, "yellow_s": 3, "all_red_s": 2},
-  "demand": {"scenario": "normal", "scale": 1.0}
+                       "cycle_s": 120.0, "scenario": "normal"},
+  "demand": {"scenario": "normal", "hour": "12", "scale": 1.0}
 }
 ```
 
 - `git_dirty`: 커밋 안 한 코드 변경이 있는 상태로 수집했는지. **본 수집은 `false`여야 한다.**
 - `tl_order`의 키가 `state.ego_tl` 값이다. `tl_lane_groups`로 주변 차량이 어느 신호 칸을 받는지 찾는다 (차량의 도로·차로 → 그룹).
-- v1의 `signal.green_s`(진입로별 녹색 시간)는 동시 녹색 6현시와 맞지 않아 `signal_structure`로 바꾼다.
+- `signal`은 현시별 녹색 시간과 황색 · 전적색 시간, `signal_structure`는 동시 녹색 6현시의 현시 순서와 주기다. v1의 진입로별 녹색 시간(`signal.green_s`)은 동시 녹색 6현시와 맞지 않아 현시별로 바꿨다.
 
 ## 9. Hugging Face 업로드 구조
 
-저장소: `hoseob0902/HexaCross-dataset` (**지금 비공개**)
+저장소: [`hoseob0902/HexaCross-dataset`](https://huggingface.co/datasets/hoseob0902/HexaCross-dataset) (공개, 로그인 없이 받을 수 있음)
 
 ```
 hoseob0902/HexaCross-dataset
 ├── README.md                # 데이터셋 카드: 수집 방법, 모든 컬럼 설명, 읽는 법
 └── v2/
-    ├── loopB_RL4_route31/   # ★ 제출용 본 데이터셋 (2026-11-28, 최종 모델 RL4, 지금 지도 PR #31). 이 문서 v2 형식
-    │   ├── loopB_RL4_route31_s11.jsonl.gz / .npz / .parquet / .meta.json
-    │   ├── ...              # 400회 묶음마다 같은 4개 파일
-    │   └── loopB_RL4_route31_s19.*
+    └── loopB_RL4_route31/   # 제출 데이터셋 (이 문서의 v2 형식)
+        ├── loopB_RL4_route31_s11.jsonl.gz / .npz / .parquet / .meta.json
+        ├── ...              # 400회 묶음마다 같은 4개 파일
+        └── loopB_RL4_route31_s19.*
 ```
 
-`v2/loopB_RL4/`(RL4, #31 이전 지도)와 `v2/loopB/`(RL2)는 2026-11-28에 HF에서 지웠다. 아래 표의 두 열은 비교 기록으로만 남긴다.
+| 항목 | 값 |
+|---|---|
+| 모델 | `models/yeonsan_loopB_RL4` (최종 모델), 결정적 정책 |
+| 경로 | 루프 B 6,646 m, 경로 도로 34개, 신호 13곳 (연산교차로 두 번 포함) |
+| 수집 도구 · 조건 | `collect_pomdp_data.py` → `tools/data/jsonl_to_parquet.py`, SUMO 1.27.1, 순환 흐름, 운전자 성향 · 택시 · 잠깐 정차 |
+| 주변 차량 반경 · next_* | 150 m · 에피소드 마지막 행에만 |
+| 시드 · 에피소드 번호 | 11 ~ 19 × 400회 (1,100,000 ~ 1,900,399) |
+| 규모 | **10,454,044행 · 3,600 에피소드** |
+| 끝난 이유 | 완주 98.44% · 충돌 1.17% · 신호위반 0.19% · 차로 이탈 0.19% |
+| 파일 (9묶음 × 4개) | jsonl.gz 9.68 GB · npz 0.89 GB · parquet 6.98 GB |
 
-| 항목 | `v2/loopB_RL4_route31/` (제출용, HF에 있음) | `v2/loopB_RL4/` (지움) | `v2/loopB/` (지움) |
-|---|---|---|---|
-| 모델 | `models/yeonsan_loopB_RL4` | `models/yeonsan_loopB_RL4` | `models/yeonsan_loopB_RL2` |
-| 지도 · 경로 | 지금 지도 (PR #31), 6,646 m, 도로 34개 | #31 이전, 6,666 m, 도로 38개 (회전교차로 한 바퀴) | #31 이전, 6,666 m |
-| 수집 도구 · 조건 | `collect_pomdp_data.py` → `tools/data/jsonl_to_parquet.py`, SUMO 1.27.1, 순환 흐름, 운전자 성향 · 택시 · 잠깐 정차, 결정적 정책 | 같음 | 같음 |
-| 주변 차량 반경 · next_* | 150 m · 에피소드 마지막 행에만 | 같음 | 같음 |
-| 시드 · 에피소드 번호 | 11 ~ 19 × 400회 (1,100,000 ~ 1,900,399) | 같음 | 같음 |
-| 규모 | **10,454,044행 · 3,600 에피소드** | 10,654,526행 · 3,600 에피소드 | 10,647,162행 · 3,600 에피소드 |
-| 끝난 이유 | 완주 98.44% · 충돌 1.17% · 신호위반 0.19% · 차로 이탈 0.19% | 완주 99.39% · 충돌 0.39% · 신호위반 0.19% | 완주 98.25% · 충돌 0.58% · 신호위반 1.06% |
-| 파일 (9묶음 × 4개) | jsonl.gz 9.68 GB · npz 0.89 GB · parquet 6.98 GB | jsonl.gz 9.80 GB · npz 0.90 GB · parquet 7.07 GB | jsonl.gz 9.66 GB · npz 0.81 GB · parquet 6.92 GB |
-
-- 예전 수집(`v2/loopB/` 이전, 2026-11-22, 다른 모델·형식)은 HF에서 지웠다 (2026-11-26).
-- 예전 두 데이터셋(`v2/loopB_RL4/`, `v2/loopB/`)은 제출용 하나만 남기려고 2026-11-28에 지웠다.
-- 발표 · 제출 · 프로젝트 페이지의 데이터셋 숫자는 **`v2/loopB_RL4_route31/`** 기준이다.
+- 발표 · 제출 · 프로젝트 페이지의 데이터셋 숫자는 이 데이터셋 기준이다.
 
 ## 10. 일정
 
-| 날짜 | 할 일 |
+| 날짜 | 한 일 |
 |---|---|
-| 11/23 | ✅ v2 구현 · 시험 수집(1회 + 16회) · libsumo 확인 · PR #16 · #17 머지 |
-| 11/24 01:57 ~ 07:28 | ✅ RL2 본 수집 (시드 11~19, 3,600회) · 400회마다 Parquet 변환 → HF `v2/loopB/` 업로드 (11-28 지움) |
-| 11/27 17:07 ~ 23:32 | ✅ RL4 본 수집, #31 이전 지도 (시드 11~19, 3,600회, 클라우드 + 호섭 PC) → HF `v2/loopB_RL4/` (11-28 지움) |
-| 11/28 00:15 ~ 05:26 | ✅ RL4 본 수집, 지금 지도 PR #31 (시드 11~19, 3,600회, 클라우드) → HF `v2/loopB_RL4_route31/` 업로드 (제출용) |
-| 11/28 | ✅ HF 정리: `v2/loopB_RL4/` · `v2/loopB/` 삭제, 데이터셋 카드를 `v2/loopB_RL4_route31/`만으로 다시 씀. LMS 데이터 압축본을 `submission/`에 잠시 올렸다가 같은 날 지움 |
-| 11/28 발표 전 | HF 저장소 공개 · README "Dataset (준비 중)" 링크 · 프로젝트 페이지(`docs/index.html`) Dataset 버튼 연결 |
+| 11/23 | v2 구현 · 시험 수집(1회 + 16회) · libsumo 확인 |
+| 11/24 | 첫 본 수집 (RL2 정책, 10,647,162 transition. 11-28에 지움) |
+| 11/27 | RL4 본 수집 (회전교차로 경로와 반송로 × 쌍미천로 정지선을 바로잡기 전 지도, 10,654,526 transition. 11-28에 지움) |
+| 11/28 00:15 ~ 05:26 | **제출 데이터셋 수집** (RL4, 지금 지도, 시드 11~19) → HF `v2/loopB_RL4_route31/` |
+| 11/28 | HF 정리 (이전 두 데이터셋 삭제, 데이터셋 카드 갱신), 데이터셋 공개 |
 
 ## 11. v1 → v2 변경
 

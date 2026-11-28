@@ -814,15 +814,15 @@
         <div class="top">
           <div class="hd"><span class="badge md t-white red"><svg class="ico"><use href="#i-car"/></svg></span>Final</div>
           <h3>RL4: stopping distance fixed, retrained</h3>
-          <span class="cond">Same evaluation · 4 conditions · 960 runs</span>
+          <span class="cond">Final evaluation · 4 conditions · 1,920 runs</span>
         </div>
         <div class="res">
-          <span class="arr-n">99.38%</span><small>arrival</small>
-          <div class="col">0.42% collision</div>
+          <span class="arr-n">98.54%</span><small>arrival</small>
+          <div class="col">0.83% collision</div>
         </div>
       </li>
     </ol>
-    <p class="caption"><span class="s">Steps 1 to 3 were tested on seven short routes through the junction, each with its own traffic level, so compare those numbers within a card.</span> <span class="s">Steps 4 to 6 share one harder test: the full 6.7&nbsp;km loop with traffic added on the surrounding roads, 960&nbsp;runs.</span> <span class="s">That test used an earlier version of the loop; the final model's results on the current 6.6&nbsp;km loop (1,920&nbsp;runs) are under <a href="#results">Results</a>.</span> <span class="s">* Step 4 was trained before that traffic was added. 33 of its 39 collisions were at one unsignalized merge, which step 5 fixed.</span></p>
+    <p class="caption"><span class="s">Steps 1 to 3 were tested on seven short routes through the junction, each with its own traffic level, so compare those numbers within a card.</span> <span class="s">Steps 4 and 5 share one harder test: the full loop with traffic added on the surrounding roads, 960&nbsp;runs.</span> <span class="s">The final model RL4 is shown with its final evaluation, the same 1,920&nbsp;runs as in <a href="#results">Results</a>.</span> <span class="s">* Step 4 was trained before that traffic was added. 33 of its 39 collisions were at one unsignalized merge, which step 5 fixed.</span></p>
   </section>
 
   <section id="results">
@@ -1237,7 +1237,7 @@ ROUTE_SET=loopB MAX_STEPS=6000 LANE_PLAN_RANGE=300 ROAD_DETAILS=driver_styles,ta
           </div>
           <div>
             <h3>How we checked</h3>
-            <p>Medians over 960 runs: 4.5&nbsp;m behind the car ahead and 1.6&nbsp;m before the stop line (RL2: 7.5&nbsp;m and 6.8&nbsp;m over 120 runs). A 3 to 3.5&nbsp;m target caused collisions in queues, so the target is 4.0&nbsp;m. SUMO counts a bumper gap under 2.5&nbsp;m as a collision even without contact.</p>
+            <p>Medians over the final 1,920 runs: 4.5&nbsp;m behind the car ahead and 1.6&nbsp;m before the stop line (RL2: 7.5&nbsp;m and 6.8&nbsp;m over 120 runs). A 3 to 3.5&nbsp;m target caused collisions in queues, so the target is 4.0&nbsp;m. SUMO counts a bumper gap under 2.5&nbsp;m as a collision even without contact.</p>
           </div>
         </div>
         <p class="src">Source: <a href="https://github.com/jimin326/HexaCross/blob/main/models/yeonsan_loopB_RL4/README.md">models/yeonsan_loopB_RL4/README.md</a></p>
