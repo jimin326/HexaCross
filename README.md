@@ -11,6 +11,8 @@ We rebuilt Busan's Yeonsan junction, where six roads meet, in the SUMO traffic s
 
 ## Overview
 
+![Framework: (a) build the junction in SUMO, (b) train the AV with imitation learning and then PPO, (c) evaluate it and release the dataset](docs/assets/framework.png)
+
 - **Road.** The network comes from OpenStreetMap. The 34 lanes around the junction were redrawn against street view. The signal plan has 6 phases in a 120 s cycle; we designed it because the real plan is not public.
 - **Traffic.** 4,507 vehicles per hour cross the junction, following Busan's 2025 traffic survey. Another 4,550 vehicles per hour drive on the roads along the loop.
 - **AV.** Every 0.5 s the AV reads a 56-dimensional observation and outputs an acceleration and a lane change.
