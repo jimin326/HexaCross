@@ -769,7 +769,7 @@
       <li class="stage">
         <div class="top">
           <div class="hd"><span class="badge md t-amber"><svg class="ico"><use href="#i-wheel"/></svg></span>Step 2</div>
-          <h3>Behavior cloning (BC) from a corrected expert</h3>
+          <h3>Behavior cloning (BC) on relabeled expert data</h3>
           <span class="cond">7 junction routes · 0.5× demand · 560 runs</span>
         </div>
         <div class="res">
@@ -991,7 +991,7 @@ ROUTE_SET=loopB MAX_STEPS=6000 LANE_PLAN_RANGE=300 ROAD_DETAILS=driver_styles,ta
               <span style="flex: 2.9; background: #C9CFCB; padding: 0;"></span>
             </span>
             <small>1 of 35 arrived (3%)</small></div>
-          <div class="orow"><span><b>After the fix</b><small>corrected expert, 420 runs</small></span>
+          <div class="orow"><span><b>After the fix</b><small>relabeled expert data, 420 runs</small></span>
             <span class="obar" role="img" aria-label="345 arrived, 45 collisions, 11 red-light violations, 19 stuck in a lane">
               <span style="flex: 82.1; background: var(--bar-after);">345 arrived (82%)</span>
               <span style="flex: 10.7; background: var(--bar-before); color: var(--ink);">45</span>
@@ -1013,7 +1013,7 @@ ROUTE_SET=loopB MAX_STEPS=6000 LANE_PLAN_RANGE=300 ROAD_DETAILS=driver_styles,ta
           </div>
           <div>
             <h3>What we changed</h3>
-            <p>Teacher correction on the training labels: the target speed is capped at the safe speed that stops 2&nbsp;m short of the minimum gap, and at a red light at the speed that stops 1&nbsp;m before the stop line. Nothing changes while driving.</p>
+            <p>Relabeled the expert's target speeds in the training data: each label is capped at the safe speed that stops 2&nbsp;m short of the minimum gap, and at a red light at the speed that stops 1&nbsp;m before the stop line. Nothing changes while driving.</p>
           </div>
           <div>
             <h3>How we checked</h3>
