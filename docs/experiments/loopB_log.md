@@ -542,6 +542,7 @@
 
 ### 11-28 Hugging Face 정리 · LMS 제출본
 - HF `hoseob0902/HexaCross-dataset`에서 `v2/loopB_RL4/`(RL4, #31 이전 지도)와 `v2/loopB/`(RL2)를 지움 (사용자 요청). 남은 데이터셋은 제출용 `v2/loopB_RL4_route31/`뿐이고, 데이터셋 카드도 이것만으로 다시 씀.
-- LMS 제출 데이터 압축본 `submission/와플해적단_data.zip`(537 MB, 9묶음 × 앞 30 에피소드 = 782,513 transition, parquet + npz + meta.json + README)을 HF에 올림.
+- LMS 제출 데이터 압축본 `submission/와플해적단_data.zip`(537 MB, 9묶음 × 앞 30 에피소드 = 782,513 transition)을 HF에 올렸다가 같은 날 `submission/` 폴더째 지움 (사용자 요청). HF에는 `v2/loopB_RL4_route31/`만 남음.
+- 수집 분담 메모 `데이터수집_분담.md`를 저장소에서 지움 (#39). 위 11-27 기록의 분담 내용은 그대로 둔다.
 - LMS 제출본(코드 zip · 데이터 zip)을 만드는 스크립트는 개인 브랜치 `hoseob/lms-submission`의 `tools/make_lms_zip.py` (main에는 넣지 않음).
 - `DATA_FORMAT.md`, `README.md`, 프로젝트 페이지(`docs/index.html`), `docs/project_rules.md`의 데이터셋 숫자·경로를 `v2/loopB_RL4_route31/`(10,454,044 transition) 기준으로 맞춤.
